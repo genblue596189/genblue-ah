@@ -119,6 +119,7 @@
             <li id="nav-clinic" onclick="switchTab('clinic')">系統設定及醫院 (Clinic)</li>
             <li id="nav-audit_logs" onclick="switchTab('audit_logs')">操作歷程與稽核 (Audit Logs)</li>
             <li id="nav-invoices" onclick="switchTab('invoices')">收費與付款 (Invoices)</li>
+            <li id="nav-lab_manager" onclick="switchTab('lab_manager')">血球與生化檢驗管理</li>
             <li id="nav-lab_tests" onclick="switchTab('lab_tests')">檢驗, 影像及附件 (Lab Tests)</li>
         </ul>
     </sidebar>
@@ -247,7 +248,10 @@
                     </div>
                     <button style="margin-top: 15px;" onclick="recordPetVaccine()">紀錄本次疫苗施打</button>
 
-                    <h3 style="margin-top: 25px;">各寵物疫苗施打歷史與狀態總覽</h3>
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 25px; margin-bottom: 10px;">
+                        <h3>各寵物疫苗施打歷史與狀態總覽 (支援即時搜尋)</h3>
+                        <input type="text" id="vacReportTableSearch" class="search-box" placeholder="🔍 搜尋寵物名字或疫苗..." oninput="filterVaccineTable()" style="width: 300px;">
+                    </div>
                     <table>
                         <thead>
                             <tr>
@@ -440,6 +444,15 @@
             <div id="medical" class="tab-content">
                 <div class="card">
                     <h2>醫療紀錄與處方 (Medical Records)</h2>
+                    
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; flex-wrap: wrap; gap: 10px;">
+                        <span style="color: var(--primary-dark); font-size: 0.95rem; font-weight: bold;">💡 診療中如需進行血檢或施打疫苗，可點擊右側快捷按鈕！</span>
+                        <div style="display: flex; gap: 8px;">
+                            <button class="btn-warning" style="padding: 6px 14px; font-size: 0.85rem;" onclick="goToVaccinesFromMedical()">💉 前往疫苗施打登錄</button>
+                            <button class="btn-warning" style="padding: 6px 14px; font-size: 0.85rem;" onclick="goToLabManagerFromMedical()">🩸 前往血球/生化檢驗登錄</button>
+                        </div>
+                    </div>
+
                     <div class="form-grid" style="background: #f1f5f9; padding: 15px; border-radius: var(--radius); margin-bottom: 15px;">
                         <div class="form-group">
                             <label>當前看診寵物名稱</label>
@@ -574,7 +587,132 @@
                 </div>
             </div>
 
-            <!-- 11. 檢驗、影像及附件 -->
+            <!-- 11. 血球與生化檢驗管理 (支援歷史檢視與即時查詢) -->
+            <div id="lab_manager" class="tab-content">
+                <div class="card">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+                        <h2>動物血液檢驗數據登錄 (CBC 詳細細項與生化)</h2>
+                        <button class="btn-secondary" style="padding: 6px 14px; font-size: 0.85rem;" onclick="backToMedicalFromLab()">⬅ 返回目前看診病歷</button>
+                    </div>
+
+                    <div class="form-grid">
+                        <div class="form-group">
+                            <label>選擇檢驗對象寵物 (可輸入名字或晶片搜尋)</label>
+                            <input type="text" id="labPetSearchInput" list="labPetDatalist" placeholder="🔍 輸入關鍵字搜尋寵物..." style="margin-bottom: 6px;">
+                            <datalist id="labPetDatalist"></datalist>
+                            <input type="hidden" id="selectedLabPetId">
+                        </div>
+                        <div class="form-group">
+                            <label>檢驗儀器 / 類別</label>
+                            <select id="labTestType" onchange="toggleLabFormFields()">
+                                <option value="CBC全血球">CBC 全血球分析 (完整細項)</option>
+                                <option value="血液生化">血液生化分析 (完整細項)</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <!-- CBC 全血球細項完整登錄區塊 -->
+                    <div id="cbcFieldsContainer" style="background: #f8fafc; padding: 20px; border-radius: var(--radius); margin-bottom: 15px; border: 1px solid var(--border-color);">
+                        <h4 style="margin-bottom: 15px; color: var(--primary-dark);">🐾 CBC 全血球詳細檢驗數據</h4>
+                        
+                        <h5 style="color: #475569; margin-bottom: 8px; font-size: 0.9rem;">白血球分類百分比 (%)</h5>
+                        <div class="form-grid" style="margin-bottom: 15px;">
+                            <div class="form-group"><label>WBC (白血球總數)</label><input type="number" step="0.01" id="cbc_wbc" placeholder="10^3/uL"></div>
+                            <div class="form-group"><label>%Neu (嗜中性球%) [52.0-81.0]</label><input type="number" step="0.1" id="cbc_pct_neu" placeholder="%"></div>
+                            <div class="form-group"><label>%Lym (淋巴球%) [12.0-33.0]</label><input type="number" step="0.1" id="cbc_pct_lym" placeholder="%"></div>
+                            <div class="form-group"><label>%Mono (單核球%) [2.0-13.0]</label><input type="number" step="0.1" id="cbc_pct_mono" placeholder="%"></div>
+                            <div class="form-group"><label>%Eos (嗜酸性球%) [0.5-10.0]</label><input type="number" step="0.1" id="cbc_pct_eos" placeholder="%"></div>
+                            <div class="form-group"><label>%Baso (嗜鹼性球%) [0.0-1.3]</label><input type="number" step="0.1" id="cbc_pct_baso" placeholder="%"></div>
+                        </div>
+
+                        <h5 style="color: #475569; margin-bottom: 8px; font-size: 0.9rem;">白血球與分類絕對值 (x1000/uL)</h5>
+                        <div class="form-grid" style="margin-bottom: 15px;">
+                            <div class="form-group"><label>_Neu (嗜中性球絕對值) [3.62-12.30]</label><input type="number" step="0.01" id="cbc_neu_abs" placeholder="x1000/ul"></div>
+                            <div class="form-group"><label>Lym (淋巴球絕對值) [0.83-4.91]</label><input type="number" step="0.01" id="cbc_lym_abs" placeholder="x1000/uL"></div>
+                            <div class="form-group"><label>Mono (單核球絕對值) [0.14-1.97]</label><input type="number" step="0.01" id="cbc_mono_abs" placeholder="x1000/uL"></div>
+                            <div class="form-group"><label>_Eos (嗜酸性球絕對值) [0.04-1.62]</label><input type="number" step="0.01" id="cbc_eos_abs" placeholder="x1000/ul"></div>
+                            <div class="form-group"><label>_Baso (嗜鹼性球絕對值) [0.0-0.12]</label><input type="number" step="0.01" id="cbc_baso_abs" placeholder="x1000/ul"></div>
+                        </div>
+
+                        <h5 style="color: #475569; margin-bottom: 8px; font-size: 0.9rem;">紅血球系列 (RBC & Indices)</h5>
+                        <div class="form-grid" style="margin-bottom: 15px;">
+                            <div class="form-group"><label>RBC (紅血球總數) [5.1-8.5]</label><input type="number" step="0.01" id="cbc_rbc" placeholder="x10*6/ul"></div>
+                            <div class="form-group"><label>HGB (血紅素) [11.0-19.0 g/L]</label><input type="number" step="0.1" id="cbc_hgb" placeholder="g / L"></div>
+                            <div class="form-group"><label>HCT (血球容積比) [33.0-56.0 %]</label><input type="number" step="0.1" id="cbc_hct" placeholder="%"></div>
+                            <div class="form-group"><label>MCV (平均紅血球容積) [60-76.0 fl]</label><input type="number" step="0.1" id="cbc_mcv" placeholder="fl"></div>
+                            <div class="form-group"><label>MCH (平均血紅素量) [20.0-27.0 pg]</label><input type="number" step="0.1" id="cbc_mch" placeholder="pg"></div>
+                            <div class="form-group"><label>MCHC (平均血紅素濃度) [30.0-38.0 fL]</label><input type="number" step="0.1" id="cbc_mchc" placeholder="fL"></div>
+                            <div class="form-group"><label>RDW-CV [%] [12.5-17.2]</label><input type="number" step="0.1" id="cbc_rdw_cv" placeholder="%"></div>
+                            <div class="form-group"><label>RDW-SD [fL] [33.2-46.3]</label><input type="number" step="0.1" id="cbc_rdw_sd" placeholder="fL"></div>
+                        </div>
+
+                        <h5 style="color: #475569; margin-bottom: 8px; font-size: 0.9rem;">血小板系列 (PLT & Indices)</h5>
+                        <div class="form-grid">
+                            <div class="form-group"><label>PLT (血小板總數) [117-490]</label><input type="number" id="cbc_plt" placeholder="x1000/ul"></div>
+                            <div class="form-group"><label>MPV (平均血小板體積) [8.0-14.1 fL]</label><input type="number" step="0.1" id="cbc_mpv" placeholder="fL"></div>
+                            <div class="form-group"><label>PDW [0.1-30.0 fL]</label><input type="number" step="0.1" id="cbc_pdw" placeholder="fL"></div>
+                        </div>
+                    </div>
+
+                    <!-- 血液生化細項完整登錄區塊 -->
+                    <div id="bioFieldsContainer" style="background: #f8fafc; padding: 20px; border-radius: var(--radius); margin-bottom: 15px; border: 1px solid var(--border-color); display: none;">
+                        <h4 style="margin-bottom: 15px; color: var(--primary-dark);">🧪 血液生化詳細檢驗數據</h4>
+                        <div class="form-grid">
+                            <div class="form-group"><label>ALB (白蛋白) [2.6-4.6 g/dl]</label><input type="number" step="0.1" id="bio_alb" placeholder="g/dl"></div>
+                            <div class="form-group"><label>TP (總蛋白) [5.2-8.2 g/dl]</label><input type="number" step="0.1" id="bio_tp" placeholder="g/dl"></div>
+                            <div class="form-group"><label>GLU (血糖) [60-132 mg/dl]</label><input type="number" id="bio_glu" placeholder="mg/dl"></div>
+                            <div class="form-group"><label>ALP (鹼性磷酸酶) [0-212 mU/ml]</label><input type="number" id="bio_alp" placeholder="mU/ml"></div>
+                            <div class="form-group"><label>ALT (GPT / 肝指數) [0-88 mU/ml]</label><input type="number" id="bio_alt" placeholder="mU/ml"></div>
+                            <div class="form-group"><label>BUN (尿素氮) [6.0-26.0 mg/dl]</label><input type="number" step="0.1" id="bio_bun" placeholder="mg/dl"></div>
+                            <div class="form-group"><label>CREA (肌酸酐) [0.4-1.6 g/dl]</label><input type="number" step="0.01" id="bio_crea" placeholder="g/dl"></div>
+                            <div class="form-group"><label>#GLOB (球蛋白) [2.2-4.6 g/dl]</label><input type="number" step="0.1" id="bio_glob" placeholder="g/dl"></div>
+                            <div class="form-group"><label>#A/G (白球比) [0.6-1.1]</label><input type="number" step="0.01" id="bio_ag" placeholder="ratio"></div>
+                            <div class="form-group"><label>#B/C (BUN/CREA比)</label><input type="text" id="bio_bc" placeholder="數值或狀態"></div>
+                            <div class="form-group"><label>AMY (澱粉酶) [400-1500 U/L]</label><input type="number" id="bio_amy" placeholder="U/L"></div>
+                            <div class="form-group"><label>TBil (總膽紅素) [0.0-0.9 mg/dl]</label><input type="number" step="0.1" id="bio_tbil" placeholder="mg/dl"></div>
+                            <div class="form-group"><label>PHOS (磷) [2.5-6.8 mg/dl]</label><input type="number" step="0.1" id="bio_phos" placeholder="mg/dl"></div>
+                            <div class="form-group"><label>Ca (鈣) [7.9-12.0]</label><input type="number" step="0.1" id="bio_ca" placeholder="mg/dl"></div>
+                            <div class="form-group"><label>修正鈣 [7.9-12.0]</label><input type="number" step="0.1" id="bio_fixed_ca" placeholder="mg/dl"></div>
+                            <div class="form-group"><label>GGT (r-GT) [0-10 mg/dl]</label><input type="number" id="bio_ggt" placeholder="mg/dl"></div>
+                            <div class="form-group"><label>LIPA (脂肪酶) [0-125]</label><input type="number" id="bio_lipa" placeholder="U/L"></div>
+                            <div class="form-group"><label>#UREA (尿素) [27.8-79.2]</label><input type="number" step="0.1" id="bio_urea" placeholder="mg/dl"></div>
+                            <div class="form-group"><label>CHOL (膽固醇) [110-320 ug/dl]</label><input type="number" id="bio_chol" placeholder="ug/dl"></div>
+                            <div class="form-group"><label>#C-Ca [7.9-12.0]</label><input type="number" step="0.1" id="bio_cca" placeholder="mg/dl"></div>
+                        </div>
+                    </div>
+
+                    <div class="form-group" style="margin-bottom: 15px;">
+                        <label>檢驗備註與臨床判讀說明</label>
+                        <input type="text" id="labReportNotes" placeholder="例如：數值大致正常，建議三個月後追蹤">
+                    </div>
+                    
+                    <button class="btn-success" onclick="saveLabReportToDatabase()">💾 儲存檢驗報告並自動返回病歷</button>
+                </div>
+
+                <div class="card">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+                        <h3>歷史檢驗報告總覽 (支援即時搜尋與完整數值檢視)</h3>
+                        <input type="text" id="labReportTableSearch" class="search-box" placeholder="🔍 輸入寵物名字搜尋檢驗紀錄..." oninput="filterLabReportsTable()" style="width: 300px;">
+                    </div>
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>建立時間</th>
+                                <th>寵物名字</th>
+                                <th>檢驗類別</th>
+                                <th>核心數值摘要</th>
+                                <th>備註</th>
+                                <th>操作</th>
+                            </tr>
+                        </thead>
+                        <tbody id="labReportsTableBody">
+                            <tr><td colspan="6" style="text-align: center; color: #64748b;">載入中...</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- 12. 檢驗、影像及附件 -->
             <div id="lab_tests" class="tab-content">
                 <div class="card">
                     <h2>檢驗、影像及附件</h2>
@@ -595,7 +733,7 @@
                 </div>
             </div>
 
-            <!-- 12. 預約報到與看診流程 -->
+            <!-- 13. 預約報到與看診流程 -->
             <div id="appointments" class="tab-content active">
                 <div class="card">
                     <h2>預約報到與看診流程管理</h2>
@@ -624,6 +762,19 @@
                 </div>
             </div>
 
+        </div>
+    </div>
+
+    <!-- 通用詳細內容檢視彈出視窗 -->
+    <div id="genericDetailModal" class="modal-overlay">
+        <div class="modal-content" style="width: 650px;">
+            <h3 id="detailModalTitle" style="color: #0369a1; border-bottom: 2px solid #0284c7; padding-bottom: 8px; margin-bottom: 15px;">詳細內容檢視</h3>
+            <div id="detailModalBody" style="font-size: 0.95rem; color: #334155; max-height: 60vh; overflow-y: auto; margin-bottom: 20px; line-height: 1.6;">
+                <!-- 內容動態帶入 -->
+            </div>
+            <div style="display: flex; justify-content: flex-end; gap: 10px;">
+                <button class="btn-secondary" onclick="document.getElementById('genericDetailModal').style.display='none'">關閉視窗</button>
+            </div>
         </div>
     </div>
 
@@ -656,6 +807,25 @@
             <div style="display: flex; justify-content: flex-end; gap: 10px;">
                 <button class="btn-secondary" onclick="closeEditMedicineModal()">取消</button>
                 <button onclick="saveEditedMedicine()">儲存變更</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 編輯檢驗報告彈出視窗 -->
+    <div id="editLabModal" class="modal-overlay">
+        <div class="modal-content" style="width: 600px;">
+            <h3>修改檢驗報告數據</h3>
+            <input type="hidden" id="editLabId">
+            <div class="form-group" style="margin-bottom: 10px;">
+                <label>檢驗備註</label>
+                <input type="text" id="editLabNotes">
+            </div>
+            <div id="editLabDynamicInputs" class="form-grid" style="margin-bottom: 15px;">
+                <!-- 動態產生數值欄位 -->
+            </div>
+            <div style="display: flex; justify-content: flex-end; gap: 10px;">
+                <button class="btn-secondary" onclick="document.getElementById('editLabModal').style.display='none'">取消</button>
+                <button onclick="updateLabReportDatabase()">儲存修改</button>
             </div>
         </div>
     </div>
@@ -728,6 +898,14 @@
         let globalOwnersPetsData = []; 
         let activeAppointmentsList = []; 
         let allPetsListForDropdown = [];
+        let allLabReportsCache = []; 
+        let allVaccinationCache = []; 
+
+        let medicalStateCache = {
+            chiefComplaint: "",
+            weight: 0,
+            prescriptions: []
+        };
 
         let clinicSettings = {
             name: "吉布動物醫院",
@@ -752,10 +930,10 @@
             loadAppointments();
             loadVaccineTypes();
             loadPetVaccines();
+            loadLabReportsList();
             calculateProductTotal();
             calculateInvoiceTotal();
 
-            // 監聽疫苗搜尋輸入框的變動，將選中的完整字串拆解對應並記錄寵物ID
             const vacInput = document.getElementById('vacPetSearchInput');
             if (vacInput) {
                 vacInput.addEventListener('input', function(e) {
@@ -769,6 +947,22 @@
                         }
                     });
                     document.getElementById('selectedVacPetId').value = foundId;
+                });
+            }
+
+            const labInput = document.getElementById('labPetSearchInput');
+            if (labInput) {
+                labInput.addEventListener('input', function(e) {
+                    const val = e.target.value;
+                    const datalist = document.getElementById('labPetDatalist');
+                    const options = datalist.querySelectorAll('option');
+                    let foundId = "";
+                    options.forEach(opt => {
+                        if (opt.value === val) {
+                            foundId = opt.dataset.petId;
+                        }
+                    });
+                    document.getElementById('selectedLabPetId').value = foundId;
                 });
             }
         };
@@ -930,6 +1124,19 @@
             });
         }
 
+        function filterLabPetDropdown() {
+            const datalist = document.getElementById('labPetDatalist');
+            if (!datalist) return;
+            datalist.innerHTML = '';
+
+            allPetsListForDropdown.forEach(pet => {
+                const opt = document.createElement('option');
+                opt.value = `${pet.name} (飼主: ${pet.owner_name} / 晶片: ${pet.microchip || '無'})`;
+                opt.dataset.petId = pet.id;
+                datalist.appendChild(opt);
+            });
+        }
+
         async function recordPetVaccine() {
             const petId = document.getElementById('selectedVacPetId').value;
             const vaccineName = document.getElementById('vacTypeSelect').value;
@@ -959,6 +1166,12 @@
                 document.getElementById('selectedVacPetId').value = '';
                 document.getElementById('vacNotes').value = '';
                 loadPetVaccines();
+
+                if (currentPetId && currentPetId === petId) {
+                    if (confirm('疫苗紀錄已完成！是否要返回目前的看診病歷？')) {
+                        backToMedicalFromVaccine();
+                    }
+                }
             }
         }
 
@@ -966,23 +1179,35 @@
             const { data, error } = await _supabase.from('vaccination_records').select('*').eq('tenant_id', CURRENT_TENANT_ID).order('last_date', { ascending: false });
             const { data: petsData } = await _supabase.from('pets').select('id, name, microchip').eq('tenant_id', CURRENT_TENANT_ID);
             
+            if (error || !data) {
+                allVaccinationCache = [];
+            } else {
+                allVaccinationCache = data.map(v => {
+                    const matchedPet = petsData ? petsData.find(p => p.id === v.pet_id) : null;
+                    return {
+                        ...v,
+                        pet_name: matchedPet ? matchedPet.name : '未知寵物',
+                        pet_microchip: matchedPet ? matchedPet.microchip : ''
+                    };
+                });
+            }
+            renderVaccineTable(allVaccinationCache);
+        }
+
+        function renderVaccineTable(dataList) {
             const tbody = document.getElementById('petVaccineTableBody');
             if(!tbody) return;
             tbody.innerHTML = '';
 
-            if(error || !data || data.length === 0) {
+            if(!dataList || dataList.length === 0) {
                 tbody.innerHTML = `<tr><td colspan="6" style="text-align: center; color: #64748b;">尚無任何寵物疫苗施打紀錄</td></tr>`;
                 return;
             }
 
-            data.forEach(v => {
-                const matchedPet = petsData ? petsData.find(p => p.id === v.pet_id) : null;
-                const petName = matchedPet ? matchedPet.name : '未知寵物';
-                const petChip = matchedPet ? matchedPet.microchip : '';
-
+            dataList.forEach(v => {
                 const tr = document.createElement('tr');
                 tr.innerHTML = `
-                    <td><b>${petName}</b><br><small style="color:#64748b;">晶片: ${petChip || '無'}</small></td>
+                    <td><b>${v.pet_name}</b><br><small style="color:#64748b;">晶片: ${v.pet_microchip || '無'}</small></td>
                     <td><span style="background: #e0f2fe; color: #0369a1; padding: 2px 6px; border-radius: 4px; font-weight: bold;">${v.vaccine_name || '未指定疫苗'}</span></td>
                     <td><b style="color: #0284c7;">📅 ${v.last_date || v.date || '未填寫日期'}</b></td>
                     <td style="color: #dc2626; font-weight: bold;">${v.next_due_date || '未設定'}</td>
@@ -991,6 +1216,24 @@
                 `;
                 tbody.appendChild(tr);
             });
+        }
+
+        function filterVaccineTable() {
+            const keyword = document.getElementById('vacReportTableSearch').value.trim().toLowerCase();
+            if(!keyword) {
+                renderVaccineTable(allVaccinationCache);
+                return;
+            }
+
+            const filtered = allVaccinationCache.filter(v => {
+                const petName = (v.pet_name || '').toLowerCase();
+                const vacName = (v.vaccine_name || '').toLowerCase();
+                const chip = (v.pet_microchip || '').toLowerCase();
+                const notes = (v.notes || '').toLowerCase();
+                return petName.includes(keyword) || vacName.includes(keyword) || chip.includes(keyword) || notes.includes(keyword);
+            });
+
+            renderVaccineTable(filtered);
         }
 
         async function deletePetVaccine(id) {
@@ -1277,6 +1520,7 @@
             });
 
             filterVaccinePetDropdown();
+            filterLabPetDropdown();
 
             petsData.forEach(pet => {
                 const owner = ownersData.find(o => o.id === pet.owner_id);
@@ -1616,28 +1860,161 @@
             currentOwnerId = ownerId || "";
             currentPetWeight = parseFloat(weight) || 0;
 
+            medicalStateCache = { chiefComplaint: "", weight: currentPetWeight, prescriptions: [] };
+
             document.getElementById('medicalPetNameInfo').value = `${petNameStr} ${chipId ? '(晶片: ' + chipId + ')' : ''}`;
             document.getElementById('medicalPetWeightInput').value = currentPetWeight;
+            document.getElementById('medicalDiagnosis').value = "";
+            document.getElementById('prescriptionItemsContainer').innerHTML = "";
             
             switchTab('medical');
             await loadAllMedicalRecords(petId);
         }
 
+        // 從即時報到列表直接一鍵歸檔跳轉至收費頁面
+        function directCheckoutFromAppointment(petId, ownerId) {
+            activeAppointmentsList = activeAppointmentsList.filter(p => p.id !== petId);
+            renderAppointmentTable(activeAppointmentsList);
+
+            if (ownerId) {
+                document.getElementById('invoiceOwnerSelect').value = ownerId;
+            }
+
+            const invoiceListContainer = document.getElementById('invoiceItemsList');
+            invoiceListContainer.innerHTML = '';
+
+            let diagnosticDiv = document.createElement('div');
+            diagnosticDiv.className = 'list-row';
+            diagnosticDiv.innerHTML = `
+                <input type="text" value="一般門診診察費" placeholder="項目名稱" class="invoice-name">
+                <input type="number" value="1" placeholder="數量" class="invoice-qty" style="flex: 0.5;" oninput="calculateInvoiceTotal()">
+                <input type="number" value="500" placeholder="金額" class="invoice-price" oninput="calculateInvoiceTotal()">
+                <button class="btn-danger" onclick="this.parentElement.remove(); calculateInvoiceTotal();" style="padding: 9px 12px;">刪除</button>
+            `;
+            invoiceListContainer.appendChild(diagnosticDiv);
+            calculateInvoiceTotal();
+
+            alert('已將病患從候診列表移除，並為您跳轉至收費與付款頁面進行結帳歸檔！');
+            switchTab('invoices');
+        }
+
+        function goToVaccinesFromMedical() {
+            if (!currentPetId) {
+                alert('請先選擇看診寵物！');
+                return;
+            }
+
+            collectCurrentMedicalState();
+            switchTab('vaccines');
+
+            const vacSearchInput = document.getElementById('vacPetSearchInput');
+            const hiddenVacPetId = document.getElementById('selectedVacPetId');
+            if (vacSearchInput && hiddenVacPetId) {
+                const matchedPetOption = allPetsListForDropdown.find(p => p.id === currentPetId);
+                if (matchedPetOption) {
+                    vacSearchInput.value = `${matchedPetOption.name} (飼主: ${matchedPetOption.owner_name} / 晶片: ${matchedPetOption.microchip || '無'})`;
+                    hiddenVacPetId.value = currentPetId;
+                }
+            }
+        }
+
+        function backToMedicalFromVaccine() {
+            if (!currentPetId) {
+                alert('目前沒有正在看診的寵物病歷！');
+                switchTab('appointments');
+                return;
+            }
+
+            switchTab('medical');
+            restoreMedicalState();
+        }
+
+        function goToLabManagerFromMedical() {
+            if (!currentPetId) {
+                alert('請先選擇看診寵物！');
+                return;
+            }
+
+            collectCurrentMedicalState();
+            switchTab('lab_manager');
+
+            const labSearchInput = document.getElementById('labPetSearchInput');
+            const hiddenLabPetId = document.getElementById('selectedLabPetId');
+            if (labSearchInput && hiddenLabPetId) {
+                const matchedPetOption = allPetsListForDropdown.find(p => p.id === currentPetId);
+                if (matchedPetOption) {
+                    labSearchInput.value = `${matchedPetOption.name} (飼主: ${matchedPetOption.owner_name} / 晶片: ${matchedPetOption.microchip || '無'})`;
+                    hiddenLabPetId.value = currentPetId;
+                }
+            }
+        }
+
+        function collectCurrentMedicalState() {
+            const chiefComplaint = document.getElementById('medicalDiagnosis').value;
+            const weight = parseFloat(document.getElementById('medicalPetWeightInput').value) || 0;
+            
+            const prescriptions = [];
+            document.querySelectorAll('#prescriptionItemsContainer .prescription-item-row').forEach(row => {
+                prescriptions.push({
+                    medicine_name: row.querySelector('input[type="text"]').value,
+                    custom_dose: row.querySelector('.prescribe-custom-dose').value,
+                    quantity: row.querySelector('.prescribe-qty').value,
+                    instruction: row.querySelector('.prescribe-note').value
+                });
+            });
+
+            medicalStateCache = { chiefComplaint, weight, prescriptions };
+        }
+
+        function restoreMedicalState() {
+            if (currentPetId) {
+                document.getElementById('medicalPetNameInfo').value = `${currentPetName} ${currentPetMicrochip ? '(晶片: ' + currentPetMicrochip + ')' : ''}`;
+            }
+            document.getElementById('medicalPetWeightInput').value = medicalStateCache.weight || currentPetWeight;
+            document.getElementById('medicalDiagnosis').value = medicalStateCache.chiefComplaint || "";
+
+            const container = document.getElementById('prescriptionItemsContainer');
+            container.innerHTML = "";
+            if (medicalStateCache.prescriptions && medicalStateCache.prescriptions.length > 0) {
+                medicalStateCache.prescriptions.forEach(p => {
+                    const div = document.createElement('div');
+                    div.className = 'list-row prescription-item-row';
+                    div.innerHTML = `
+                        <input type="text" value="${p.medicine_name}" style="flex: 2; background: #fff;" readonly title="藥品名稱">
+                        <input type="text" value="${p.custom_dose}" class="prescribe-custom-dose" style="flex: 1.2;" placeholder="使用劑量" title="使用劑量">
+                        <input type="number" value="${p.quantity}" class="prescribe-qty" style="flex: 0.8;" placeholder="數量" title="數量">
+                        <input type="text" value="${p.instruction}" class="prescribe-note" style="flex: 2;" placeholder="用法說明" title="用法">
+                        <button class="btn-danger" onclick="this.parentElement.remove();" style="padding: 9px 12px;">刪除</button>
+                    `;
+                    container.appendChild(div);
+                });
+            }
+        }
+
+        function backToMedicalFromLab() {
+            if (!currentPetId) {
+                alert('目前沒有正在看診的寵物病歷！');
+                switchTab('appointments');
+                return;
+            }
+
+            switchTab('medical');
+            restoreMedicalState();
+        }
+
         function onWeightChanged() {
             currentPetWeight = parseFloat(document.getElementById('medicalPetWeightInput').value) || 0;
+            medicalStateCache.weight = currentPetWeight;
             onMedicineSelectedForDoseCalculation();
         }
 
         function onMedicineSelectedForDoseCalculation() {
             const dropdown = document.getElementById('medSelectDropdown');
-            const selectedOpt = dropdown.options[dropdown.selectedIndex];
             const selectedMedId = dropdown.value;
             
             const useDoseDisplay = document.getElementById('medUseDoseDisplay');
             const customRecDoseInput = document.getElementById('medCustomRecDose');
             const calcResultInput = document.getElementById('calculatedDoseResult');
-            const qtyInput = document.getElementById('medPrescribeQty');
-            const doseNoteInput = document.getElementById('medPrescribeCustomDoseNote');
             
             if (!selectedMedId || !loadedMedicinesMap[selectedMedId]) {
                 useDoseDisplay.value = "";
@@ -1647,7 +2024,7 @@
             }
 
             const med = loadedMedicinesMap[selectedMedId];
-            useDoseDisplay.value = med.usage_dose || '未設定含量';
+            useDoseDisplay.value = med.usage_dose || '每顆含量';
 
             let defaultMgKg = 10;
             if (med.recommended_dose) {
@@ -1726,13 +2103,40 @@
                     <div style="border-bottom: 1px dashed #cbd5e1; padding-bottom: 12px; margin-bottom: 12px;">
                         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
                             <p><b>看診時間：</b> ${recordDate}</p>
-                            <button class="btn-secondary" style="padding: 4px 10px; font-size: 0.8rem;" onclick="reprintPrescription('${recordDate}', '${record.chief_complaint || ''}', '${rxJsonEncoded}')">📄 補印此筆處方箋</button>
+                            <div style="display: flex; gap: 6px;">
+                                <button class="btn-secondary" style="padding: 3px 8px; font-size: 0.75rem;" onclick='openMedicalDetailModal(${JSON.stringify(record)})'>詳細內容</button>
+                                <button class="btn-secondary" style="padding: 3px 8px; font-size: 0.75rem;" onclick="reprintPrescription('${recordDate}', '${record.chief_complaint || ''}', '${rxJsonEncoded}')">📄 處方箋</button>
+                            </div>
                         </div>
                         <p><b>主訴：</b> ${record.chief_complaint || ''}</p>
                         ${prescriptionsHtml}
                     </div>`;
             });
             container.innerHTML = htmlContent;
+        }
+
+        function openMedicalDetailModal(record) {
+            let rxList = '<ul>';
+            if (record.prescription_details && record.prescription_details.length > 0) {
+                record.prescription_details.forEach(p => {
+                    rxList += `<li><b>${p.medicine_name}</b> - 劑量: ${p.custom_dose || '-'} | 數量: ${p.quantity}顆 | ${p.instruction || ''}</li>`;
+                });
+            } else {
+                rxList += '<li>無用藥明細</li>';
+            }
+            rxList += '</ul>';
+
+            const html = `
+                <p><b>看診時間：</b> ${new Date(record.created_at).toLocaleString()}</p>
+                <p><b>病歷狀態：</b> ${record.status || '已完成'}</p>
+                <p><b>主訴與診斷：</b></p>
+                <div style="background: #f1f5f9; padding: 10px; border-radius: 6px; margin: 5px 0 15px 0;">${record.chief_complaint || '無'}</div>
+                <p><b>處方用藥明細：</b></p>
+                <div style="background: #f1f5f9; padding: 10px; border-radius: 6px; margin-top: 5px;">${rxList}</div>
+            `;
+            document.getElementById('detailModalTitle').innerText = `📋 歷史病歷完整內容`;
+            document.getElementById('detailModalBody').innerHTML = html;
+            document.getElementById('genericDetailModal').style.display = 'flex';
         }
 
         function reprintPrescription(dateStr, chiefComplaint, rxJsonEncoded) {
@@ -1857,6 +2261,7 @@
         }
 
         function clearMedicalFormInputs() {
+            medicalStateCache = { chiefComplaint: "", weight: 0, prescriptions: [] };
             document.getElementById('medicalPetNameInfo').value = "尚未選擇";
             document.getElementById('medicalPetWeightInput').value = "0";
             document.getElementById('medicalDiagnosis').value = "";
@@ -2006,10 +2411,242 @@
                     <td>${ownerName}</td>
                     <td>${timeStr}</td>
                     <td><span style="color: #0284c7; background: #e0f2fe; padding: 4px 8px; border-radius: 4px; font-weight: bold;">${statusStr}</span></td>
-                    <td><button onclick="startConsultationById('${pet.id}', '${pet.microchip || ''}', '${pet.name}', '${pet.owner_id || ''}', ${pet.weight || 0}, '${ownerName}')">看診</button></td>
+                    <td style="display: flex; gap: 6px;">
+                        <button class="btn-secondary" style="padding: 4px 8px; font-size: 0.8rem;" onclick="startConsultationById('${pet.id}', '${pet.microchip || ''}', '${pet.name}', '${pet.owner_id || ''}', ${pet.weight || 0}, '${ownerName}')">看診</button>
+                        <button class="btn-success" style="padding: 4px 8px; font-size: 0.8rem;" onclick="directCheckoutFromAppointment('${pet.id}', '${pet.owner_id || ''}')">直接歸檔</button>
+                    </td>
                 `;
                 tbody.appendChild(tr);
             });
+        }
+
+        // --- 血球與生化檢驗模組相關函式 ---
+        function toggleLabFormFields() {
+            const type = document.getElementById('labTestType').value;
+            if (type === 'CBC全血球') {
+                document.getElementById('cbcFieldsContainer').style.display = 'block';
+                document.getElementById('bioFieldsContainer').style.display = 'none';
+            } else {
+                document.getElementById('cbcFieldsContainer').style.display = 'none';
+                document.getElementById('bioFieldsContainer').style.display = 'block';
+            }
+        }
+
+        async function saveLabReportToDatabase() {
+            const petId = document.getElementById('selectedLabPetId').value;
+            const testType = document.getElementById('labTestType').value;
+            const notes = document.getElementById('labReportNotes').value;
+
+            if(!petId) { alert('請從搜尋欄正確選取檢驗對象寵物！'); return; }
+
+            let reportData = {};
+            if (testType === 'CBC全血球') {
+                reportData = {
+                    wbc: document.getElementById('cbc_wbc').value,
+                    pct_neu: document.getElementById('cbc_pct_neu').value,
+                    pct_lym: document.getElementById('cbc_pct_lym').value,
+                    pct_mono: document.getElementById('cbc_pct_mono').value,
+                    pct_eos: document.getElementById('cbc_pct_eos').value,
+                    pct_baso: document.getElementById('cbc_pct_baso').value,
+                    neu_abs: document.getElementById('cbc_neu_abs').value,
+                    lym_abs: document.getElementById('cbc_lym_abs').value,
+                    mono_abs: document.getElementById('cbc_mono_abs').value,
+                    eos_abs: document.getElementById('cbc_eos_abs').value,
+                    baso_abs: document.getElementById('cbc_baso_abs').value,
+                    rbc: document.getElementById('cbc_rbc').value,
+                    hgb: document.getElementById('cbc_hgb').value,
+                    hct: document.getElementById('cbc_hct').value,
+                    mcv: document.getElementById('cbc_mcv').value,
+                    mch: document.getElementById('cbc_mch').value,
+                    mchc: document.getElementById('cbc_mchc').value,
+                    rdw_cv: document.getElementById('cbc_rdw_cv').value,
+                    rdw_sd: document.getElementById('cbc_rdw_sd').value,
+                    plt: document.getElementById('cbc_plt').value,
+                    mpv: document.getElementById('cbc_mpv').value,
+                    pdw: document.getElementById('cbc_pdw').value
+                };
+            } else {
+                reportData = {
+                    alb: document.getElementById('bio_alb').value,
+                    tp: document.getElementById('bio_tp').value,
+                    glu: document.getElementById('bio_glu').value,
+                    alp: document.getElementById('bio_alp').value,
+                    alt: document.getElementById('bio_alt').value,
+                    bun: document.getElementById('bio_bun').value,
+                    crea: document.getElementById('bio_crea').value,
+                    glob: document.getElementById('bio_glob').value,
+                    ag: document.getElementById('bio_ag').value,
+                    bc: document.getElementById('bio_bc').value,
+                    amy: document.getElementById('bio_amy').value,
+                    tbil: document.getElementById('bio_tbil').value,
+                    phos: document.getElementById('bio_phos').value,
+                    ca: document.getElementById('bio_ca').value,
+                    fixed_ca: document.getElementById('bio_fixed_ca').value,
+                    ggt: document.getElementById('bio_ggt').value,
+                    lipa: document.getElementById('bio_lipa').value,
+                    urea: document.getElementById('bio_urea').value,
+                    chol: document.getElementById('bio_chol').value,
+                    cca: document.getElementById('bio_cca').value
+                };
+            }
+
+            const { error } = await _supabase.from('lab_reports').insert([{
+                tenant_id: CURRENT_TENANT_ID,
+                pet_id: petId,
+                test_type: testType,
+                report_data: reportData,
+                notes: notes
+            }]);
+
+            if(error) {
+                alert('儲存失敗：' + error.message);
+            } else {
+                alert('檢驗報告已成功儲存並同步至 Supabase！');
+                document.getElementById('labReportNotes').value = '';
+                loadLabReportsList();
+                backToMedicalFromLab();
+            }
+        }
+
+        async function loadLabReportsList() {
+            const { data, error } = await _supabase.from('lab_reports').select('*, pets(name)').eq('tenant_id', CURRENT_TENANT_ID).order('created_at', { ascending: false });
+            if (error || !data) {
+                allLabReportsCache = [];
+            } else {
+                allLabReportsCache = data;
+            }
+            renderLabReportsTable(allLabReportsCache);
+        }
+
+        function renderLabReportsTable(dataList) {
+            const tbody = document.getElementById('labReportsTableBody');
+            if(!tbody) return;
+            tbody.innerHTML = '';
+
+            if(!dataList || dataList.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="6" style="text-align: center; color: #64748b;">尚無任何檢驗報告</td></tr>`;
+                return;
+            }
+
+            dataList.forEach(rep => {
+                const petName = rep.pets ? rep.pets.name : '未知寵物';
+                let summary = '';
+                if (rep.report_data) {
+                    for (let key in rep.report_data) {
+                        if(rep.report_data[key]) summary += `${key.toUpperCase()}: ${rep.report_data[key]} | `;
+                    }
+                }
+
+                const tr = document.createElement('tr');
+                tr.innerHTML = `
+                    <td>${new Date(rep.created_at).toLocaleString()}</td>
+                    <td><b>${petName}</b></td>
+                    <td><span style="background: #e0f2fe; color: #0369a1; padding: 2px 6px; border-radius: 4px; font-weight: bold;">${rep.test_type}</span></td>
+                    <td><small style="color: #475569;">${summary || '無數據'}</small></td>
+                    <td>${rep.notes || '-'}</td>
+                    <td>
+                        <button class="btn-secondary" style="padding: 4px 8px; font-size: 0.8rem;" onclick='openLabDetailModal(${JSON.stringify(rep)})'>檢視</button>
+                        <button class="btn-secondary" style="padding: 4px 8px; font-size: 0.8rem;" onclick='openEditLabModal(${JSON.stringify(rep)})'>修改</button>
+                        <button class="btn-danger" style="padding: 4px 8px; font-size: 0.8rem;" onclick="deleteLabReport('${rep.id}')">刪除</button>
+                    </td>
+                `;
+                tbody.appendChild(tr);
+            });
+        }
+
+        function filterLabReportsTable() {
+            const keyword = document.getElementById('labReportTableSearch').value.trim().toLowerCase();
+            if(!keyword) {
+                renderLabReportsTable(allLabReportsCache);
+                return;
+            }
+
+            const filtered = allLabReportsCache.filter(rep => {
+                const petName = (rep.pets && rep.pets.name ? rep.pets.name : '').toLowerCase();
+                const notes = (rep.notes || '').toLowerCase();
+                const testType = (rep.test_type || '').toLowerCase();
+                return petName.includes(keyword) || notes.includes(keyword) || testType.includes(keyword);
+            });
+
+            renderLabReportsTable(filtered);
+        }
+
+        function openLabDetailModal(rep) {
+            const petName = rep.pets ? rep.pets.name : '未知寵物';
+            let dataHtml = '<div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px;">';
+            if (rep.report_data) {
+                for (let key in rep.report_data) {
+                    if (rep.report_data[key] !== "" && rep.report_data[key] !== null && rep.report_data[key] !== undefined) {
+                        dataHtml += `<div><b>${key.toUpperCase()}:</b> ${rep.report_data[key]}</div>`;
+                    }
+                }
+            }
+            dataHtml += '</div>';
+
+            const html = `
+                <p><b>檢驗寵物：</b> ${petName}</p>
+                <p><b>檢驗類別：</b> <span style="color:#0369a1; font-weight:bold;">${rep.test_type}</span></p>
+                <p><b>檢驗時間：</b> ${new Date(rep.created_at).toLocaleString()}</p>
+                <p><b>臨床備註：</b> ${rep.notes || '無'}</p>
+                <h4 style="margin: 12px 0 6px 0; color: #1e293b;">完整檢驗數值內容：</h4>
+                <div style="background: #f1f5f9; padding: 12px; border-radius: 6px;">${dataHtml}</div>
+            `;
+            document.getElementById('detailModalTitle').innerText = `🩸 血液檢驗報告詳情 - ${petName} (${rep.test_type})`;
+            document.getElementById('detailModalBody').innerHTML = html;
+            document.getElementById('genericDetailModal').style.display = 'flex';
+        }
+
+        function openEditLabModal(rep) {
+            document.getElementById('editLabId').value = rep.id;
+            document.getElementById('editLabNotes').value = rep.notes || '';
+            
+            const container = document.getElementById('editLabDynamicInputs');
+            container.innerHTML = '';
+            
+            if (rep.report_data) {
+                for (let key in rep.report_data) {
+                    container.innerHTML += `
+                        <div class="form-group">
+                            <label>${key.toUpperCase()}</label>
+                            <input type="text" class="edit-lab-val" data-key="${key}" value="${rep.report_data[key] || ''}">
+                        </div>
+                    `;
+                }
+            }
+            document.getElementById('editLabModal').style.display = 'flex';
+        }
+
+        async function updateLabReportDatabase() {
+            const id = document.getElementById('editLabId').value;
+            const notes = document.getElementById('editLabNotes').value;
+            
+            let newReportData = {};
+            document.querySelectorAll('.edit-lab-val').forEach(input => {
+                newReportData[input.dataset.key] = input.value;
+            });
+
+            const { error } = await _supabase.from('lab_reports').update({
+                notes: notes,
+                report_data: newReportData
+            }).eq('id', id);
+
+            if(error) {
+                alert('修改失敗：' + error.message);
+            } else {
+                alert('檢驗報告已更新！');
+                document.getElementById('editLabModal').style.display = 'none';
+                loadLabReportsList();
+            }
+        }
+
+        async function deleteLabReport(id) {
+            if(!confirm('確定要刪除這版檢驗報告嗎？')) return;
+            const { error } = await _supabase.from('lab_reports').delete().eq('id', id);
+            if(error) {
+                alert('刪除失敗');
+            } else {
+                loadLabReportsList();
+            }
         }
     </script>
 </body>
