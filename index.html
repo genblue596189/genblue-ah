@@ -75,12 +75,7 @@
         .sub-display { font-size: 1rem; color: #64748b; font-weight: normal; margin-bottom: 5px; display: flex; justify-content: flex-end; align-items: center; gap: 10px; }
         .nested-pet-container { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
         .nested-pet-tag { background: #e0f2fe; color: #0369a1; padding: 5px 10px; border-radius: 6px; display: inline-flex; align-items: center; gap: 8px; font-size: 0.85rem; border: 1px solid #bae6fd; }
-        .pet-actions { display: flex; gap: 4px; }
-        .pet-btn { background: #0284c7; color: white; border: none; padding: 2px 6px; font-size: 0.75rem; border-radius: 4px; cursor: pointer; }
-        .pet-btn:hover { background: #0369a1; }
-        .pet-btn-edit { background: #f59e0b; }
-        .pet-btn-edit:hover { background: #d97706; }
-
+        
         .modal-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); justify-content: center; align-items: center; z-index: 1000; }
         .modal-content { background: #fff; padding: 25px; border-radius: var(--radius); width: 500px; max-width: 90%; box-shadow: 0 4px 12px rgba(0,0,0,0.15); max-height: 90vh; overflow-y: auto; }
         
@@ -110,6 +105,7 @@
         <ul class="nav-links">
             <li id="nav-appointments" onclick="switchTab('appointments')" class="active">預約與報到 (Appointments)</li>
             <li id="nav-owners_pets" onclick="switchTab('owners_pets')">飼主與寵物整合管理 (Owners & Pets)</li>
+            <li id="nav-search_center" onclick="switchTab('search_center')">🔍 綜合查詢中心 (Search)</li>
             <li id="nav-vaccines" onclick="switchTab('vaccines')">疫苗施打與種類管理 (Vaccines)</li>
             <li id="nav-items" onclick="switchTab('items')">一般商品分頁 (Items)</li>
             <li id="nav-medicines" onclick="switchTab('medicines')">藥品專區與分類 (Medicines)</li>
@@ -135,6 +131,120 @@
         </header>
 
         <div class="content-area">
+
+            <!-- 綜合查詢中心分頁 -->
+            <div id="search_center" class="tab-content">
+                <div class="card">
+                    <h2>醫院綜合查詢中心 (Search Center)</h2>
+                    <p style="color: #64748b; margin-bottom: 20px; font-size: 0.9rem;">
+                        在此統一查詢歷史病歷、預防針施打紀錄、處方箋開立藥品，以及純已售出之商品銷售紀錄。
+                    </p>
+
+                    <!-- 查詢分頁按鈕群組 -->
+                    <div style="display: flex; gap: 10px; margin-bottom: 20px; flex-wrap: wrap;">
+                        <button class="btn-secondary" id="btnSearchMedHistory" onclick="switchSearchSubTab('med_history')">📜 歷史病歷查詢</button>
+                        <button class="btn-secondary" id="btnSearchVaccines" onclick="switchSearchSubTab('vaccines_history')">💉 曾經施打預防針查詢</button>
+                        <button class="btn-secondary" id="btnSearchMedicines" onclick="switchSearchSubTab('medicines_usage')">💊 處方用藥查詢 (含分類)</button>
+                        <button class="btn-secondary" id="btnSearchSales" onclick="switchSearchSubTab('sales_history')">🛒 純商品銷售查詢</button>
+                    </div>
+
+                    <!-- 1. 歷史病歷查詢 -->
+                    <div id="subtab_med_history" class="search-subtab-content">
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+                            <h3>歷史病歷查詢</h3>
+                            <input type="text" id="searchMedKeyword" class="search-box" placeholder="🔍 輸入寵物名字或主訴關鍵字..." oninput="filterSearchMedHistory()">
+                        </div>
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>看診時間</th>
+                                    <th>寵物名字 (晶片)</th>
+                                    <th>主訴與診斷內容</th>
+                                    <th>處方用藥摘要</th>
+                                    <th>操作</th>
+                                </tr>
+                            </thead>
+                            <tbody id="searchMedTableBody">
+                                <tr><td colspan="5" style="text-align: center; color: #64748b;">載入中...</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <!-- 2. 曾經施打預防針查詢 -->
+                    <div id="subtab_vaccines_history" class="search-subtab-content" style="display: none;">
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+                            <h3>曾經施打預防針查詢</h3>
+                            <input type="text" id="searchVacKeyword" class="search-box" placeholder="🔍 輸入寵物名字或疫苗名稱..." oninput="filterSearchVaccines()">
+                        </div>
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>寵物名字 (晶片)</th>
+                                    <th>疫苗種類</th>
+                                    <th>上次施打日期</th>
+                                    <th>下次預計施打日</th>
+                                    <th>備註</th>
+                                </tr>
+                            </thead>
+                            <tbody id="searchVacTableBody">
+                                <tr><td colspan="5" style="text-align: center; color: #64748b;">載入中...</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <!-- 3. 處方用藥查詢 -->
+                    <div id="subtab_medicines_usage" class="search-subtab-content" style="display: none;">
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; flex-wrap: wrap; gap: 10px;">
+                            <h3>處方箋開立藥品查詢</h3>
+                            <div style="display: flex; gap: 10px;">
+                                <select id="searchMedCategoryFilter" onchange="filterSearchMedicinesUsage()" style="padding: 6px 12px; border-radius: var(--radius); border: 1px solid var(--border-color);">
+                                    <option value="">-- 所有藥品分類 --</option>
+                                    <!-- 動態帶入藥品分類 -->
+                                </select>
+                                <input type="text" id="searchMedUsageKeyword" class="search-box" placeholder="🔍 輸入藥名或寵物搜尋..." oninput="filterSearchMedicinesUsage()">
+                            </div>
+                        </div>
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>開立時間</th>
+                                    <th>病患寵物</th>
+                                    <th>處方開立藥品名稱</th>
+                                    <th>藥品分類</th>
+                                    <th>使用劑量與數量</th>
+                                    <th>用法說明</th>
+                                </tr>
+                            </thead>
+                            <tbody id="searchMedUsageTableBody">
+                                <tr><td colspan="6" style="text-align: center; color: #64748b;">載入中...</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <!-- 4. 純商品銷售查詢 -->
+                    <div id="subtab_sales_history" class="search-subtab-content" style="display: none;">
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+                            <h3>純商品銷售查詢 (僅包含已售出商品零售，不含門診收費)</h3>
+                            <input type="text" id="searchSalesKeyword" class="search-box" placeholder="🔍 搜尋商品銷售紀錄..." oninput="filterSearchSales()">
+                        </div>
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>銷售時間</th>
+                                    <th>交易類型</th>
+                                    <th>小計</th>
+                                    <th>折扣</th>
+                                    <th>實收總額</th>
+                                </tr>
+                            </thead>
+                            <tbody id="searchSalesTableBody">
+                                <tr><td colspan="5" style="text-align: center; color: #64748b;">載入中...</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+
+                </div>
+            </div>
 
             <!-- 1. 飼主與寵物整合管理 -->
             <div id="owners_pets" class="tab-content">
@@ -270,16 +380,27 @@
                 </div>
             </div>
 
-            <!-- 3. 一般商品分頁 (Items) -->
+            <!-- 3. 一般商品分頁 (Items) - 獨立抓取 items 表格 -->
             <div id="items" class="tab-content">
                 <div class="card">
                     <h2>一般商品建檔管理 (Items)</h2>
+                    
+                    <!-- 自行新增一般商品分類區塊 -->
+                    <div style="background: #f1f5f9; padding: 12px 15px; border-radius: var(--radius); margin-bottom: 15px; display: flex; gap: 10px; align-items: center;">
+                        <input type="text" id="newItemCustomCategory" placeholder="輸入新的商品分類名稱 (例如: 護理用品)" style="flex: 1;">
+                        <button class="btn-secondary" style="padding: 9px 15px;" onclick="addNewItemCategory()">+ 新增商品分類</button>
+                    </div>
+
                     <div class="form-grid">
                         <div class="form-group"><label>商品名稱</label><input type="text" id="itemName" placeholder="例如：皇家處方飼料 / 寵物洗毛精"></div>
                         <div class="form-group">
-                            <label>分類</label>
+                            <label>分類 (僅限商品專區)</label>
                             <select id="itemCategory">
                                 <option value="一般商品">一般商品 (飼料/用品)</option>
+                                <option value="保健品">保健品</option>
+                                <option value="洗劑">洗劑</option>
+                                <option value="玩具">玩具</option>
+                                <option value="零食">零食</option>
                             </select>
                         </div>
                         <div class="form-group"><label>進價 (NT$)</label><input type="number" id="itemCostPrice" placeholder="500"></div>
@@ -290,7 +411,7 @@
                     <button onclick="saveNewItem()">確認新增商品至 items 表</button>
                 </div>
                 <div class="card">
-                    <h3>現有一般商品清單</h3>
+                    <h3>現有一般商品清單 (僅限商品資料，不含藥品)</h3>
                     <table>
                         <thead><tr><th>品名</th><th>分類</th><th>進價</th><th>售價</th><th>庫存量</th><th>安全存量</th><th>操作</th></tr></thead>
                         <tbody id="itemTableBody"></tbody>
@@ -298,10 +419,17 @@
                 </div>
             </div>
 
-            <!-- 4. 藥品專區與分類 (Medicines) -->
+            <!-- 4. 藥品專區與分類 (Medicines) - 獨立抓取 medicines 表格 -->
             <div id="medicines" class="tab-content">
                 <div class="card">
                     <h2>藥品專區與分類建檔</h2>
+
+                    <!-- 自行新增藥品分類區塊 -->
+                    <div style="background: #f1f5f9; padding: 12px 15px; border-radius: var(--radius); margin-bottom: 15px; display: flex; gap: 10px; align-items: center;">
+                        <input type="text" id="newMedCustomCategory" placeholder="輸入新的藥品分類名稱 (例如: 眼科用藥)" style="flex: 1;">
+                        <button class="btn-secondary" style="padding: 9px 15px;" onclick="addNewMedicineCategory()">+ 新增藥品分類</button>
+                    </div>
+
                     <div class="form-grid">
                         <div class="form-group"><label>藥名</label><input type="text" id="medName" placeholder="例如：Amoxicillin / 內衛消炎藥"></div>
                         <div class="form-group"><label>預設建議劑量 (例如：10 mg/kg)</label><input type="text" id="medRecDose" placeholder="10 mg/kg"></div>
@@ -319,8 +447,6 @@
                                 <option value="呼吸道">呼吸道</option>
                                 <option value="泌尿道">泌尿道</option>
                                 <option value="皮膚用藥">皮膚用藥</option>
-                                <option value="管制藥品">管制藥品</option>
-                                <option value="動物用藥品">動物用藥品</option>
                             </select>
                         </div>
                         <div class="form-group"><label>庫存量</label><input type="number" id="medStock" placeholder="500"></div>
@@ -790,42 +916,13 @@
             <div class="form-group" style="margin-bottom: 10px;">
                 <label>藥品分類</label>
                 <select id="editMedCalcFormula">
-                    <option value="一般藥品">一般藥品</option>
-                    <option value="抗生素">抗生素</option>
-                    <option value="心臟用藥">心臟用藥</option>
-                    <option value="腸胃道用藥">腸胃道用藥</option>
-                    <option value="關節用藥">關節用藥</option>
-                    <option value="利尿劑">利尿劑</option>
-                    <option value="呼吸道">呼吸道</option>
-                    <option value="泌尿道">泌尿道</option>
-                    <option value="皮膚用藥">皮膚用藥</option>
-                    <option value="管制藥品">管制藥品</option>
-                    <option value="動物用藥品">動物用藥品</option>
+                    <!-- 動態帶入分類選項 -->
                 </select>
             </div>
             <div class="form-group" style="margin-bottom: 15px;"><label>庫存量</label><input type="number" id="editMedStock"></div>
             <div style="display: flex; justify-content: flex-end; gap: 10px;">
                 <button class="btn-secondary" onclick="closeEditMedicineModal()">取消</button>
                 <button onclick="saveEditedMedicine()">儲存變更</button>
-            </div>
-        </div>
-    </div>
-
-    <!-- 編輯檢驗報告彈出視窗 -->
-    <div id="editLabModal" class="modal-overlay">
-        <div class="modal-content" style="width: 600px;">
-            <h3>修改檢驗報告數據</h3>
-            <input type="hidden" id="editLabId">
-            <div class="form-group" style="margin-bottom: 10px;">
-                <label>檢驗備註</label>
-                <input type="text" id="editLabNotes">
-            </div>
-            <div id="editLabDynamicInputs" class="form-grid" style="margin-bottom: 15px;">
-                <!-- 動態產生數值欄位 -->
-            </div>
-            <div style="display: flex; justify-content: flex-end; gap: 10px;">
-                <button class="btn-secondary" onclick="document.getElementById('editLabModal').style.display='none'">取消</button>
-                <button onclick="updateLabReportDatabase()">儲存修改</button>
             </div>
         </div>
     </div>
@@ -901,6 +998,13 @@
         let allLabReportsCache = []; 
         let allVaccinationCache = []; 
 
+        let customItemCategories = ["一般商品", "保健品", "洗劑", "玩具", "零食"];
+        let customMedicineCategories = ["一般藥品", "抗生素", "心臟用藥", "腸胃道用藥", "關節用藥", "利尿劑", "呼吸道", "泌尿道", "皮膚用藥"];
+
+        let searchMedRecordsCache = [];
+        let searchPrescriptionMedicinesCache = [];
+        let searchSalesCache = [];
+
         let medicalStateCache = {
             chiefComplaint: "",
             weight: 0,
@@ -925,14 +1029,17 @@
 
             loadClinicSettingsFromSupabase();
             loadOwnersAndPetsIntegrated();
-            loadItems();
-            loadMedicines();
+            loadItems(); // 專門讀取 items 表格 (一般商品)
+            loadMedicines(); // 專門讀取 medicines 表格 (藥品)
             loadAppointments();
             loadVaccineTypes();
             loadPetVaccines();
             loadLabReportsList();
             calculateProductTotal();
             calculateInvoiceTotal();
+
+            loadSearchCenterData();
+            updateCategoryDropdowns();
 
             const vacInput = document.getElementById('vacPetSearchInput');
             if (vacInput) {
@@ -967,6 +1074,84 @@
             }
         };
 
+        function updateCategoryDropdowns() {
+            const itemSel = document.getElementById('itemCategory');
+            if(itemSel) {
+                const currentVal = itemSel.value;
+                itemSel.innerHTML = '';
+                customItemCategories.forEach(cat => {
+                    const opt = document.createElement('option');
+                    opt.value = cat;
+                    opt.textContent = cat;
+                    if(cat === currentVal) opt.selected = true;
+                    itemSel.appendChild(opt);
+                });
+            }
+
+            const medSel = document.getElementById('medCalcFormula');
+            if(medSel) {
+                const currentVal = medSel.value;
+                medSel.innerHTML = '';
+                customMedicineCategories.forEach(cat => {
+                    const opt = document.createElement('option');
+                    opt.value = cat;
+                    opt.textContent = cat;
+                    if(cat === currentVal) opt.selected = true;
+                    medSel.appendChild(opt);
+                });
+            }
+
+            const editMedSel = document.getElementById('editMedCalcFormula');
+            if(editMedSel) {
+                const currentVal = editMedSel.value;
+                editMedSel.innerHTML = '';
+                customMedicineCategories.forEach(cat => {
+                    const opt = document.createElement('option');
+                    opt.value = cat;
+                    opt.textContent = cat;
+                    if(cat === currentVal) opt.selected = true;
+                    editMedSel.appendChild(opt);
+                });
+            }
+
+            const searchMedCatFilter = document.getElementById('searchMedCategoryFilter');
+            if(searchMedCatFilter) {
+                const currentVal = searchMedCatFilter.value;
+                searchMedCatFilter.innerHTML = '<option value="">-- 所有藥品分類 --</option>';
+                customMedicineCategories.forEach(cat => {
+                    const opt = document.createElement('option');
+                    opt.value = cat;
+                    opt.textContent = cat;
+                    if(cat === currentVal) opt.selected = true;
+                    searchMedCatFilter.appendChild(opt);
+                });
+            }
+        }
+
+        function addNewItemCategory() {
+            const input = document.getElementById('newItemCustomCategory');
+            const newCat = input.value.trim();
+            if(!newCat) { alert('請輸入要新增的商品分類名稱！'); return; }
+            if(customItemCategories.includes(newCat)) { alert('此商品分類已經存在！'); return; }
+
+            customItemCategories.push(newCat);
+            input.value = '';
+            updateCategoryDropdowns();
+            alert(`成功新增一般商品分類：「${newCat}」！`);
+        }
+
+        function addNewMedicineCategory() {
+            const input = document.getElementById('newMedCustomCategory');
+            const newCat = input.value.trim();
+            if(!newCat) { alert('請輸入要新增的藥品分類名稱！'); return; }
+            if(customMedicineCategories.includes(newCat)) { alert('此藥品分類已經存在！'); return; }
+
+            customMedicineCategories.push(newCat);
+            input.value = '';
+            updateCategoryDropdowns();
+            alert(`成功新增藥品分類：「${newCat}」！`);
+        }
+
         function switchTab(tabId) {
             document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
             document.querySelectorAll('.nav-links li').forEach(el => el.classList.remove('active'));
@@ -979,6 +1164,199 @@
             if(tabId === 'reports') {
                 fetchFinancialReport();
             }
+            if(tabId === 'search_center') {
+                loadSearchCenterData();
+            }
+        }
+
+        function switchSearchSubTab(subTabId) {
+            document.querySelectorAll('.search-subtab-content').forEach(el => el.style.display = 'none');
+            document.getElementById('subtab_' + subTabId).style.display = 'block';
+
+            document.getElementById('btnSearchMedHistory').style.background = '#64748b';
+            document.getElementById('btnSearchVaccines').style.background = '#64748b';
+            document.getElementById('btnSearchMedicines').style.background = '#64748b';
+            document.getElementById('btnSearchSales').style.background = '#64748b';
+
+            if(subTabId === 'med_history') document.getElementById('btnSearchMedHistory').style.background = 'var(--primary-color)';
+            if(subTabId === 'vaccines_history') document.getElementById('btnSearchVaccines').style.background = 'var(--primary-color)';
+            if(subTabId === 'medicines_usage') document.getElementById('btnSearchMedicines').style.background = 'var(--primary-color)';
+            if(subTabId === 'sales_history') document.getElementById('btnSearchSales').style.background = 'var(--primary-color)';
+        }
+
+        async function loadSearchCenterData() {
+            const { data: medData } = await _supabase.from('medical_records').select('*, pets(name, microchip)').eq('tenant_id', CURRENT_TENANT_ID).order('created_at', { ascending: false });
+            searchMedRecordsCache = medData || [];
+            renderSearchMedHistory(searchMedRecordsCache);
+
+            renderSearchVaccines(allVaccinationCache);
+
+            const { data: dbMedicines } = await _supabase.from('medicines').select('name, calculated_dose').eq('tenant_id', CURRENT_TENANT_ID);
+            const medCategoryMap = {};
+            if (dbMedicines) {
+                dbMedicines.forEach(m => { medCategoryMap[m.name] = m.calculated_dose || '一般藥品'; });
+            }
+
+            searchPrescriptionMedicinesCache = [];
+            if (searchMedRecordsCache.length > 0) {
+                searchMedRecordsCache.forEach(rec => {
+                    if (rec.prescription_details && rec.prescription_details.length > 0) {
+                        rec.prescription_details.forEach(p => {
+                            const category = medCategoryMap[p.medicine_name] || '一般藥品';
+                            searchPrescriptionMedicinesCache.push({
+                                created_at: rec.created_at,
+                                pet_name: rec.pets ? rec.pets.name : '未知寵物',
+                                pet_chip: rec.pets ? rec.pets.microchip : '',
+                                medicine_name: p.medicine_name,
+                                category: category,
+                                custom_dose: p.custom_dose || '-',
+                                quantity: p.quantity || 1,
+                                instruction: p.instruction || '-'
+                            });
+                        });
+                    }
+                });
+            }
+            renderSearchMedicinesUsage(searchPrescriptionMedicinesCache);
+
+            const { data: invData } = await _supabase.from('invoices').select('*').eq('tenant_id', CURRENT_TENANT_ID).eq('checkout_type', '商品零售').order('created_at', { ascending: false });
+            searchSalesCache = invData || [];
+            renderSearchSales(searchSalesCache);
+
+            switchSearchSubTab('med_history');
+        }
+
+        function renderSearchMedHistory(dataList) {
+            const tbody = document.getElementById('searchMedTableBody');
+            if(!tbody) return;
+            tbody.innerHTML = '';
+            if(!dataList || dataList.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="5" style="text-align: center; color: #64748b;">尚無歷史病歷紀錄</td></tr>`;
+                return;
+            }
+            dataList.forEach(rec => {
+                const petName = rec.pets ? rec.pets.name : '未知寵物';
+                const chip = rec.pets && rec.pets.microchip ? `[${rec.pets.microchip}]` : '';
+                let rxSummary = '';
+                if(rec.prescription_details && rec.prescription_details.length > 0) {
+                    rec.prescription_details.forEach(p => { rxSummary += `${p.medicine_name} (${p.quantity}顆) | `; });
+                } else { rxSummary = '無處方用藥'; }
+
+                const tr = document.createElement('tr');
+                tr.innerHTML = `
+                    <td>${new Date(rec.created_at).toLocaleString()}</td>
+                    <td><b>${petName}</b> <small style="color:#64748b;">${chip}</small></td>
+                    <td>${rec.chief_complaint || '無主訴'}</td>
+                    <td><small style="color:#475569;">${rxSummary}</small></td>
+                    <td><button class="btn-secondary" style="padding: 4px 8px; font-size: 0.8rem;" onclick='openMedicalDetailModal(${JSON.stringify(rec)})'>檢視</button></td>
+                `;
+                tbody.appendChild(tr);
+            });
+        }
+
+        function filterSearchMedHistory() {
+            const kw = document.getElementById('searchMedKeyword').value.trim().toLowerCase();
+            if(!kw) { renderSearchMedHistory(searchMedRecordsCache); return; }
+            const filtered = searchMedRecordsCache.filter(r => {
+                const pName = (r.pets && r.pets.name ? r.pets.name : '').toLowerCase();
+                const chief = (r.chief_complaint || '').toLowerCase();
+                return pName.includes(kw) || chief.includes(kw);
+            });
+            renderSearchMedHistory(filtered);
+        }
+
+        function renderSearchVaccines(dataList) {
+            const tbody = document.getElementById('searchVacTableBody');
+            if(!tbody) return;
+            tbody.innerHTML = '';
+            if(!dataList || dataList.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="5" style="text-align: center; color: #64748b;">尚無施打預防針紀錄</td></tr>`;
+                return;
+            }
+            dataList.forEach(v => {
+                const tr = document.createElement('tr');
+                tr.innerHTML = `
+                    <td><b>${v.pet_name}</b><br><small style="color:#64748b;">晶片: ${v.pet_microchip || '無'}</small></td>
+                    <td><span style="background: #e0f2fe; color: #0369a1; padding: 2px 6px; border-radius: 4px; font-weight: bold;">${v.vaccine_name || ''}</span></td>
+                    <td><b style="color: #0284c7;">${v.last_date || ''}</b></td>
+                    <td style="color: #dc2626; font-weight: bold;">${v.next_due_date || '未設定'}</td>
+                    <td>${v.notes || '-'}</td>
+                `;
+                tbody.appendChild(tr);
+            });
+        }
+
+        function filterSearchVaccines() {
+            const kw = document.getElementById('searchVacKeyword').value.trim().toLowerCase();
+            if(!kw) { renderSearchVaccines(allVaccinationCache); return; }
+            const filtered = allVaccinationCache.filter(v => {
+                const pName = (v.pet_name || '').toLowerCase();
+                const vName = (v.vaccine_name || '').toLowerCase();
+                return pName.includes(kw) || vName.includes(kw);
+            });
+            renderSearchVaccines(filtered);
+        }
+
+        function renderSearchMedicinesUsage(dataList) {
+            const tbody = document.getElementById('searchMedUsageTableBody');
+            if(!tbody) return;
+            tbody.innerHTML = '';
+            if(!dataList || dataList.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="6" style="text-align: center; color: #64748b;">尚無任何處方用藥開立紀錄</td></tr>`;
+                return;
+            }
+            dataList.forEach(item => {
+                const tr = document.createElement('tr');
+                tr.innerHTML = `
+                    <td>${new Date(item.created_at).toLocaleString()}</td>
+                    <td><b>${item.pet_name}</b> <small style="color:#64748b;">${item.pet_chip ? '[' + item.pet_chip + ']' : ''}</small></td>
+                    <td><b>${item.medicine_name}</b></td>
+                    <td><span style="background: #e0f2fe; color: #0369a1; padding: 3px 8px; border-radius: 4px; font-weight: bold;">${item.category}</span></td>
+                    <td>劑量: ${item.custom_dose} | 數量: <b>${item.quantity} 顆</b></td>
+                    <td><small style="color: #475569;">${item.instruction}</small></td>
+                `;
+                tbody.appendChild(tr);
+            });
+        }
+
+        function filterSearchMedicinesUsage() {
+            const cat = document.getElementById('searchMedCategoryFilter').value;
+            const kw = document.getElementById('searchMedUsageKeyword').value.trim().toLowerCase();
+
+            const filtered = searchPrescriptionMedicinesCache.filter(item => {
+                const matchCat = cat ? (item.category === cat) : true;
+                const matchKw = kw ? ((item.medicine_name || '').toLowerCase().includes(kw) || (item.pet_name || '').toLowerCase().includes(kw)) : true;
+                return matchCat && matchKw;
+            });
+            renderSearchMedicinesUsage(filtered);
+        }
+
+        function renderSearchSales(dataList) {
+            const tbody = document.getElementById('searchSalesTableBody');
+            if(!tbody) return;
+            tbody.innerHTML = '';
+            if(!dataList || dataList.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="5" style="text-align: center; color: #64748b;">尚無純商品銷售紀錄</td></tr>`;
+                return;
+            }
+            dataList.forEach(inv => {
+                const tr = document.createElement('tr');
+                tr.innerHTML = `
+                    <td>${new Date(inv.created_at).toLocaleString()}</td>
+                    <td><span style="background: #e0f2fe; color: #0369a1; padding: 2px 6px; border-radius: 4px; font-weight: bold;">${inv.checkout_type}</span></td>
+                    <td>NT$ ${(parseFloat(inv.subtotal) || 0).toLocaleString()}</td>
+                    <td>NT$ ${(parseFloat(inv.discount) || 0).toLocaleString()}</td>
+                    <td><b>NT$ ${(parseFloat(inv.total_amount) || 0).toLocaleString()}</b></td>
+                `;
+                tbody.appendChild(tr);
+            });
+        }
+
+        function filterSearchSales() {
+            const kw = document.getElementById('searchSalesKeyword').value.trim().toLowerCase();
+            if(!kw) { renderSearchSales(searchSalesCache); return; }
+            const filtered = searchSalesCache.filter(i => (i.checkout_type || '').toLowerCase().includes(kw));
+            renderSearchSales(filtered);
         }
 
         async function loadClinicSettingsFromSupabase() {
@@ -1145,7 +1523,7 @@
             const notes = document.getElementById('vacNotes').value;
 
             if(!petId || !vaccineName || !administeredDate) {
-                alert('請完整選擇寵物、疫苗種類與施打日期！（請確認搜尋欄是否有正確選中清單內的寵物）');
+                alert('請完整選擇寵物、疫苗種類與施打日期！');
                 return;
             }
 
@@ -1209,7 +1587,7 @@
                 tr.innerHTML = `
                     <td><b>${v.pet_name}</b><br><small style="color:#64748b;">晶片: ${v.pet_microchip || '無'}</small></td>
                     <td><span style="background: #e0f2fe; color: #0369a1; padding: 2px 6px; border-radius: 4px; font-weight: bold;">${v.vaccine_name || '未指定疫苗'}</span></td>
-                    <td><b style="color: #0284c7;">📅 ${v.last_date || v.date || '未填寫日期'}</b></td>
+                    <td><b style="color: #0284c7;">📅 ${v.last_date || '未填寫日期'}</b></td>
                     <td style="color: #dc2626; font-weight: bold;">${v.next_due_date || '未設定'}</td>
                     <td>${v.notes || '-'}</td>
                     <td><button class="btn-danger" style="padding: 4px 8px; font-size: 0.8rem;" onclick="deletePetVaccine('${v.id}')">刪除</button></td>
@@ -1242,8 +1620,9 @@
             if(error) { alert('刪除失敗'); } else { loadPetVaccines(); }
         }
 
+        // --- 專門讀取一般商品表格 (items 表) ---
         async function loadItems() {
-            const { data, error } = await _supabase.from('items').select('*').eq('tenant_id', CURRENT_TENANT_ID).eq('category', '一般商品');
+            const { data, error } = await _supabase.from('items').select('*').eq('tenant_id', CURRENT_TENANT_ID);
             if (error) return;
 
             const tbody = document.getElementById('itemTableBody');
@@ -1252,12 +1631,17 @@
             if(tbody) tbody.innerHTML = '';
             if(datalist) datalist.innerHTML = '';
 
+            if (!data || data.length === 0) {
+                if(tbody) tbody.innerHTML = `<tr><td colspan="7" style="text-align: center; color: #64748b;">尚無一般商品資料</td></tr>`;
+                return;
+            }
+
             data.forEach(item => {
                 if(tbody) {
                     const tr = document.createElement('tr');
                     tr.innerHTML = `
                         <td>${item.name}</td>
-                        <td>${item.category}</td>
+                        <td>${item.category || '一般商品'}</td>
                         <td>NT$ ${item.cost_price}</td>
                         <td>NT$ ${item.sell_price}</td>
                         <td>${item.stock_qty}</td>
@@ -1279,7 +1663,7 @@
 
         async function saveNewItem() {
             const name = document.getElementById('itemName').value;
-            const category = '一般商品';
+            const category = document.getElementById('itemCategory').value;
             const cost_price = parseFloat(document.getElementById('itemCostPrice').value) || 0;
             const sell_price = parseFloat(document.getElementById('itemSellPrice').value) || 0;
             const stock_qty = parseInt(document.getElementById('itemStockQty').value) || 0;
@@ -1343,6 +1727,7 @@
             }
         }
 
+        // --- 專門讀取藥品專區表格 (medicines 表) ---
         async function loadMedicines() {
             const { data, error } = await _supabase.from('medicines').select('*').eq('tenant_id', CURRENT_TENANT_ID);
             
@@ -1871,7 +2256,6 @@
             await loadAllMedicalRecords(petId);
         }
 
-        // 從即時報到列表直接一鍵歸檔跳轉至收費頁面
         function directCheckoutFromAppointment(petId, ownerId) {
             activeAppointmentsList = activeAppointmentsList.filter(p => p.id !== petId);
             renderAppointmentTable(activeAppointmentsList);
@@ -2091,7 +2475,7 @@
                 let prescriptionsHtml = '<ul>';
                 if (record.prescription_details && record.prescription_details.length > 0) {
                     record.prescription_details.forEach(p => { 
-                        prescriptionsHtml += `<li><b>${p.medicine_name}</b> (使用劑量: ${p.custom_dose || '標準'})：${p.quantity} 顆 (${p.instruction || ''})</li>`; 
+                        prescriptionsHtml += `<li><b>${p.medicine_name}</b> (使用劑量: ${p.custom_dose || '標準'}）：${p.quantity} 顆 (${p.instruction || ''})</li>`; 
                     });
                 } else { prescriptionsHtml += '<li>無用藥紀錄</li>'; }
                 prescriptionsHtml += '</ul>';
@@ -2420,7 +2804,6 @@
             });
         }
 
-        // --- 血球與生化檢驗模組相關函式 ---
         function toggleLabFormFields() {
             const type = document.getElementById('labTestType').value;
             if (type === 'CBC全血球') {
@@ -2546,7 +2929,6 @@
                     <td>${rep.notes || '-'}</td>
                     <td>
                         <button class="btn-secondary" style="padding: 4px 8px; font-size: 0.8rem;" onclick='openLabDetailModal(${JSON.stringify(rep)})'>檢視</button>
-                        <button class="btn-secondary" style="padding: 4px 8px; font-size: 0.8rem;" onclick='openEditLabModal(${JSON.stringify(rep)})'>修改</button>
                         <button class="btn-danger" style="padding: 4px 8px; font-size: 0.8rem;" onclick="deleteLabReport('${rep.id}')">刪除</button>
                     </td>
                 `;
@@ -2594,49 +2976,6 @@
             document.getElementById('detailModalTitle').innerText = `🩸 血液檢驗報告詳情 - ${petName} (${rep.test_type})`;
             document.getElementById('detailModalBody').innerHTML = html;
             document.getElementById('genericDetailModal').style.display = 'flex';
-        }
-
-        function openEditLabModal(rep) {
-            document.getElementById('editLabId').value = rep.id;
-            document.getElementById('editLabNotes').value = rep.notes || '';
-            
-            const container = document.getElementById('editLabDynamicInputs');
-            container.innerHTML = '';
-            
-            if (rep.report_data) {
-                for (let key in rep.report_data) {
-                    container.innerHTML += `
-                        <div class="form-group">
-                            <label>${key.toUpperCase()}</label>
-                            <input type="text" class="edit-lab-val" data-key="${key}" value="${rep.report_data[key] || ''}">
-                        </div>
-                    `;
-                }
-            }
-            document.getElementById('editLabModal').style.display = 'flex';
-        }
-
-        async function updateLabReportDatabase() {
-            const id = document.getElementById('editLabId').value;
-            const notes = document.getElementById('editLabNotes').value;
-            
-            let newReportData = {};
-            document.querySelectorAll('.edit-lab-val').forEach(input => {
-                newReportData[input.dataset.key] = input.value;
-            });
-
-            const { error } = await _supabase.from('lab_reports').update({
-                notes: notes,
-                report_data: newReportData
-            }).eq('id', id);
-
-            if(error) {
-                alert('修改失敗：' + error.message);
-            } else {
-                alert('檢驗報告已更新！');
-                document.getElementById('editLabModal').style.display = 'none';
-                loadLabReportsList();
-            }
         }
 
         async function deleteLabReport(id) {
