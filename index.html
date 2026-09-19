@@ -105,17 +105,18 @@
         <ul class="nav-links">
             <li id="nav-appointments" onclick="switchTab('appointments')" class="active">預約與報到 (Appointments)</li>
             <li id="nav-owners_pets" onclick="switchTab('owners_pets')">飼主與寵物整合管理 (Owners & Pets)</li>
+            <li id="nav-medical" onclick="switchTab('medical')">醫療診斷病歷與用藥 (Medical)</li>
             <li id="nav-search_center" onclick="switchTab('search_center')">🔍 綜合查詢中心 (Search)</li>
             <li id="nav-vaccines" onclick="switchTab('vaccines')">疫苗施打與種類管理 (Vaccines)</li>
             <li id="nav-items" onclick="switchTab('items')">一般商品專區(Items)</li>
             <li id="nav-medicines" onclick="switchTab('medicines')">藥品專區 (Medicines)</li>
             <li id="nav-product_checkout" onclick="switchTab('product_checkout')">純商品購買結帳</li>
             <li id="nav-reports" onclick="switchTab('reports')">財務報表 (日/月/年結)</li>
-            <li id="nav-medical" onclick="switchTab('medical')">醫療診斷病歷與用藥 (Medical)</li>
             <li id="nav-clinic" onclick="switchTab('clinic')">系統設定及醫院資料 (Clinic)</li>
             <li id="nav-audit_logs" onclick="switchTab('audit_logs')">操作歷程與稽核 (Audit Logs)</li>
             <li id="nav-invoices" onclick="switchTab('invoices')">收費與付款 (Invoices)</li>
             <li id="nav-lab_manager" onclick="switchTab('lab_manager')">血球與生化檢驗管理</li>
+            <li id="nav-rapid_tests" onclick="switchTab('rapid_tests')">🦠 快篩與抗原檢驗管理</li>
             <li id="nav-lab_tests" onclick="switchTab('lab_tests')">檢驗, 影像及附件 (Lab Tests)</li>
         </ul>
     </sidebar>
@@ -309,273 +310,17 @@
                 </div>
             </div>
 
-            <!-- 2. 疫苗施打與種類管理 (Vaccines) -->
-            <div id="vaccines" class="tab-content">
-                <div class="card">
-                    <h2>疫苗種類設定與新增</h2>
-                    <div class="form-grid">
-                        <div class="form-group"><label>疫苗名稱</label><input type="text" id="newVaccineTypeName" placeholder="例如：犬八合一 / 貓三合一"></div>
-                        <div class="form-group">
-                            <label>適用對象</label>
-                            <select id="newVaccineTypeTarget">
-                                <option value="犬">犬用</option>
-                                <option value="貓">貓用</option>
-                                <option value="通用">通用</option>
-                            </select>
-                        </div>
-                        <div class="form-group"><label>建議施打間隔 (天數)</label><input type="number" id="newVaccineInterval" value="365"></div>
-                    </div>
-                    <button onclick="saveNewVaccineType()">+ 新增疫苗種類</button>
-                </div>
-
-                <div class="card">
-                    <h2>寵物疫苗施打紀錄與下次預計施打日</h2>
-                    <div class="form-grid" style="background: #f1f5f9; padding: 15px; border-radius: var(--radius);">
-                        <div class="form-group">
-                            <label>搜尋並選擇寵物 (輸入名字、晶片或飼主)</label>
-                            <input type="text" id="vacPetSearchInput" list="vacPetDatalist" placeholder="🔍 輸入關鍵字搜尋寵物..." style="margin-bottom: 6px;">
-                            <datalist id="vacPetDatalist"></datalist>
-                            <input type="hidden" id="selectedVacPetId">
-                        </div>
-                        <div class="form-group">
-                            <label>選擇疫苗種類</label>
-                            <select id="vacTypeSelect">
-                                <option value="">-- 請選擇疫苗 --</option>
-                            </select>
-                        </div>
-                        <div class="form-group">
-                            <label>本次施打日期 (上次施打時間)</label>
-                            <input type="date" id="vacAdministeredDate">
-                        </div>
-                        <div class="form-group">
-                            <label>下次預計施打日期</label>
-                            <input type="date" id="vacNextDueDate">
-                        </div>
-                        <div class="form-group" style="grid-column: span 2;">
-                            <label>施打備註與批號</label>
-                            <input type="text" id="vacNotes" placeholder="例如：施打順利，無不良反應，批號 #AB1234">
-                        </div>
-                    </div>
-                    <button style="margin-top: 15px;" onclick="recordPetVaccine()">紀錄本次疫苗施打</button>
-
-                    <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 25px; margin-bottom: 10px;">
-                        <h3>各寵物疫苗施打歷史與狀態總覽 (支援即時搜尋)</h3>
-                        <input type="text" id="vacReportTableSearch" class="search-box" placeholder="🔍 搜尋寵物名字或疫苗..." oninput="filterVaccineTable()" style="width: 300px;">
-                    </div>
-                    <table>
-                        <thead>
-                            <tr>
-                                <th>寵物名字 (晶片)</th>
-                                <th>疫苗種類</th>
-                                <th>上次施打日期</th>
-                                <th>下次預計施打日</th>
-                                <th>備註</th>
-                                <th>操作</th>
-                            </tr>
-                        </thead>
-                        <tbody id="petVaccineTableBody">
-                            <tr><td colspan="6" style="text-align: center; color: #64748b;">載入中...</td></tr>
-                        </tbody>
-                    </table>
-                </div>
-            </div>
-
-            <!-- 3. 一般商品分頁 (Items) - 獨立抓取 items 表格 -->
-            <div id="items" class="tab-content">
-                <div class="card">
-                    <h2>一般商品建檔管理 (Items)</h2>
-                    
-                    <!-- 自行新增一般商品分類區塊 -->
-                    <div style="background: #f1f5f9; padding: 12px 15px; border-radius: var(--radius); margin-bottom: 15px; display: flex; gap: 10px; align-items: center;">
-                        <input type="text" id="newItemCustomCategory" placeholder="輸入新的商品分類名稱 (例如: 護理用品)" style="flex: 1;">
-                        <button class="btn-secondary" style="padding: 9px 15px;" onclick="addNewItemCategory()">+ 新增商品分類</button>
-                    </div>
-
-                    <div class="form-grid">
-                        <div class="form-group"><label>商品名稱</label><input type="text" id="itemName" placeholder="例如：皇家處方飼料 / 寵物洗毛精"></div>
-                        <div class="form-group">
-                            <label>分類 (僅限商品專區)</label>
-                            <select id="itemCategory">
-                                <option value="一般商品">一般商品 (飼料/用品)</option>
-                                <option value="保健品">保健品</option>
-                                <option value="洗劑">洗劑</option>
-                                <option value="玩具">玩具</option>
-                                <option value="零食">零食</option>
-                            </select>
-                        </div>
-                        <div class="form-group"><label>進價 (NT$)</label><input type="number" id="itemCostPrice" placeholder="500"></div>
-                        <div class="form-group"><label>售價 (NT$)</label><input type="number" id="itemSellPrice" placeholder="800"></div>
-                        <div class="form-group"><label>初始庫存量</label><input type="number" id="itemStockQty" placeholder="100"></div>
-                        <div class="form-group"><label>安全存量警示</label><input type="number" id="itemSafetyStock" placeholder="10"></div>
-                    </div>
-                    <button onclick="saveNewItem()">確認新增商品至 items 表</button>
-                </div>
-                <div class="card">
-                    <h3>現有一般商品清單 (僅限商品資料，不含藥品)</h3>
-                    <table>
-                        <thead><tr><th>品名</th><th>分類</th><th>進價</th><th>售價</th><th>庫存量</th><th>安全存量</th><th>操作</th></tr></thead>
-                        <tbody id="itemTableBody"></tbody>
-                    </table>
-                </div>
-            </div>
-
-            <!-- 4. 藥品專區與分類 (Medicines) - 獨立抓取 medicines 表格 -->
-            <div id="medicines" class="tab-content">
-                <div class="card">
-                    <h2>藥品專區與分類建檔</h2>
-
-                    <!-- 自行新增藥品分類區塊 -->
-                    <div style="background: #f1f5f9; padding: 12px 15px; border-radius: var(--radius); margin-bottom: 15px; display: flex; gap: 10px; align-items: center;">
-                        <input type="text" id="newMedCustomCategory" placeholder="輸入新的藥品分類名稱 (例如: 眼科用藥)" style="flex: 1;">
-                        <button class="btn-secondary" style="padding: 9px 15px;" onclick="addNewMedicineCategory()">+ 新增藥品分類</button>
-                    </div>
-
-                    <div class="form-grid">
-                        <div class="form-group"><label>藥名</label><input type="text" id="medName" placeholder="例如：Amoxicillin / 內衛消炎藥"></div>
-                        <div class="form-group"><label>預設建議劑量 (例如：10 mg/kg)</label><input type="text" id="medRecDose" placeholder="10 mg/kg"></div>
-                        <div class="form-group"><label>售價 (NT$)</label><input type="number" id="medPrice" placeholder="50"></div>
-                        <div class="form-group"><label>藥品劑量 / 每顆含量 (例如：250mg/顆)</label><input type="text" id="medUseDose" placeholder="250mg / 顆"></div>
-                        <div class="form-group">
-                            <label>藥品分類</label>
-                            <select id="medCalcFormula">
-                                <option value="一般藥品">一般藥品</option>
-                                <option value="抗生素">抗生素</option>
-                                <option value="心臟用藥">心臟用藥</option>
-                                <option value="消化道用藥">消化道用藥</option>
-                                <option value="關節用藥">關節用藥</option>
-                                <option value="利尿劑">利尿劑</option>
-                                <option value="呼吸道">呼吸道</option>
-                                <option value="泌尿道">泌尿道</option>
-                                <option value="皮膚用藥">皮膚用藥</option>
-                            </select>
-                        </div>
-                        <div class="form-group"><label>庫存量</label><input type="number" id="medStock" placeholder="500"></div>
-                    </div>
-                    <button onclick="saveNewMedicine()">確認新增藥品至專區</button>
-                </div>
-                <div class="card">
-                    <h3>藥品清單與分類總覽</h3>
-                    <table>
-                        <thead>
-                            <tr>
-                                <th>藥名</th>
-                                <th>建議劑量</th>
-                                <th>售價</th>
-                                <th>藥品劑量 (每顆含量)</th>
-                                <th>藥品分類</th>
-                                <th>庫存量</th>
-                                <th>操作</th>
-                            </tr>
-                        </thead>
-                        <tbody id="medicineTableBody">
-                            <tr><td colspan="7" style="text-align: center; color: #64748b;">尚無藥品資料</td></tr>
-                        </tbody>
-                    </table>
-                </div>
-            </div>
-
-            <!-- 5. 純商品購買結帳分頁 -->
-            <div id="product_checkout" class="tab-content">
-                <div class="card">
-                    <h2>純商品購買結帳</h2>
-                    <div class="form-grid" style="margin-bottom: 15px;">
-                        <div class="form-group">
-                            <label>購買飼主</label>
-                            <select id="checkoutOwner">
-                                <option value="">-- 散客 / 不指定飼主 --</option>
-                            </select>
-                        </div>
-                    </div>
-                    <div class="search-add-box">
-                        <div class="form-grid" style="margin-bottom: 0;">
-                            <div class="form-group" style="flex: 2;">
-                                <label>搜尋商品快速加入結帳</label>
-                                <input type="text" id="checkoutSearchProduct" list="productDataList" placeholder="輸入商品名稱...">
-                                <datalist id="productDataList"></datalist>
-                            </div>
-                            <div class="form-group" style="flex: 1; justify-content: flex-end;">
-                                <button onclick="addSearchedProductToCheckout()">+ 加入購物車</button>
-                            </div>
-                        </div>
-                    </div>
-                    <h3>選購商品清單 / 購物車</h3>
-                    <div id="productCheckoutItems" style="margin-top: 10px;"></div>
-                    <button class="btn-secondary" style="margin-bottom: 15px; margin-top: 10px;" onclick="addEmptyCheckoutRow()">+ 手動增加空白品項</button>
-                    <div class="total-display">
-                        <div class="sub-display"><span>小計金額: NT$ <span id="checkoutSubTotal">0</span></span></div>
-                        <div class="sub-display"><span>- 折扣金額: NT$ <input type="number" id="checkoutDiscount" value="0" style="width: 80px; padding: 4px; text-align: right;" oninput="calculateProductTotal()"></span></div>
-                        <div>折扣後總計: NT$ <span id="checkoutTotalAmount">0</span></div>
-                    </div>
-                    <br>
-                    <button onclick="processProductCheckoutDatabase()">完成購買並寫入 invoices 表</button>
-                </div>
-            </div>
-
-            <!-- 6. 財務報表 -->
-            <div id="reports" class="tab-content">
-                <div class="card">
-                    <h2>財務報表與結算 (連動 invoices 資料)</h2>
-                    <div class="form-grid" style="margin-bottom: 20px;">
-                        <div class="form-group">
-                            <label>結算週期</label>
-                            <select id="reportType" onchange="fetchFinancialReport()">
-                                <option value="daily">日結 (Daily Report)</option>
-                                <option value="monthly">月結 (Monthly Report)</option>
-                                <option value="yearly">年結 (Yearly Report)</option>
-                            </select>
-                        </div>
-                        <div class="form-group">
-                            <label>選擇基準日期 / 期間</label>
-                            <input type="date" id="reportDate" value="" onchange="fetchFinancialReport()">
-                        </div>
-                    </div>
-
-                    <div class="stats-grid">
-                        <div class="stat-card"><h4>門診與商品總筆數</h4><p id="statCount">0 筆</p></div>
-                        <div class="stat-card"><h4>總折讓金額</h4><p id="statDiscount">NT$ 0</p></div>
-                        <div class="stat-card" style="background: #e0f2fe; grid-column: span 2;"><h4>本期總營業額 (Total Revenue)</h4><p id="statTotal" style="color: var(--primary-dark); font-size: 1.6rem;">NT$ 0</p></div>
-                    </div>
-
-                    <h3 style="margin-top: 20px;">本期結算明細清單</h3>
-                    <table>
-                        <thead>
-                            <tr>
-                                <th>交易時間</th>
-                                <th>結帳類型</th>
-                                <th>小計</th>
-                                <th>折扣</th>
-                                <th>實收總額</th>
-                                <th>操作</th>
-                            </tr>
-                        </thead>
-                        <tbody id="reportTableBody">
-                            <tr><td colspan="6" style="text-align: center; color: #64748b;">請選擇期間載入資料</td></tr>
-                        </tbody>
-                        <tfoot id="reportTableFoot" style="background: #f1f5f9; font-weight: bold;">
-                            <tr>
-                                <td colspan="2" style="text-align: right;">本期總計：</td>
-                                <td id="footSubtotal">NT$ 0</td>
-                                <td id="footDiscount">NT$ 0</td>
-                                <td id="footTotal" style="color: var(--primary-dark);">NT$ 0</td>
-                                <td></td>
-                            </tr>
-                        </tfoot>
-                    </table>
-                    <br>
-                    <button class="btn-secondary" onclick="window.print()">列印本期財務結算報表</button>
-                </div>
-            </div>
-
-            <!-- 7. 醫療紀錄與處方 (Medical Records) -->
+            <!-- 2. 醫療紀錄與處方 (Medical Records) -->
             <div id="medical" class="tab-content">
                 <div class="card">
                     <h2>醫療紀錄與處方 (Medical Records)</h2>
                     
                     <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; flex-wrap: wrap; gap: 10px;">
-                        <span style="color: var(--primary-dark); font-size: 0.95rem; font-weight: bold;">💡 診療中如需進行血檢或施打疫苗，可點擊右側快捷按鈕！</span>
-                        <div style="display: flex; gap: 8px;">
+                        <span style="color: var(--primary-dark); font-size: 0.95rem; font-weight: bold;">💡 診療中如需進行檢驗或施打疫苗，可點擊右側快捷按鈕！</span>
+                        <div style="display: flex; gap: 8px; flex-wrap: wrap;">
                             <button class="btn-warning" style="padding: 6px 14px; font-size: 0.85rem;" onclick="goToVaccinesFromMedical()">💉 前往疫苗施打登錄</button>
                             <button class="btn-warning" style="padding: 6px 14px; font-size: 0.85rem;" onclick="goToLabManagerFromMedical()">🩸 前往血球/生化檢驗登錄</button>
+                            <button class="btn-warning" style="padding: 6px 14px; font-size: 0.85rem;" onclick="goToRapidTestsFromMedical()">🦠 前往快篩檢驗登錄</button>
                         </div>
                     </div>
 
@@ -653,6 +398,263 @@
                 </div>
             </div>
 
+            <!-- 3. 疫苗施打與種類管理 (Vaccines) -->
+            <div id="vaccines" class="tab-content">
+                <div class="card">
+                    <h2>疫苗種類設定與新增</h2>
+                    <div class="form-grid">
+                        <div class="form-group"><label>疫苗名稱</label><input type="text" id="newVaccineTypeName" placeholder="例如：犬八合一 / 貓三合一"></div>
+                        <div class="form-group">
+                            <label>適用對象</label>
+                            <select id="newVaccineTypeTarget">
+                                <option value="犬">犬用</option>
+                                <option value="貓">貓用</option>
+                                <option value="通用">通用</option>
+                            </select>
+                        </div>
+                        <div class="form-group"><label>建議施打間隔 (天數)</label><input type="number" id="newVaccineInterval" value="365"></div>
+                    </div>
+                    <button onclick="saveNewVaccineType()">+ 新增疫苗種類</button>
+                </div>
+
+                <div class="card">
+                    <h2>寵物疫苗施打紀錄與下次預計施打日</h2>
+                    <div class="form-grid" style="background: #f1f5f9; padding: 15px; border-radius: var(--radius);">
+                        <div class="form-group">
+                            <label>搜尋並選擇寵物 (輸入名字、晶片或飼主)</label>
+                            <input type="text" id="vacPetSearchInput" list="vacPetDatalist" placeholder="🔍 輸入關鍵字搜尋寵物..." style="margin-bottom: 6px;">
+                            <datalist id="vacPetDatalist"></datalist>
+                            <input type="hidden" id="selectedVacPetId">
+                        </div>
+                        <div class="form-group">
+                            <label>選擇疫苗種類</label>
+                            <select id="vacTypeSelect">
+                                <option value="">-- 請選擇疫苗 --</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label>本次施打日期 (上次施打時間)</label>
+                            <input type="date" id="vacAdministeredDate">
+                        </div>
+                        <div class="form-group">
+                            <label>下次預計施打日期</label>
+                            <input type="date" id="vacNextDueDate">
+                        </div>
+                        <div class="form-group" style="grid-column: span 2;">
+                            <label>施打備註與批號</label>
+                            <input type="text" id="vacNotes" placeholder="例如：施打順利，無不良反應，批號 #AB1234">
+                        </div>
+                    </div>
+                    <button style="margin-top: 15px;" onclick="recordPetVaccine()">紀錄本次疫苗施打</button>
+
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 25px; margin-bottom: 10px;">
+                        <h3>各寵物疫苗施打歷史與狀態總覽 (支援即時搜尋)</h3>
+                        <input type="text" id="vacReportTableSearch" class="search-box" placeholder="🔍 搜尋寵物名字或疫苗..." oninput="filterVaccineTable()" style="width: 300px;">
+                    </div>
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>寵物名字 (晶片)</th>
+                                <th>疫苗種類</th>
+                                <th>上次施打日期</th>
+                                <th>下次預計施打日</th>
+                                <th>備註</th>
+                                <th>操作</th>
+                            </tr>
+                        </thead>
+                        <tbody id="petVaccineTableBody">
+                            <tr><td colspan="6" style="text-align: center; color: #64748b;">載入中...</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- 4. 一般商品分頁 (Items) - 獨立抓取 items 表格 -->
+            <div id="items" class="tab-content">
+                <div class="card">
+                    <h2>一般商品建檔管理 (Items)</h2>
+                    
+                    <!-- 自行新增一般商品分類區塊 -->
+                    <div style="background: #f1f5f9; padding: 12px 15px; border-radius: var(--radius); margin-bottom: 15px; display: flex; gap: 10px; align-items: center;">
+                        <input type="text" id="newItemCustomCategory" placeholder="輸入新的商品分類名稱 (例如: 護理用品)" style="flex: 1;">
+                        <button class="btn-secondary" style="padding: 9px 15px;" onclick="addNewItemCategory()">+ 新增商品分類</button>
+                    </div>
+
+                    <div class="form-grid">
+                        <div class="form-group"><label>商品名稱</label><input type="text" id="itemName" placeholder="例如：皇家處方飼料 / 寵物洗毛精"></div>
+                        <div class="form-group">
+                            <label>分類 (僅限商品專區)</label>
+                            <select id="itemCategory">
+                                <option value="一般商品">一般商品 (飼料/用品)</option>
+                                <option value="保健品">保健品</option>
+                                <option value="洗劑">洗劑</option>
+                                <option value="玩具">玩具</option>
+                                <option value="零食">零食</option>
+                            </select>
+                        </div>
+                        <div class="form-group"><label>進價 (NT$)</label><input type="number" id="itemCostPrice" placeholder="500"></div>
+                        <div class="form-group"><label>售價 (NT$)</label><input type="number" id="itemSellPrice" placeholder="800"></div>
+                        <div class="form-group"><label>初始庫存量</label><input type="number" id="itemStockQty" placeholder="100"></div>
+                        <div class="form-group"><label>安全存量警示</label><input type="number" id="itemSafetyStock" placeholder="10"></div>
+                    </div>
+                    <button onclick="saveNewItem()">確認新增商品至 items 表</button>
+                </div>
+                <div class="card">
+                    <h3>現有一般商品清單 (僅限商品資料，不含藥品)</h3>
+                    <table>
+                        <thead><tr><th>品名</th><th>分類</th><th>進價</th><th>售價</th><th>庫存量</th><th>安全存量</th><th>操作</th></tr></thead>
+                        <tbody id="itemTableBody"></tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- 5. 藥品專區與分類 (Medicines) - 獨立抓取 medicines 表格 -->
+            <div id="medicines" class="tab-content">
+                <div class="card">
+                    <h2>藥品專區與分類建檔</h2>
+
+                    <!-- 自行新增藥品分類區塊 -->
+                    <div style="background: #f1f5f9; padding: 12px 15px; border-radius: var(--radius); margin-bottom: 15px; display: flex; gap: 10px; align-items: center;">
+                        <input type="text" id="newMedCustomCategory" placeholder="輸入新的藥品分類名稱 (例如: 眼科用藥)" style="flex: 1;">
+                        <button class="btn-secondary" style="padding: 9px 15px;" onclick="addNewMedicineCategory()">+ 新增藥品分類</button>
+                    </div>
+
+                    <div class="form-grid">
+                        <div class="form-group"><label>藥名</label><input type="text" id="medName" placeholder="例如：Amoxicillin / 內衛消炎藥"></div>
+                        <div class="form-group"><label>預設建議劑量 (例如：10 mg/kg)</label><input type="text" id="medRecDose" placeholder="10 mg/kg"></div>
+                        <div class="form-group"><label>售價 (NT$)</label><input type="number" id="medPrice" placeholder="50"></div>
+                        <div class="form-group"><label>藥品劑量 / 每顆含量 (例如：250mg/顆)</label><input type="text" id="medUseDose" placeholder="250mg / 顆"></div>
+                        <div class="form-group">
+                            <label>藥品分類</label>
+                            <select id="medCalcFormula">
+                                <option value="一般藥品">一般藥品</option>
+                                <option value="抗生素">抗生素</option>
+                                <option value="心臟用藥">心臟用藥</option>
+                                <option value="消化道用藥">消化道用藥</option>
+                                <option value="關節用藥">關節用藥</option>
+                                <option value="利尿劑">利尿劑</option>
+                                <option value="呼吸道">呼吸道</option>
+                                <option value="泌尿道">泌尿道</option>
+                                <option value="皮膚用藥">皮膚用藥</option>
+                            </select>
+                        </div>
+                        <div class="form-group"><label>庫存量</label><input type="number" id="medStock" placeholder="500"></div>
+                    </div>
+                    <button onclick="saveNewMedicine()">確認新增藥品至專區</button>
+                </div>
+                <div class="card">
+                    <h3>藥品清單與分類總覽</h3>
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>藥名</th>
+                                <th>建議劑量</th>
+                                <th>售價</th>
+                                <th>藥品劑量 (每顆含量)</th>
+                                <th>藥品分類</th>
+                                <th>庫存量</th>
+                                <th>操作</th>
+                            </tr>
+                        </thead>
+                        <tbody id="medicineTableBody">
+                            <tr><td colspan="7" style="text-align: center; color: #64748b;">尚無藥品資料</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- 6. 純商品購買結帳分頁 -->
+            <div id="product_checkout" class="tab-content">
+                <div class="card">
+                    <h2>純商品購買結帳</h2>
+                    <div class="form-grid" style="margin-bottom: 15px;">
+                        <div class="form-group">
+                            <label>購買飼主</label>
+                            <select id="checkoutOwner">
+                                <option value="">-- 散客 / 不指定飼主 --</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="search-add-box">
+                        <div class="form-grid" style="margin-bottom: 0;">
+                            <div class="form-group" style="flex: 2;">
+                                <label>搜尋商品快速加入結帳</label>
+                                <input type="text" id="checkoutSearchProduct" list="productDataList" placeholder="輸入商品名稱...">
+                                <datalist id="productDataList"></datalist>
+                            </div>
+                            <div class="form-group" style="flex: 1; justify-content: flex-end;">
+                                <button onclick="addSearchedProductToCheckout()">+ 加入購物車</button>
+                            </div>
+                        </div>
+                    </div>
+                    <h3>選購商品清單 / 購物車</h3>
+                    <div id="productCheckoutItems" style="margin-top: 10px;"></div>
+                    <button class="btn-secondary" style="margin-bottom: 15px; margin-top: 10px;" onclick="addEmptyCheckoutRow()">+ 手動增加空白品項</button>
+                    <div class="total-display">
+                        <div class="sub-display"><span>小計金額: NT$ <span id="checkoutSubTotal">0</span></span></div>
+                        <div class="sub-display"><span>- 折扣金額: NT$ <input type="number" id="checkoutDiscount" value="0" style="width: 80px; padding: 4px; text-align: right;" oninput="calculateProductTotal()"></span></div>
+                        <div>折扣後總計: NT$ <span id="checkoutTotalAmount">0</span></div>
+                    </div>
+                    <br>
+                    <button onclick="processProductCheckoutDatabase()">完成購買並寫入 invoices 表</button>
+                </div>
+            </div>
+
+            <!-- 7. 財務報表 -->
+            <div id="reports" class="tab-content">
+                <div class="card">
+                    <h2>財務報表與結算 (連動 invoices 資料)</h2>
+                    <div class="form-grid" style="margin-bottom: 20px;">
+                        <div class="form-group">
+                            <label>結算週期</label>
+                            <select id="reportType" onchange="fetchFinancialReport()">
+                                <option value="daily">日結 (Daily Report)</option>
+                                <option value="monthly">月結 (Monthly Report)</option>
+                                <option value="yearly">年結 (Yearly Report)</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label>選擇基準日期 / 期間</label>
+                            <input type="date" id="reportDate" value="" onchange="fetchFinancialReport()">
+                        </div>
+                    </div>
+
+                    <div class="stats-grid">
+                        <div class="stat-card"><h4>門診與商品總筆數</h4><p id="statCount">0 筆</p></div>
+                        <div class="stat-card"><h4>總折讓金額</h4><p id="statDiscount">NT$ 0</p></div>
+                        <div class="stat-card" style="background: #e0f2fe; grid-column: span 2;"><h4>本期總營業額 (Total Revenue)</h4><p id="statTotal" style="color: var(--primary-dark); font-size: 1.6rem;">NT$ 0</p></div>
+                    </div>
+
+                    <h3 style="margin-top: 20px;">本期結算明細清單</h3>
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>交易時間</th>
+                                <th>結帳類型</th>
+                                <th>小計</th>
+                                <th>折扣</th>
+                                <th>實收總額</th>
+                                <th>操作</th>
+                            </tr>
+                        </thead>
+                        <tbody id="reportTableBody">
+                            <tr><td colspan="6" style="text-align: center; color: #64748b;">請選擇期間載入資料</td></tr>
+                        </tbody>
+                        <tfoot id="reportTableFoot" style="background: #f1f5f9; font-weight: bold;">
+                            <tr>
+                                <td colspan="2" style="text-align: right;">本期總計：</td>
+                                <td id="footSubtotal">NT$ 0</td>
+                                <td id="footDiscount">NT$ 0</td>
+                                <td id="footTotal" style="color: var(--primary-dark);">NT$ 0</td>
+                                <td></td>
+                            </tr>
+                        </tfoot>
+                    </table>
+                    <br>
+                    <button class="btn-secondary" onclick="window.print()">列印本期財務結算報表</button>
+                </div>
+            </div>
+
             <!-- 8. 系統設定及醫院 -->
             <div id="clinic" class="tab-content">
                 <div class="card">
@@ -713,7 +715,7 @@
                 </div>
             </div>
 
-            <!-- 11. 血球與生化檢驗管理 (支援歷史檢視與即時查詢) -->
+            <!-- 11. 血球與生化檢驗管理 -->
             <div id="lab_manager" class="tab-content">
                 <div class="card">
                     <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
@@ -838,7 +840,94 @@
                 </div>
             </div>
 
-            <!-- 12. 檢驗、影像及附件 -->
+            <!-- 12. 快篩與抗原檢驗管理 (Rapid Tests) -->
+            <div id="rapid_tests" class="tab-content">
+                <!-- 新增快篩種類設定區塊 -->
+                <div class="card">
+                    <h2>快篩種類設定與新增</h2>
+                    <div class="form-grid">
+                        <div class="form-group"><label>快篩項目名稱</label><input type="text" id="newRapidTypeName" placeholder="例如：犬四合一快篩 / 貓冠狀病毒快篩"></div>
+                        <div class="form-group">
+                            <label>適用對象</label>
+                            <select id="newRapidTypeTarget">
+                                <option value="犬">犬用</option>
+                                <option value="貓">貓用</option>
+                                <option value="通用">通用</option>
+                            </select>
+                        </div>
+                        <div class="form-group" style="grid-column: span 2;">
+                            <label>包含的檢驗子項目 (若為多合一請用逗號隔開，單項則留空)</label>
+                            <input type="text" id="newRapidSubItems" placeholder="例如：心絲蟲, 萊姆病, 艾利希體, 焦蟲">
+                        </div>
+                    </div>
+                    <button onclick="saveNewRapidType()">+ 新增快篩種類</button>
+                </div>
+
+                <div class="card">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+                        <h2>🦠 快篩與抗原檢驗登錄管理 (Rapid Tests)</h2>
+                        <button class="btn-secondary" style="padding: 6px 14px; font-size: 0.85rem;" onclick="backToMedicalFromRapid()">⬅ 返回目前看診病歷</button>
+                    </div>
+
+                    <div class="form-grid">
+                        <div class="form-group">
+                            <label>選擇快篩對象寵物 (可輸入名字或晶片搜尋)</label>
+                            <input type="text" id="rapidPetSearchInput" list="rapidPetDatalist" placeholder="🔍 輸入關鍵字搜尋寵物..." style="margin-bottom: 6px;">
+                            <datalist id="rapidPetDatalist"></datalist>
+                            <input type="hidden" id="selectedRapidPetId">
+                        </div>
+                        <div class="form-group">
+                            <label>選擇快篩項目</label>
+                            <select id="rapidTestItem" onchange="onRapidItemSelected()">
+                                <option value="">-- 請選擇快篩項目 --</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label>試劑批號 (Batch No.)</label>
+                            <input type="text" id="rapidTestBatch" placeholder="例如：#RT202609">
+                        </div>
+                    </div>
+
+                    <!-- 動態渲染單項或多合一結果的容器 -->
+                    <div id="rapidResultsContainer" style="background: #f8fafc; padding: 15px; border-radius: var(--radius); margin-bottom: 15px; border: 1px solid var(--border-color);">
+                        <h4 style="margin-bottom: 10px; color: var(--primary-dark);">各項檢驗結果判定</h4>
+                        <div id="rapidSubResultsList" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 10px;">
+                            <span style="color: #64748b;">請先選擇快篩項目...</span>
+                        </div>
+                    </div>
+
+                    <div class="form-group" style="margin-bottom: 15px;">
+                        <label>快篩判讀備註與臨床說明</label>
+                        <input type="text" id="rapidTestNotes" placeholder="例如：顯色清晰，對照線正常。">
+                    </div>
+                    
+                    <button class="btn-success" onclick="saveRapidTestToDatabase()">💾 儲存快篩報告並自動返回病歷</button>
+                </div>
+
+                <div class="card">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+                        <h3>歷史快篩檢驗報告總覽 (支援即時搜尋)</h3>
+                        <input type="text" id="rapidReportTableSearch" class="search-box" placeholder="🔍 輸入寵物名字搜尋快篩紀錄..." oninput="filterRapidReportsTable()" style="width: 300px;">
+                    </div>
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>檢驗時間</th>
+                                <th>寵物名字</th>
+                                <th>快篩項目</th>
+                                <th>詳細結果摘要</th>
+                                <th>批號 / 備註</th>
+                                <th>操作</th>
+                            </tr>
+                        </thead>
+                        <tbody id="rapidReportsTableBody">
+                            <tr><td colspan="6" style="text-align: center; color: #64748b;">載入中...</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- 13. 檢驗、影像及附件 -->
             <div id="lab_tests" class="tab-content">
                 <div class="card">
                     <h2>檢驗、影像及附件</h2>
@@ -859,7 +948,7 @@
                 </div>
             </div>
 
-            <!-- 13. 預約報到與看診流程 -->
+            <!-- 14. 預約報到與看診流程 -->
             <div id="appointments" class="tab-content active">
                 <div class="card">
                     <h2>預約報到與看診流程管理</h2>
@@ -996,7 +1085,9 @@
         let activeAppointmentsList = []; 
         let allPetsListForDropdown = [];
         let allLabReportsCache = []; 
+        let allRapidReportsCache = [];
         let allVaccinationCache = []; 
+        let loadedRapidTypesMap = {};
 
         let customItemCategories = ["一般商品", "保健品", "洗劑", "玩具", "零食"];
         let customMedicineCategories = ["一般藥品", "抗生素", "心臟用藥", "腸胃道用藥", "關節用藥", "利尿劑", "呼吸道", "泌尿道", "皮膚用藥"];
@@ -1029,12 +1120,14 @@
 
             loadClinicSettingsFromSupabase();
             loadOwnersAndPetsIntegrated();
-            loadItems(); // 專門讀取 items 表格 (一般商品)
-            loadMedicines(); // 專門讀取 medicines 表格 (藥品)
+            loadItems(); 
+            loadMedicines(); 
             loadAppointments();
             loadVaccineTypes();
+            loadRapidTypes();
             loadPetVaccines();
             loadLabReportsList();
+            loadRapidReportsList();
             calculateProductTotal();
             calculateInvoiceTotal();
 
@@ -1070,6 +1163,22 @@
                         }
                     });
                     document.getElementById('selectedLabPetId').value = foundId;
+                });
+            }
+
+            const rapidInput = document.getElementById('rapidPetSearchInput');
+            if (rapidInput) {
+                rapidInput.addEventListener('input', function(e) {
+                    const val = e.target.value;
+                    const datalist = document.getElementById('rapidPetDatalist');
+                    const options = datalist.querySelectorAll('option');
+                    let foundId = "";
+                    options.forEach(opt => {
+                        if (opt.value === val) {
+                            foundId = opt.dataset.petId;
+                        }
+                    });
+                    document.getElementById('selectedRapidPetId').value = foundId;
                 });
             }
         };
@@ -1469,23 +1578,99 @@
             });
         }
 
-        async function saveNewVaccineType() {
-            const name = document.getElementById('newVaccineTypeName').value.trim();
-            const target = document.getElementById('newVaccineTypeTarget').value;
-            const interval_days = parseInt(document.getElementById('newVaccineInterval').value) || 365;
+        async function loadRapidTypes() {
+            const defaultRapid = [
+                { name: "犬四合一快篩", target: "犬", sub_items: "心絲蟲, 萊姆病, 艾利希體, 焦蟲" },
+                { name: "貓瘟快篩 (FPV Ag)", target: "貓", sub_items: "" },
+                { name: "貓愛滋抗體 (FIV Ab)", target: "貓", sub_items: "" },
+                { name: "貓白血病抗原 (FeLV Ag)", target: "貓", sub_items: "" },
+                { name: "犬心絲蟲抗原 (HW Ag)", target: "犬", sub_items: "" }
+            ];
 
-            if(!name) { alert('請輸入疫苗名稱！'); return; }
+            let { data, error } = await _supabase.from('rapid_types').select('*').eq('tenant_id', CURRENT_TENANT_ID);
+            
+            if (!data || data.length === 0) {
+                for (let r of defaultRapid) {
+                    await _supabase.from('rapid_types').insert([{ tenant_id: CURRENT_TENANT_ID, name: r.name, target: r.target, sub_items: r.sub_items }]);
+                }
+                const res = await _supabase.from('rapid_types').select('*').eq('tenant_id', CURRENT_TENANT_ID);
+                data = res.data || [];
+            }
 
-            const { error } = await _supabase.from('vaccine_types').insert([{
-                tenant_id: CURRENT_TENANT_ID, name, target, interval_days
+            loadedRapidTypesMap = {};
+            const rapidTestItemSelect = document.getElementById('rapidTestItem');
+            if(rapidTestItemSelect) rapidTestItemSelect.innerHTML = '<option value="">-- 請選擇快篩項目 --</option>';
+
+            data.forEach(rt => {
+                loadedRapidTypesMap[rt.name] = rt;
+                if(rapidTestItemSelect) {
+                    const opt = document.createElement('option');
+                    opt.value = rt.name;
+                    opt.textContent = `${rt.name} (${rt.target}用)`;
+                    rapidTestItemSelect.appendChild(opt);
+                }
+            });
+        }
+
+        async function saveNewRapidType() {
+            const name = document.getElementById('newRapidTypeName').value.trim();
+            const target = document.getElementById('newRapidTypeTarget').value;
+            const sub_items = document.getElementById('newRapidSubItems').value.trim();
+
+            if(!name) { alert('請輸入快篩項目名稱！'); return; }
+
+            const { error } = await _supabase.from('rapid_types').insert([{
+                tenant_id: CURRENT_TENANT_ID, name, target, sub_items
             }]);
 
             if(error) {
-                alert('新增疫苗種類失敗：' + error.message);
+                alert('新增快篩種類失敗：' + error.message);
             } else {
-                alert('疫苗種類已成功建立！');
-                document.getElementById('newVaccineTypeName').value = '';
-                loadVaccineTypes();
+                alert('快篩種類已成功建立！');
+                document.getElementById('newRapidTypeName').value = '';
+                document.getElementById('newRapidSubItems').value = '';
+                loadRapidTypes();
+            }
+        }
+
+        function onRapidItemSelected() {
+            const selectedName = document.getElementById('rapidTestItem').value;
+            const container = document.getElementById('rapidSubResultsList');
+            container.innerHTML = '';
+
+            if (!selectedName || !loadedRapidTypesMap[selectedName]) {
+                container.innerHTML = '<span style="color: #64748b;">請先選擇快篩項目...</span>';
+                return;
+            }
+
+            const rt = loadedRapidTypesMap[selectedName];
+            if (rt.sub_items && rt.sub_items.trim() !== '') {
+                const subArray = rt.sub_items.split(',').map(s => s.trim()).filter(s => s);
+                subArray.forEach(sub => {
+                    const div = document.createElement('div');
+                    div.className = 'form-group';
+                    div.innerHTML = `
+                        <label><b>${sub}</b> 結果</label>
+                        <select class="rapid-sub-result-select" data-subname="${sub}">
+                            <option value="陰性 (Negative)" style="color: #059669; font-weight: bold;">陰性 (Negative)</option>
+                            <option value="陽性 (Positive)" style="color: #dc2626; font-weight: bold;">陽性 (Positive)</option>
+                            <option value="無效 (Invalid)">無效 (Invalid)</option>
+                        </select>
+                    `;
+                    container.appendChild(div);
+                });
+            } else {
+                const div = document.createElement('div');
+                div.className = 'form-group';
+                div.innerHTML = `
+                    <label>整體結果判定</label>
+                    <select class="rapid-sub-result-select" data-subname="${rt.name}">
+                        <option value="陰性 (Negative)" style="color: #059669; font-weight: bold;">陰性 (Negative)</option>
+                        <option value="陽性 (Positive)" style="color: #dc2626; font-weight: bold;">陽性 (Positive)</option>
+                        <option value="無效 (Invalid)">無效 (Invalid)</option>
+                    </select>
+                `;
+                container.appendChild(div);
             }
         }
 
@@ -1504,6 +1689,19 @@
 
         function filterLabPetDropdown() {
             const datalist = document.getElementById('labPetDatalist');
+            if (!datalist) return;
+            datalist.innerHTML = '';
+
+            allPetsListForDropdown.forEach(pet => {
+                const opt = document.createElement('option');
+                opt.value = `${pet.name} (飼主: ${pet.owner_name} / 晶片: ${pet.microchip || '無'})`;
+                opt.dataset.petId = pet.id;
+                datalist.appendChild(opt);
+            });
+        }
+
+        function filterRapidPetDropdown() {
+            const datalist = document.getElementById('rapidPetDatalist');
             if (!datalist) return;
             datalist.innerHTML = '';
 
@@ -1620,7 +1818,6 @@
             if(error) { alert('刪除失敗'); } else { loadPetVaccines(); }
         }
 
-        // --- 專門讀取一般商品表格 (items 表) ---
         async function loadItems() {
             const { data, error } = await _supabase.from('items').select('*').eq('tenant_id', CURRENT_TENANT_ID);
             if (error) return;
@@ -1727,7 +1924,6 @@
             }
         }
 
-        // --- 專門讀取藥品專區表格 (medicines 表) ---
         async function loadMedicines() {
             const { data, error } = await _supabase.from('medicines').select('*').eq('tenant_id', CURRENT_TENANT_ID);
             
@@ -1906,6 +2102,7 @@
 
             filterVaccinePetDropdown();
             filterLabPetDropdown();
+            filterRapidPetDropdown();
 
             petsData.forEach(pet => {
                 const owner = ownersData.find(o => o.id === pet.owner_id);
@@ -2283,14 +2480,9 @@
         }
 
         function goToVaccinesFromMedical() {
-            if (!currentPetId) {
-                alert('請先選擇看診寵物！');
-                return;
-            }
-
+            if (!currentPetId) { alert('請先選擇看診寵物！'); return; }
             collectCurrentMedicalState();
             switchTab('vaccines');
-
             const vacSearchInput = document.getElementById('vacPetSearchInput');
             const hiddenVacPetId = document.getElementById('selectedVacPetId');
             if (vacSearchInput && hiddenVacPetId) {
@@ -2303,25 +2495,15 @@
         }
 
         function backToMedicalFromVaccine() {
-            if (!currentPetId) {
-                alert('目前沒有正在看診的寵物病歷！');
-                switchTab('appointments');
-                return;
-            }
-
+            if (!currentPetId) { switchTab('appointments'); return; }
             switchTab('medical');
             restoreMedicalState();
         }
 
         function goToLabManagerFromMedical() {
-            if (!currentPetId) {
-                alert('請先選擇看診寵物！');
-                return;
-            }
-
+            if (!currentPetId) { alert('請先選擇看診寵物！'); return; }
             collectCurrentMedicalState();
             switchTab('lab_manager');
-
             const labSearchInput = document.getElementById('labPetSearchInput');
             const hiddenLabPetId = document.getElementById('selectedLabPetId');
             if (labSearchInput && hiddenLabPetId) {
@@ -2331,6 +2513,50 @@
                     hiddenLabPetId.value = currentPetId;
                 }
             }
+        }
+
+        function backToMedicalFromLab() {
+            if (!currentPetId) { switchTab('appointments'); return; }
+            switchTab('medical');
+            restoreMedicalState();
+        }
+
+        function goToRapidTestsFromMedical() {
+            if (!currentPetId) { alert('請先選擇看診寵物！'); return; }
+            collectCurrentMedicalState();
+            switchTab('rapid_tests');
+            const rapidSearchInput = document.getElementById('rapidPetSearchInput');
+            const hiddenRapidPetId = document.getElementById('selectedRapidPetId');
+            if (rapidSearchInput && hiddenRapidPetId) {
+                const matchedPetOption = allPetsListForDropdown.find(p => p.id === currentPetId);
+                if (matchedPetOption) {
+                    rapidSearchInput.value = `${matchedPetOption.name} (飼主: ${matchedPetOption.owner_name} / 晶片: ${matchedPetOption.microchip || '無'})`;
+                    hiddenRapidPetId.value = currentPetId;
+                }
+            }
+        }
+
+        function clearRapidFormInputs() {
+            const rapidSearchInput = document.getElementById('rapidPetSearchInput');
+            const hiddenRapidPetId = document.getElementById('selectedRapidPetId');
+            const rapidTestItem = document.getElementById('rapidTestItem');
+            const rapidTestBatch = document.getElementById('rapidTestBatch');
+            const rapidTestNotes = document.getElementById('rapidTestNotes');
+            const rapidSubResultsList = document.getElementById('rapidSubResultsList');
+
+            if (rapidSearchInput) rapidSearchInput.value = '';
+            if (hiddenRapidPetId) hiddenRapidPetId.value = '';
+            if (rapidTestItem) rapidTestItem.value = '';
+            if (rapidTestBatch) rapidTestBatch.value = '';
+            if (rapidTestNotes) rapidTestNotes.value = '';
+            if (rapidSubResultsList) rapidSubResultsList.innerHTML = '<span style="color: #64748b;">請先選擇快篩項目...</span>';
+        }
+
+        function backToMedicalFromRapid() {
+            clearRapidFormInputs();
+            if (!currentPetId) { switchTab('appointments'); return; }
+            switchTab('medical');
+            restoreMedicalState();
         }
 
         function collectCurrentMedicalState() {
@@ -2373,17 +2599,6 @@
                     container.appendChild(div);
                 });
             }
-        }
-
-        function backToMedicalFromLab() {
-            if (!currentPetId) {
-                alert('目前沒有正在看診的寵物病歷！');
-                switchTab('appointments');
-                return;
-            }
-
-            switchTab('medical');
-            restoreMedicalState();
         }
 
         function onWeightChanged() {
@@ -2981,11 +3196,143 @@
         async function deleteLabReport(id) {
             if(!confirm('確定要刪除這版檢驗報告嗎？')) return;
             const { error } = await _supabase.from('lab_reports').delete().eq('id', id);
+            if(error) { alert('刪除失敗'); } else { loadLabReportsList(); }
+        }
+
+        async function saveRapidTestToDatabase() {
+            const petId = document.getElementById('selectedRapidPetId').value;
+            const testItem = document.getElementById('rapidTestItem').value;
+            const batchNo = document.getElementById('rapidTestBatch').value;
+            const notes = document.getElementById('rapidTestNotes').value;
+
+            if(!petId || !testItem) { alert('請完整選擇快篩對象與快篩項目！'); return; }
+
+            const subSelects = document.querySelectorAll('.rapid-sub-result-select');
+            let resultsObj = {};
+            subSelects.forEach(sel => {
+                const subName = sel.getAttribute('data-subname');
+                resultsObj[subName] = sel.value;
+            });
+
+            const { error } = await _supabase.from('rapid_test_records').insert([{
+                tenant_id: CURRENT_TENANT_ID,
+                pet_id: petId,
+                test_item: testItem,
+                result: JSON.stringify(resultsObj),
+                batch_no: batchNo,
+                notes: notes
+            }]);
+
             if(error) {
-                alert('刪除失敗');
+                alert('快篩儲存失敗：' + error.message);
             } else {
-                loadLabReportsList();
+                alert('快篩檢驗報告已成功儲存！');
+                loadRapidReportsList();
+                backToMedicalFromRapid();
             }
+        }
+
+        async function loadRapidReportsList() {
+            const { data, error } = await _supabase.from('rapid_test_records').select('*, pets(name)').eq('tenant_id', CURRENT_TENANT_ID).order('created_at', { ascending: false });
+            if (error || !data) {
+                allRapidReportsCache = [];
+            } else {
+                allRapidReportsCache = data;
+            }
+            renderRapidReportsTable(allRapidReportsCache);
+        }
+
+        function renderRapidReportsTable(dataList) {
+            const tbody = document.getElementById('rapidReportsTableBody');
+            if(!tbody) return;
+            tbody.innerHTML = '';
+
+            if(!dataList || dataList.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="6" style="text-align: center; color: #64748b;">尚無任何快篩檢驗紀錄</td></tr>`;
+                return;
+            }
+
+            dataList.forEach(rep => {
+                const petName = rep.pets ? rep.pets.name : '未知寵物';
+                let parsedResult = {};
+                try {
+                    parsedResult = typeof rep.result === 'string' ? JSON.parse(rep.result) : rep.result;
+                } catch(e) {
+                    parsedResult = { "結果": rep.result };
+                }
+
+                let summaryHtml = '';
+                for (let k in parsedResult) {
+                    const color = parsedResult[k].includes('陽性') ? '#dc2626' : '#059669';
+                    summaryHtml += `<b>${k}:</b> <span style="color: ${color};">${parsedResult[k]}</span><br>`;
+                }
+
+                const tr = document.createElement('tr');
+                tr.innerHTML = `
+                    <td>${new Date(rep.created_at).toLocaleString()}</td>
+                    <td><b>${petName}</b></td>
+                    <td><span style="background: #e0f2fe; color: #0369a1; padding: 2px 6px; border-radius: 4px; font-weight: bold;">${rep.test_item}</span></td>
+                    <td>${summaryHtml}</td>
+                    <td><small style="color: #475569;">批號: ${rep.batch_no || '-'}</small><br>${rep.notes || ''}</td>
+                    <td>
+                        <button class="btn-secondary" style="padding: 4px 8px; font-size: 0.8rem;" onclick='openRapidDetailModal(${JSON.stringify(rep)})'>檢視</button>
+                        <button class="btn-danger" style="padding: 4px 8px; font-size: 0.8rem;" onclick="deleteRapidReport('${rep.id}')">刪除</button>
+                    </td>
+                `;
+                tbody.appendChild(tr);
+            });
+        }
+
+        function filterRapidReportsTable() {
+            const keyword = document.getElementById('rapidReportTableSearch').value.trim().toLowerCase();
+            if(!keyword) {
+                renderRapidReportsTable(allRapidReportsCache);
+                return;
+            }
+
+            const filtered = allRapidReportsCache.filter(rep => {
+                const petName = (rep.pets && rep.pets.name ? rep.pets.name : '').toLowerCase();
+                const testItem = (rep.test_item || '').toLowerCase();
+                const notes = (rep.notes || '').toLowerCase();
+                return petName.includes(keyword) || testItem.includes(keyword) || notes.includes(keyword);
+            });
+
+            renderRapidReportsTable(filtered);
+        }
+
+        function openRapidDetailModal(rep) {
+            const petName = rep.pets ? rep.pets.name : '未知寵物';
+            let parsedResult = {};
+            try {
+                parsedResult = typeof rep.result === 'string' ? JSON.parse(rep.result) : rep.result;
+            } catch(e) {
+                parsedResult = { "結果": rep.result };
+            }
+
+            let resHtml = '';
+            for (let k in parsedResult) {
+                const color = parsedResult[k].includes('陽性') ? '#dc2626' : '#059669';
+                resHtml += `<div style="margin-bottom: 4px;"><b>${k}:</b> <span style="color: ${color}; font-weight: bold;">${parsedResult[k]}</span></div>`;
+            }
+
+            const html = `
+                <p><b>檢驗寵物：</b> ${petName}</p>
+                <p><b>快篩項目：</b> <span style="color:#0369a1; font-weight:bold;">${rep.test_item}</span></p>
+                <p><b>試劑批號：</b> ${rep.batch_no || '無'}</p>
+                <p><b>檢驗時間：</b> ${new Date(rep.created_at).toLocaleString()}</p>
+                <p><b>臨床備註：</b> ${rep.notes || '無'}</p>
+                <h4 style="margin: 12px 0 6px 0; color: #1e293b;">各子項目詳細檢驗判定：</h4>
+                <div style="background: #f1f5f9; padding: 12px; border-radius: 6px;">${resHtml}</div>
+            `;
+            document.getElementById('detailModalTitle').innerText = `🦠 快篩檢驗報告詳情 - ${petName} (${rep.test_item})`;
+            document.getElementById('detailModalBody').innerHTML = html;
+            document.getElementById('genericDetailModal').style.display = 'flex';
+        }
+
+        async function deleteRapidReport(id) {
+            if(!confirm('確定要刪除這筆快篩紀錄嗎？')) return;
+            const { error } = await _supabase.from('rapid_test_records').delete().eq('id', id);
+            if(error) { alert('刪除失敗'); } else { loadRapidReportsList(); }
         }
     </script>
 </body>
