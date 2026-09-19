@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>吉布動物醫院 - AI 多租戶管理系統</title>
+    <title>吉布動物醫院管理系統 genblue設計版權所有</title>
     <!-- 引入 Supabase JS SDK CDN -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <style>
@@ -101,18 +101,18 @@
 
     <!-- 側邊欄導航 -->
     <sidebar>
-        <div class="sidebar-brand" id="sidebarBrandTitle">吉布動物醫院 AI 系統</div>
+        <div class="sidebar-brand" id="sidebarBrandTitle">吉布動物醫院管理系統</div>
         <ul class="nav-links">
             <li id="nav-appointments" onclick="switchTab('appointments')" class="active">預約與報到 (Appointments)</li>
             <li id="nav-owners_pets" onclick="switchTab('owners_pets')">飼主與寵物整合管理 (Owners & Pets)</li>
             <li id="nav-search_center" onclick="switchTab('search_center')">🔍 綜合查詢中心 (Search)</li>
             <li id="nav-vaccines" onclick="switchTab('vaccines')">疫苗施打與種類管理 (Vaccines)</li>
-            <li id="nav-items" onclick="switchTab('items')">一般商品分頁 (Items)</li>
-            <li id="nav-medicines" onclick="switchTab('medicines')">藥品專區與分類 (Medicines)</li>
+            <li id="nav-items" onclick="switchTab('items')">一般商品專區(Items)</li>
+            <li id="nav-medicines" onclick="switchTab('medicines')">藥品專區 (Medicines)</li>
             <li id="nav-product_checkout" onclick="switchTab('product_checkout')">純商品購買結帳</li>
             <li id="nav-reports" onclick="switchTab('reports')">財務報表 (日/月/年結)</li>
-            <li id="nav-medical" onclick="switchTab('medical')">醫療紀錄與用藥 (Medical)</li>
-            <li id="nav-clinic" onclick="switchTab('clinic')">系統設定及醫院 (Clinic)</li>
+            <li id="nav-medical" onclick="switchTab('medical')">醫療診斷病歷與用藥 (Medical)</li>
+            <li id="nav-clinic" onclick="switchTab('clinic')">系統設定及醫院資料 (Clinic)</li>
             <li id="nav-audit_logs" onclick="switchTab('audit_logs')">操作歷程與稽核 (Audit Logs)</li>
             <li id="nav-invoices" onclick="switchTab('invoices')">收費與付款 (Invoices)</li>
             <li id="nav-lab_manager" onclick="switchTab('lab_manager')">血球與生化檢驗管理</li>
@@ -124,10 +124,10 @@
     <div class="main-container">
         <header>
             <div class="header-left">
-                <h3>多租戶管理介面</h3>
+                <h3>首頁管理介面</h3>
                 <input type="text" id="globalSearchInput" class="search-box" placeholder="全域搜尋 寵物 / 晶片 / 飼主 / 電話..." onkeydown="handleGlobalSearch(event)">
             </div>
-            <div class="tenant-badge" id="currentTenantBadge">租戶代碼 (tenant_id): GIB-TP-001</div>
+            <div class="tenant-badge" id="currentTenantBadge">醫院代碼 (tenant_id): GIB-TP-001</div>
         </header>
 
         <div class="content-area">
@@ -441,7 +441,7 @@
                                 <option value="一般藥品">一般藥品</option>
                                 <option value="抗生素">抗生素</option>
                                 <option value="心臟用藥">心臟用藥</option>
-                                <option value="腸胃道用藥">腸胃道用藥</option>
+                                <option value="消化道用藥">消化道用藥</option>
                                 <option value="關節用藥">關節用藥</option>
                                 <option value="利尿劑">利尿劑</option>
                                 <option value="呼吸道">呼吸道</option>
@@ -637,7 +637,7 @@
                             </div>
                             <div class="form-group"><label>實際開立數量 (顆)</label><input type="number" id="medPrescribeQty" value="1" placeholder="數量"></div>
                             <div class="form-group"><label>處方箋顯示之「使用劑量說明」</label><input type="text" id="medPrescribeCustomDoseNote" value="10 mg/kg" placeholder="例如：10 mg/kg 或 1錠"></div>
-                            <div class="form-group" style="grid-column: span 2;"><label>使用頻率 / 備註說明</label><input type="text" id="medPrescribeNote" value="一天兩次，連續3天，飯後服用" placeholder="例如：一天兩次，飯後服用"></div>
+                            <div class="form-group" style="grid-column: span 2;"><label>使用頻率 / 備註說明</label><input type="text" id="medPrescribeNote" value="一天兩次，連續5天，飯後服用" placeholder="例如：一天兩次，飯後服用"></div>
                             <div class="form-group" style="justify-content: flex-end; grid-column: span 2;"><button onclick="addPrescriptionItem()">+ 加入本次處方箋</button></div>
                         </div>
                     </div>
@@ -659,7 +659,7 @@
                     <h2>系統設定及醫院資料</h2>
                     <div class="form-grid">
                         <div class="form-group"><label>醫院名稱</label><input type="text" id="clinicNameSet" value="吉布動物醫院"></div>
-                        <div class="form-group"><label>租戶代碼 (tenant_id)</label><input type="text" id="clinicTenantId" value="GIB-TP-001" readonly style="background:#f1f5f9;"></div>
+                        <div class="form-group"><label>醫院代碼 (tenant_id)</label><input type="text" id="clinicTenantId" value="GIB-TP-001" readonly style="background:#f1f5f9;"></div>
                         <div class="form-group"><label>負責獸醫師</label><input type="text" id="clinicDirectorSet" value="張劍明"></div>
                         <div class="form-group"><label>聯絡電話</label><input type="text" id="clinicPhoneSet" value="02-8888-9999"></div>
                     </div>
