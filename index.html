@@ -607,10 +607,10 @@
                 </div>
             </div>
 
-            <!-- 7. 財務報表 -->
+            <!-- 7. 財務報表 (已整合門診與商品收費分類結算) -->
             <div id="reports" class="tab-content">
                 <div class="card">
-                    <h2>財務報表與結算 (連動 invoices 資料)</h2>
+                    <h2>財務報表與分類結算 (連動 invoices 資料)</h2>
                     <div class="form-grid" style="margin-bottom: 20px;">
                         <div class="form-group">
                             <label>結算週期</label>
@@ -626,13 +626,34 @@
                         </div>
                     </div>
 
-                    <div class="stats-grid">
-                        <div class="stat-card"><h4>門診與商品總筆數</h4><p id="statCount">0 筆</p></div>
-                        <div class="stat-card"><h4>總折讓金額</h4><p id="statDiscount">NT$ 0</p></div>
-                        <div class="stat-card" style="background: #e0f2fe; grid-column: span 2;"><h4>本期總營業額 (Total Revenue)</h4><p id="statTotal" style="color: var(--primary-dark); font-size: 1.6rem;">NT$ 0</p></div>
+                    <!-- 雙欄總結統計卡片 -->
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 25px;">
+                        <!-- 門診收費統計 -->
+                        <div style="background: #f8fafc; border: 1px solid var(--border-color); padding: 15px; border-radius: var(--radius);">
+                            <h3 style="color: var(--primary-dark); border-bottom: 2px solid var(--primary-color); padding-bottom: 5px; margin-bottom: 10px;">🩺 門診收費結算</h3>
+                            <div style="display: flex; justify-content: space-between; margin-bottom: 6px;"><span>筆數：</span><b id="statClinicCount">0 筆</b></div>
+                            <div style="display: flex; justify-content: space-between; margin-bottom: 6px;"><span>折讓金額：</span><b id="statClinicDiscount">NT$ 0</b></div>
+                            <div style="display: flex; justify-content: space-between; font-size: 1.1rem; color: var(--primary-dark);"><span>門診總營業額：</span><b id="statClinicTotal">NT$ 0</b></div>
+                        </div>
+
+                        <!-- 商品收費統計 -->
+                        <div style="background: #f8fafc; border: 1px solid var(--border-color); padding: 15px; border-radius: var(--radius);">
+                            <h3 style="color: #059669; border-bottom: 2px solid #059669; padding-bottom: 5px; margin-bottom: 10px;">🛒 商品收費結算</h3>
+                            <div style="display: flex; justify-content: space-between; margin-bottom: 6px;"><span>筆數：</span><b id="statProductCount">0 筆</b></div>
+                            <div style="display: flex; justify-content: space-between; margin-bottom: 6px;"><span>折讓金額：</span><b id="statProductDiscount">NT$ 0</b></div>
+                            <div style="display: flex; justify-content: space-between; font-size: 1.1rem; color: #059669;"><span>商品總營業額：</span><b id="statProductTotal">NT$ 0</b></div>
+                        </div>
                     </div>
 
-                    <h3 style="margin-top: 20px;">本期結算明細清單</h3>
+                    <!-- 綜合總計卡片 -->
+                    <div class="stats-grid" style="margin-bottom: 20px;">
+                        <div class="stat-card" style="background: #e0f2fe; grid-column: span 2;">
+                            <h4>本期全院總營業額 (Clinic + Product Total Revenue)</h4>
+                            <p id="statGrandTotal" style="color: var(--primary-dark); font-size: 1.6rem;">NT$ 0</p>
+                        </div>
+                    </div>
+
+                    <h3 style="margin-top: 20px;">本期結算明細清單 (含門診與商品分類)</h3>
                     <table>
                         <thead>
                             <tr>
@@ -1337,7 +1358,6 @@
             }
             renderSearchMedicinesUsage(searchPrescriptionMedicinesCache);
 
-            // 獨立安全查詢「純商品銷售」紀錄
             const { data: invData, error: invError } = await _supabase
                 .from('invoices')
                 .select('*')
@@ -2383,7 +2403,6 @@
                 endDate = new Date(baseDate.getFullYear(), 11, 31, 23, 59, 59, 999);
             }
 
-            // 修正：獨立安全查詢財務報表發票資料，避免關聯名稱錯誤
             const { data: invData, error: invError } = await _supabase
                 .from('invoices')
                 .select('*')
@@ -2413,30 +2432,51 @@
 
             if (data.length === 0) {
                 tbody.innerHTML = `<tr><td colspan="7" style="text-align: center; color: #64748b;">此期間尚無任何結算紀錄</td></tr>`;
-                document.getElementById('statCount').innerText = `0 筆`;
-                document.getElementById('statDiscount').innerText = `NT$ 0`;
-                document.getElementById('statTotal').innerText = `NT$ 0`;
+                document.getElementById('statClinicCount').innerText = `0 筆`;
+                document.getElementById('statClinicDiscount').innerText = `NT$ 0`;
+                document.getElementById('statClinicTotal').innerText = `NT$ 0`;
+                document.getElementById('statProductCount').innerText = `0 筆`;
+                document.getElementById('statProductDiscount').innerText = `NT$ 0`;
+                document.getElementById('statProductTotal').innerText = `NT$ 0`;
+                document.getElementById('statGrandTotal').innerText = `NT$ 0`;
                 document.getElementById('footSubtotal').innerText = `NT$ 0`;
                 document.getElementById('footDiscount').innerText = `NT$ 0`;
                 document.getElementById('footTotal').innerText = `NT$ 0`;
                 return;
             }
 
-            let totalRevenue = 0, totalSubtotal = 0, totalDiscount = 0;
+            let clinicCount = 0, clinicDiscount = 0, clinicTotal = 0;
+            let productCount = 0, productDiscount = 0, productTotal = 0;
+            let totalSubtotal = 0, totalDiscount = 0, totalRevenue = 0;
+
             data.forEach(inv => {
                 const sub = parseFloat(inv.subtotal) || 0;
                 const disc = parseFloat(inv.discount) || 0;
                 const total = parseFloat(inv.total_amount) || 0;
-                totalSubtotal += sub; totalDiscount += disc; totalRevenue += total;
+                
+                totalSubtotal += sub; 
+                totalDiscount += disc; 
+                totalRevenue += total;
+
+                if (inv.checkout_type === '商品零售') {
+                    productCount++;
+                    productDiscount += disc;
+                    productTotal += total;
+                } else {
+                    clinicCount++;
+                    clinicDiscount += disc;
+                    clinicTotal += total;
+                }
 
                 const ownerStr = inv.owners ? `${inv.owners.name} (${inv.owners.mobile || '無'})` : '<span style="color:#94a3b8;">散客 / 無指定飼主</span>';
                 const petStr = inv.pets ? ` 🐶 <b>${inv.pets.name}</b>` : '';
+                const typeBadgeColor = inv.checkout_type === '商品零售' ? '#059669' : '#0284c7';
 
                 const tr = document.createElement('tr');
                 tr.innerHTML = `
                     <td>${new Date(inv.created_at).toLocaleString()}</td>
                     <td><b>${ownerStr}</b>${petStr}</td>
-                    <td><span style="background: #e0f2fe; color: #0369a1; padding: 2px 6px; border-radius: 4px; font-weight: bold;">${inv.checkout_type}</span></td>
+                    <td><span style="background: #e0f2fe; color: ${typeBadgeColor}; padding: 2px 6px; border-radius: 4px; font-weight: bold;">${inv.checkout_type}</span></td>
                     <td>NT$ ${sub.toLocaleString()}</td>
                     <td>NT$ ${disc.toLocaleString()}</td>
                     <td><b>NT$ ${total.toLocaleString()}</b></td>
@@ -2445,9 +2485,15 @@
                 tbody.appendChild(tr);
             });
 
-            document.getElementById('statCount').innerText = `${data.length} 筆`;
-            document.getElementById('statDiscount').innerText = `NT$ ${totalDiscount.toLocaleString()}`;
-            document.getElementById('statTotal').innerText = `NT$ ${totalRevenue.toLocaleString()}`;
+            document.getElementById('statClinicCount').innerText = `${clinicCount} 筆`;
+            document.getElementById('statClinicDiscount').innerText = `NT$ ${clinicDiscount.toLocaleString()}`;
+            document.getElementById('statClinicTotal').innerText = `NT$ ${clinicTotal.toLocaleString()}`;
+
+            document.getElementById('statProductCount').innerText = `${productCount} 筆`;
+            document.getElementById('statProductDiscount').innerText = `NT$ ${productDiscount.toLocaleString()}`;
+            document.getElementById('statProductTotal').innerText = `NT$ ${productTotal.toLocaleString()}`;
+
+            document.getElementById('statGrandTotal').innerText = `NT$ ${totalRevenue.toLocaleString()}`;
             document.getElementById('footSubtotal').innerText = `NT$ ${totalSubtotal.toLocaleString()}`;
             document.getElementById('footDiscount').innerText = `NT$ ${totalDiscount.toLocaleString()}`;
             document.getElementById('footTotal').innerText = `NT$ ${totalRevenue.toLocaleString()}`;
