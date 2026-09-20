@@ -1034,6 +1034,27 @@
         </div>
     </div>
 
+    <!-- 商品完整修改彈出視窗 -->
+    <div id="editItemModal" class="modal-overlay">
+        <div class="modal-content">
+            <h3>編輯一般商品完整資料</h3>
+            <input type="hidden" id="editItemId">
+            <div class="form-group" style="margin-bottom: 10px;"><label>商品名稱</label><input type="text" id="editItemName"></div>
+            <div class="form-group" style="margin-bottom: 10px;">
+                <label>商品分類</label>
+                <select id="editItemCategorySelect"></select>
+            </div>
+            <div class="form-group" style="margin-bottom: 10px;"><label>進價 (NT$)</label><input type="number" id="editItemCostPrice"></div>
+            <div class="form-group" style="margin-bottom: 10px;"><label>售價 (NT$)</label><input type="number" id="editItemSellPrice"></div>
+            <div class="form-group" style="margin-bottom: 10px;"><label>庫存量</label><input type="number" id="editItemStockQty"></div>
+            <div class="form-group" style="margin-bottom: 15px;"><label>安全存量警示</label><input type="number" id="editItemSafetyStock"></div>
+            <div style="display: flex; justify-content: flex-end; gap: 10px;">
+                <button class="btn-secondary" onclick="closeEditItemModal()">取消</button>
+                <button onclick="saveEditedItem()">儲存變更</button>
+            </div>
+        </div>
+    </div>
+
     <!-- 藥品完整修改彈出視窗 -->
     <div id="editMedicineModal" class="modal-overlay">
         <div class="modal-content">
@@ -1120,6 +1141,7 @@
         let currentPetWeight = 0; 
         let currentOwnerId = "";
         let loadedMedicinesMap = {}; 
+        let loadedItemsMap = {};
         let globalOwnersPetsData = []; 
         let activeAppointmentsList = []; 
         let allPetsListForDropdown = [];
@@ -1252,6 +1274,19 @@
                     opt.textContent = cat;
                     if(cat === currentVal) opt.selected = true;
                     itemSel.appendChild(opt);
+                });
+            }
+
+            const editItemSel = document.getElementById('editItemCategorySelect');
+            if(editItemSel) {
+                const currentVal = editItemSel.value;
+                editItemSel.innerHTML = '';
+                customItemCategories.forEach(cat => {
+                    const opt = document.createElement('option');
+                    opt.value = cat;
+                    opt.textContent = cat;
+                    if(cat === currentVal) opt.selected = true;
+                    editItemSel.appendChild(opt);
                 });
             }
 
@@ -1974,6 +2009,7 @@
             
             if(tbody) tbody.innerHTML = '';
             if(datalist) datalist.innerHTML = '';
+            loadedItemsMap = {};
 
             if (!data || data.length === 0) {
                 if(tbody) tbody.innerHTML = `<tr><td colspan="7" style="text-align: center; color: #64748b;">尚無一般商品資料</td></tr>`;
@@ -1981,17 +2017,19 @@
             }
 
             data.forEach(item => {
+                loadedItemsMap[item.id] = item;
+
                 if(tbody) {
                     const tr = document.createElement('tr');
                     tr.innerHTML = `
-                        <td>${item.name}</td>
-                        <td>${item.category || '一般商品'}</td>
-                        <td>NT$ ${item.cost_price}</td>
-                        <td>NT$ ${item.sell_price}</td>
-                        <td>${item.stock_qty}</td>
-                        <td>${item.safety_stock}</td>
+                        <td><b>${item.name}</b></td>
+                        <td><span style="background: #e0f2fe; color: #0369a1; padding: 2px 6px; border-radius: 4px; font-weight: bold;">${item.category || '一般商品'}</span></td>
+                        <td>NT$ ${item.cost_price || 0}</td>
+                        <td>NT$ ${item.sell_price || 0}</td>
+                        <td>${item.stock_qty || 0}</td>
+                        <td>${item.safety_stock || 0}</td>
                         <td>
-                            <button class="btn-secondary" style="padding: 4px 8px; font-size: 0.8rem;" onclick="editItem('${item.id}', '${item.name}', ${item.sell_price}, ${item.stock_qty})">修改</button>
+                            <button class="btn-secondary" style="padding: 4px 8px; font-size: 0.8rem;" onclick="openEditItemModal('${item.id}')">完整修改</button>
                             <button class="btn-danger" style="padding: 4px 8px; font-size: 0.8rem;" onclick="deleteItem('${item.id}')">刪除</button>
                         </td>
                     `;
@@ -2006,7 +2044,7 @@
         }
 
         async function saveNewItem() {
-            const name = document.getElementById('itemName').value;
+            const name = document.getElementById('itemName').value.trim();
             const category = document.getElementById('itemCategory').value;
             const cost_price = parseFloat(document.getElementById('itemCostPrice').value) || 0;
             const sell_price = parseFloat(document.getElementById('itemSellPrice').value) || 0;
@@ -2030,27 +2068,47 @@
             }
         }
 
-        async function editItem(itemId, currentName, currentPrice, currentStock) {
-            const newName = prompt('修改商品名稱：', currentName);
-            if (newName === null) return;
-            const newPriceStr = prompt('修改售價 (NT$)：', currentPrice);
-            if (newPriceStr === null) return;
-            const newStockStr = prompt('修改現有庫存量：', currentStock);
-            if (newStockStr === null) return;
+        function openEditItemModal(itemId) {
+            const item = loadedItemsMap[itemId];
+            if (!item) return;
 
-            const newPrice = parseFloat(newPriceStr);
-            const newStock = parseInt(newStockStr);
+            document.getElementById('editItemId').value = item.id;
+            document.getElementById('editItemName').value = item.name || '';
+            document.getElementById('editItemCategorySelect').value = item.category || '一般商品';
+            document.getElementById('editItemCostPrice').value = item.cost_price || 0;
+            document.getElementById('editItemSellPrice').value = item.sell_price || 0;
+            document.getElementById('editItemStockQty').value = item.stock_qty || 0;
+            document.getElementById('editItemSafetyStock').value = item.safety_stock || 0;
 
-            if (!newName || isNaN(newPrice) || isNaN(newStock)) {
-                alert('輸入格式有誤，請確認！');
-                return;
-            }
+            document.getElementById('editItemModal').style.display = 'flex';
+        }
+
+        function closeEditItemModal() {
+            document.getElementById('editItemModal').style.display = 'none';
+        }
+
+        async function saveEditedItem() {
+            const itemId = document.getElementById('editItemId').value;
+            const name = document.getElementById('editItemName').value.trim();
+            const category = document.getElementById('editItemCategorySelect').value;
+            const cost_price = parseFloat(document.getElementById('editItemCostPrice').value) || 0;
+            const sell_price = parseFloat(document.getElementById('editItemSellPrice').value) || 0;
+            const stock_qty = parseInt(document.getElementById('editItemStockQty').value) || 0;
+            const safety_stock = parseInt(document.getElementById('editItemSafetyStock').value) || 0;
+
+            if (!name) { alert('商品名稱不能為空！'); return; }
 
             const { error } = await _supabase.from('items').update({
-                name: newName, sell_price: newPrice, stock_qty: newStock
+                name, category, cost_price, sell_price, stock_qty, safety_stock
             }).eq('id', itemId);
 
-            if (error) { alert('修改失敗：' + error.message); } else { alert('商品資料已更新！'); loadItems(); }
+            if (error) {
+                alert('修改失敗：' + error.message);
+            } else {
+                alert('商品完整資料已成功更新！');
+                closeEditItemModal();
+                loadItems();
+            }
         }
 
         async function deleteItem(itemId) {
@@ -2365,9 +2423,15 @@
             if (ownerError || !ownerData || ownerData.length === 0) { alert('新增飼主失敗！'); return; }
             const newOwnerId = ownerData[0].id;
 
-            await _supabase.from('pets').insert([{
+            const { error: petError } = await _supabase.from('pets').insert([{
                 tenant_id: CURRENT_TENANT_ID, owner_id: newOwnerId, name: petName, microchip: microchip || null, birthday: birthday || null, species, gender, weight
             }]);
+
+            if (petError) {
+                alert('新增寵物失敗，Supabase 錯誤訊息：' + petError.message);
+                console.error('Supabase Insert Error:', petError);
+                return;
+            }
 
             alert('已成功建立飼主與關聯寵物！');
             loadOwnersAndPetsIntegrated();
@@ -2381,9 +2445,24 @@
             const petSpecies = prompt('請輸入種類 (犬/貓/兔/其他)：', '犬');
             const petChip = prompt('請輸入晶片號碼 (選填)：', '');
 
-            await _supabase.from('pets').insert([{
-                tenant_id: CURRENT_TENANT_ID, owner_id: ownerId, name: petName, microchip: petChip || null, birthday: petBirthday || null, species: petSpecies || '犬', gender: '公 (未結紮)', weight: petWeight
+            // 💡 已補上錯誤檢查與必要欄位，確保順利寫入 Supabase
+            const { error } = await _supabase.from('pets').insert([{
+                tenant_id: CURRENT_TENANT_ID, 
+                owner_id: ownerId, 
+                name: petName, 
+                microchip: petChip || null, 
+                birthday: petBirthday || null, 
+                species: petSpecies || '犬', 
+                gender: '公 (未結紮)', 
+                weight: petWeight
             }]);
+
+            if (error) {
+                alert('新增寵物失敗，Supabase 錯誤訊息：' + error.message);
+                console.error('Supabase Insert Error:', error);
+                return;
+            }
+
             alert('已成功新增寵物！');
             loadOwnersAndPetsIntegrated();
         }
@@ -2712,6 +2791,57 @@
             
             switchTab('medical');
             await loadAllMedicalRecords(petId);
+
+            // 💡 疫苗到期智慧提醒功能
+            await checkPetVaccineAlertOnConsultation(petId, petNameStr);
+        }
+
+        // 💡 檢查疫苗到期提醒的非同步函式
+        async function checkPetVaccineAlertOnConsultation(petId, petName) {
+            const { data, error } = await _supabase
+                .from('vaccination_records')
+                .select('*')
+                .eq('tenant_id', CURRENT_TENANT_ID)
+                .eq('pet_id', petId);
+
+            if (error || !data || data.length === 0) return;
+
+            const today = new Date();
+            today.setHours(0, 0, 0, 0);
+
+            let expiredVaccines = [];
+            let upcomingVaccines = [];
+
+            data.forEach(v => {
+                if (v.next_due_date) {
+                    const dueDate = new Date(v.next_due_date);
+                    dueDate.setHours(0, 0, 0, 0);
+
+                    const diffTime = dueDate - today;
+                    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+
+                    if (diffDays < 0) {
+                        expiredVaccines.push(`• ${v.vaccine_name} (已過期 ${Math.abs(diffDays)} 天，應施打日: ${v.next_due_date})`);
+                    } else if (diffDays <= 7) {
+                        upcomingVaccines.push(`• ${v.vaccine_name} (即將於 ${diffDays} 天後到期，預計日: ${v.next_due_date})`);
+                    }
+                }
+            });
+
+            if (expiredVaccines.length > 0 || upcomingVaccines.length > 0) {
+                let alertMsg = `⚠️ 【預防針到期/提醒通知】\n病患：${petName}\n\n`;
+                if (expiredVaccines.length > 0) {
+                    alertMsg += `🔴 以下疫苗【已過期】：\n${expiredVaccines.join('\n')}\n\n`;
+                }
+                if (upcomingVaccines.length > 0) {
+                    alertMsg += `🟡 以下疫苗【即將到期】：\n${upcomingVaccines.join('\n')}\n\n`;
+                }
+                alertMsg += `建議可於本次看診時提醒飼主安排施打！`;
+                
+                setTimeout(() => {
+                    alert(alertMsg);
+                }, 300);
+            }
         }
 
         function directCheckoutFromAppointment(petId, ownerId) {
