@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+<<!DOCTYPE html>
 <html lang="zh-TW">
 <head>
     <meta charset="UTF-8">
@@ -206,7 +206,6 @@
                             <div style="display: flex; gap: 10px;">
                                 <select id="searchMedCategoryFilter" onchange="filterSearchMedicinesUsage()" style="padding: 6px 12px; border-radius: var(--radius); border: 1px solid var(--border-color);">
                                     <option value="">-- 所有藥品分類 --</option>
-                                    <!-- 動態帶入藥品分類 -->
                                 </select>
                                 <input type="text" id="searchMedUsageKeyword" class="search-box" placeholder="🔍 輸入藥名或寵物搜尋..." oninput="filterSearchMedicinesUsage()">
                             </div>
@@ -235,7 +234,6 @@
                             <div style="display: flex; gap: 10px;">
                                 <select id="searchSalesCategoryFilter" onchange="filterSearchSales()" style="padding: 6px 12px; border-radius: var(--radius); border: 1px solid var(--border-color);">
                                     <option value="">-- 所有商品分類 --</option>
-                                    <!-- 動態帶入商品分類 -->
                                 </select>
                                 <input type="text" id="searchSalesKeyword" class="search-box" placeholder="🔍 搜尋商品、飼主或寵物..." oninput="filterSearchSales()">
                             </div>
@@ -1013,11 +1011,18 @@
                 </div>
                 
                 <div class="card">
-                    <h3>即時報到與預約病患列表 (或全域搜尋結果)</h3>
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+                        <h3>即時報到與預約病患列表 (透過上方全域搜尋新增病患，支援多筆依序排列)</h3>
+                        <div style="display: flex; gap: 8px;">
+                            <button class="btn-secondary" style="padding: 4px 10px; font-size: 0.8rem;" onclick="filterAppointmentsStatus('all')">全部</button>
+                            <button class="btn-secondary" style="padding: 4px 10px; font-size: 0.8rem;" onclick="filterAppointmentsStatus('候診中')">候診中</button>
+                            <button class="btn-secondary" style="padding: 4px 10px; font-size: 0.8rem;" onclick="filterAppointmentsStatus('診間看診中')">看診中</button>
+                        </div>
+                    </div>
                     <table id="appointmentTable">
-                        <thead><tr><th>晶片號碼</th><th>寵物名字</th><th>飼主</th><th>預約時間</th><th>目前狀態</th><th>快捷操作</th></tr></thead>
+                        <thead><tr><th>晶片號碼</th><th>寵物名字</th><th>飼主</th><th>報到時間</th><th>目前狀態</th><th>快捷操作與歸檔</th></tr></thead>
                         <tbody id="appointmentTableBody">
-                            <tr><td colspan="6" style="text-align: center; color: #64748b;">請使用上方全域搜尋列輸入關鍵字，或於上方直接新增預約/報到。</td></tr>
+                            <tr><td colspan="6" style="text-align: center; color: #64748b;">尚無報到病患，請透過上方全域搜尋帶入病患...</td></tr>
                         </tbody>
                     </table>
                 </div>
@@ -1147,6 +1152,7 @@
         let loadedItemsMap = {};
         let globalOwnersPetsData = []; 
         let activeAppointmentsList = []; 
+        let currentAppointmentFilter = 'all';
         let allPetsListForDropdown = [];
         let allOwnersListForDropdown = [];
         let allLabReportsCache = []; 
@@ -2709,6 +2715,7 @@
             fetchFinancialReport();
         }
 
+        // 💡 修正後的全域搜尋：將搜尋結果多筆病患【依序追加】到即時報到列表中，支援一天之中累積多筆病患
         async function handleGlobalSearch(event) {
             if (event.key === 'Enter') {
                 const query = document.getElementById('globalSearchInput').value.trim();
@@ -2724,8 +2731,33 @@
                         if (petsByOwner) matchedPets = petsByOwner;
                     }
                 }
+
+                if (matchedPets.length > 0) {
+                    matchedPets.forEach(pet => {
+                        const ownerName = pet.owners ? pet.owners.name : '未知飼主';
+                        const ownerId = pet.owners ? pet.owners.id : '';
+                        
+                        // 檢查是否已經在列表中，若無則追加
+                        let exists = activeAppointmentsList.some(p => p.id === pet.id);
+                        if (!exists) {
+                            activeAppointmentsList.push({
+                                id: pet.id,
+                                name: pet.name,
+                                microchip: pet.microchip || '',
+                                weight: pet.weight || 0,
+                                owner_id: ownerId,
+                                owner_name: ownerName,
+                                status: '候診中',
+                                time: new Date().toLocaleTimeString()
+                            });
+                        }
+                    });
+                } else {
+                    alert('查無符合條件的病患！');
+                }
+
                 switchTab('appointments');
-                renderAppointmentTable(matchedPets);
+                renderAppointmentTable(activeAppointmentsList);
             }
         }
 
@@ -2831,6 +2863,12 @@
             currentPetName = petNameStr;
             currentOwnerId = ownerId || "";
             currentPetWeight = parseFloat(weight) || 0;
+
+            let targetPet = activeAppointmentsList.find(p => p.id === petId);
+            if (targetPet) {
+                targetPet.status = '診間看診中';
+                renderAppointmentTable(activeAppointmentsList);
+            }
 
             medicalStateCache = { chiefComplaint: "", weight: currentPetWeight, prescriptions: [] };
 
@@ -3416,27 +3454,43 @@
             petObj.status = document.getElementById('appointmentStatusSelect').value;
             petObj.time = new Date().toLocaleTimeString();
             
-            if (!activeAppointmentsList.some(p => p.id === petObj.id)) activeAppointmentsList.push(petObj);
+            let existing = activeAppointmentsList.find(p => p.id === petObj.id);
+            if (!existing) {
+                activeAppointmentsList.push(petObj);
+            } else {
+                existing.status = petObj.status;
+            }
             renderAppointmentTable(activeAppointmentsList);
-            alert('已加入預約報到列表！');
+            alert('已成功加入預約報到列表！');
         }
 
         async function loadAppointments() { renderAppointmentTable(activeAppointmentsList); }
+
+        function filterAppointmentsStatus(status) {
+            currentAppointmentFilter = status;
+            renderAppointmentTable(activeAppointmentsList);
+        }
 
         function renderAppointmentTable(petsData) {
             const tbody = document.getElementById('appointmentTableBody');
             if(!tbody) return;
             tbody.innerHTML = '';
             
-            if (!petsData || petsData.length === 0) {
-                tbody.innerHTML = `<tr><td colspan="6" style="text-align: center; color: #64748b;">目前尚無報到病患</td></tr>`;
+            let filteredList = petsData;
+            if (currentAppointmentFilter !== 'all') {
+                filteredList = petsData.filter(p => p.status === currentAppointmentFilter);
+            }
+
+            if (!filteredList || filteredList.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="6" style="text-align: center; color: #64748b;">目前尚無符合條件的報到病患</td></tr>`;
                 return;
             }
 
-            petsData.forEach(pet => {
+            filteredList.forEach(pet => {
                 const ownerName = pet.owner_name || '關聯飼主';
                 const timeStr = pet.time || new Date().toLocaleTimeString();
                 const statusStr = pet.status || '候診中';
+                const statusBadgeColor = statusStr === '診間看診中' ? '#0284c7' : '#d97706';
 
                 const tr = document.createElement('tr');
                 tr.innerHTML = `
@@ -3444,14 +3498,21 @@
                     <td><b>${pet.name}</b> (${pet.weight || 0} kg)</td>
                     <td>${ownerName}</td>
                     <td>${timeStr}</td>
-                    <td><span style="color: #0284c7; background: #e0f2fe; padding: 4px 8px; border-radius: 4px; font-weight: bold;">${statusStr}</span></td>
-                    <td style="display: flex; gap: 6px;">
+                    <td><span style="color: ${statusBadgeColor}; background: #e0f2fe; padding: 4px 8px; border-radius: 4px; font-weight: bold;">${statusStr}</span></td>
+                    <td style="display: flex; gap: 6px; flex-wrap: wrap;">
                         <button class="btn-secondary" style="padding: 4px 8px; font-size: 0.8rem;" onclick="startConsultationById('${pet.id}', '${pet.microchip || ''}', '${pet.name}', '${pet.owner_id || ''}', ${pet.weight || 0}, '${ownerName}')">看診</button>
-                        <button class="btn-success" style="padding: 4px 8px; font-size: 0.8rem;" onclick="directCheckoutFromAppointment('${pet.id}', '${pet.owner_id || ''}')">直接歸檔</button>
+                        <button class="btn-success" style="padding: 4px 8px; font-size: 0.8rem;" onclick="directCheckoutFromAppointment('${pet.id}', '${pet.owner_id || ''}')">💳 歸檔結帳</button>
+                        <button class="btn-danger" style="padding: 4px 8px; font-size: 0.8rem;" onclick="removeAppointment('${pet.id}')">移除</button>
                     </td>
                 `;
                 tbody.appendChild(tr);
             });
+        }
+
+        function removeAppointment(petId) {
+            if (!confirm('確定要將此病患從即時報到列表中移除嗎？')) return;
+            activeAppointmentsList = activeAppointmentsList.filter(p => p.id !== petId);
+            renderAppointmentTable(activeAppointmentsList);
         }
 
         function toggleLabFormFields() {
