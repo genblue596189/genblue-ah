@@ -132,7 +132,7 @@
         <header>
             <div class="header-left">
                 <h3>首頁管理介面</h3>
-                <input type="text" id="globalSearchInput" class="search-box" placeholder="全域搜尋 寵物 / 晶片 / 飼主 / 電話..." onkeydown="handleGlobalSearch(event)">
+                <input type="text" id="globalSearchInput" class="search-box" placeholder="全域搜尋 寵物 / 晶片 / 飼主 / 電話 / 客戶編號..." onkeydown="handleGlobalSearch(event)">
             </div>
             <div class="tenant-badge" id="currentTenantBadge">醫院代碼 (tenant_id): GIB-TP-001</div>
         </header>
@@ -266,13 +266,15 @@
                 <div class="card">
                     <h2>飼主與寵物關聯整合管理</h2>
                     <div class="form-grid">
+                        <div class="form-group"><label>客戶編號 (自行 Keyin)</label><input type="text" id="intOwnerCode" placeholder="例如：C001"></div>
                         <div class="form-group"><label>飼主姓名 (必填)</label><input type="text" id="intOwnerName" placeholder="王小明"></div>
                         <div class="form-group"><label>手機號碼 (必填)</label><input type="text" id="intOwnerMobile" placeholder="0912-345-678"></div>
                         <div class="form-group"><label>聯絡市話</label><input type="text" id="intOwnerPhone" placeholder="02-23456789"></div>
-                        <div class="form-group"><label>電子信箱</label><input type="email" id="intOwnerEmail" placeholder="client@example.com"></div>
                     </div>
                     <div class="form-grid">
+                        <div class="form-group"><label>電子信箱</label><input type="email" id="intOwnerEmail" placeholder="client@example.com"></div>
                         <div class="form-group" style="grid-column: span 2;"><label>聯絡地址</label><input type="text" id="intOwnerAddress" placeholder="台北市中正區..."></div>
+                        <div class="form-group"><label>備註欄</label><input type="text" id="intOwnerNotes" placeholder="例如：特殊注意事項或喜好"></div>
                     </div>
                     <div class="form-grid" style="margin-top: 10px;">
                         <div class="form-group"><label>寵物名字 (必填)</label><input type="text" id="intPetName" placeholder="例如：Muffin"></div>
@@ -306,19 +308,20 @@
                 <div class="card">
                     <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
                         <h3>飼主與名下寵物總覽</h3>
-                        <input type="text" id="ownerPetTableSearch" class="search-box" placeholder="🔍 搜尋表格中的飼主或寵物..." oninput="filterIntegratedTable()" style="width: 300px;">
+                        <input type="text" id="ownerPetTableSearch" class="search-box" placeholder="🔍 搜尋表格中的編號、飼主或寵物..." oninput="filterIntegratedTable()" style="width: 320px;">
                     </div>
                     <table>
                         <thead>
                             <tr>
-                                <th>飼主姓名 / 聯絡電話</th>
-                                <th>地址 / 信箱</th>
+                                <th>客戶編號 / 飼主姓名</th>
+                                <th>聯絡電話 / 地址</th>
+                                <th>備註說明</th>
                                 <th>名下寵物、年紀與體重</th>
                                 <th>操作</th>
                             </tr>
                         </thead>
                         <tbody id="integratedTableBody">
-                            <tr><td colspan="4" style="text-align: center; color: #64748b;">載入中...</td></tr>
+                            <tr><td colspan="5" style="text-align: center; color: #64748b;">載入中...</td></tr>
                         </tbody>
                     </table>
                 </div>
@@ -1464,7 +1467,7 @@
                 .order('created_at', { ascending: false });
 
             if (!invError && invData) {
-                const { data: ownersData } = await _supabase.from('owners').select('id, name, mobile').eq('tenant_id', CURRENT_TENANT_ID);
+                const { data: ownersData } = await _supabase.from('owners').select('id, name, mobile, owner_code').eq('tenant_id', CURRENT_TENANT_ID);
                 const { data: petsData } = await _supabase.from('pets').select('id, name').eq('tenant_id', CURRENT_TENANT_ID);
 
                 searchSalesCache = invData.map(inv => {
@@ -1473,7 +1476,7 @@
                     return {
                         ...inv,
                         category: '一般商品',
-                        owners: matchedOwner ? { name: matchedOwner.name, mobile: matchedOwner.mobile } : null,
+                        owners: matchedOwner ? { name: matchedOwner.name, mobile: matchedOwner.mobile, owner_code: matchedOwner.owner_code } : null,
                         pets: matchedPet ? { name: matchedPet.name } : null
                     };
                 });
@@ -1599,7 +1602,8 @@
                 return;
             }
             dataList.forEach(inv => {
-                const ownerName = inv.owners ? `${inv.owners.name} (${inv.owners.mobile || '無電話'})` : '<span style="color:#94a3b8;">散客 / 不指定飼主</span>';
+                const ownerCodeStr = inv.owners && inv.owners.owner_code ? `[${inv.owners.owner_code}] ` : '';
+                const ownerName = inv.owners ? `${ownerCodeStr}${inv.owners.name} (${inv.owners.mobile || '無電話'})` : '<span style="color:#94a3b8;">散客 / 不指定飼主</span>';
                 const petName = inv.pets ? ` 🐶 <b>${inv.pets.name}</b>` : '';
                 const category = inv.category || '一般商品';
                 const tr = document.createElement('tr');
@@ -1623,7 +1627,7 @@
             const filtered = searchSalesCache.filter(i => {
                 const matchCat = cat ? ((i.category || '一般商品') === cat) : true;
                 const typeMatch = (i.checkout_type || '').toLowerCase().includes(kw);
-                const ownerMatch = i.owners ? ((i.owners.name || '').toLowerCase().includes(kw) || (i.owners.mobile || '').includes(kw)) : false;
+                const ownerMatch = i.owners ? ((i.owners.name || '').toLowerCase().includes(kw) || (i.owners.mobile || '').includes(kw) || (i.owners.owner_code || '').toLowerCase().includes(kw)) : false;
                 const petMatch = i.pets ? (i.pets.name || '').toLowerCase().includes(kw) : false;
                 const matchKw = kw ? (typeMatch || ownerMatch || petMatch) : true;
                 return matchCat && matchKw;
@@ -1868,7 +1872,8 @@
             datalist.innerHTML = '';
             allPetsListForDropdown.forEach(pet => {
                 const opt = document.createElement('option');
-                opt.value = `${pet.name} (飼主: ${pet.owner_name} / 晶片: ${pet.microchip || '無'})`;
+                const codeStr = pet.owner_code ? `[編號:${pet.owner_code}] ` : '';
+                opt.value = `${pet.name} (${codeStr}飼主: ${pet.owner_name} / 晶片: ${pet.microchip || '無'})`;
                 opt.dataset.petId = pet.id;
                 datalist.appendChild(opt);
             });
@@ -1880,7 +1885,8 @@
             datalist.innerHTML = '';
             allPetsListForDropdown.forEach(pet => {
                 const opt = document.createElement('option');
-                opt.value = `${pet.name} (飼主: ${pet.owner_name} / 晶片: ${pet.microchip || '無'})`;
+                const codeStr = pet.owner_code ? `[編號:${pet.owner_code}] ` : '';
+                opt.value = `${pet.name} (${codeStr}飼主: ${pet.owner_name} / 晶片: ${pet.microchip || '無'})`;
                 opt.dataset.petId = pet.id;
                 datalist.appendChild(opt);
             });
@@ -1892,7 +1898,8 @@
             datalist.innerHTML = '';
             allPetsListForDropdown.forEach(pet => {
                 const opt = document.createElement('option');
-                opt.value = `${pet.name} (飼主: ${pet.owner_name} / 晶片: ${pet.microchip || '無'})`;
+                const codeStr = pet.owner_code ? `[編號:${pet.owner_code}] ` : '';
+                opt.value = `${pet.name} (${codeStr}飼主: ${pet.owner_name} / 晶片: ${pet.microchip || '無'})`;
                 opt.dataset.petId = pet.id;
                 datalist.appendChild(opt);
             });
@@ -2258,7 +2265,8 @@
                 checkoutDatalist.innerHTML = '';
                 allOwnersListForDropdown.forEach(owner => {
                     const opt = document.createElement('option');
-                    opt.value = `${owner.name} (${owner.mobile || '無手機'})`;
+                    const codeStr = owner.owner_code ? `[編號:${owner.owner_code}] ` : '';
+                    opt.value = `${codeStr}${owner.name} (${owner.mobile || '無手機'})`;
                     opt.dataset.ownerId = owner.id;
                     checkoutDatalist.appendChild(opt);
                 });
@@ -2271,7 +2279,8 @@
                 if(invoiceOwnerSelect) {
                     const opt = document.createElement('option');
                     opt.value = owner.id;
-                    opt.textContent = `${owner.name} (${owner.mobile || ''})`;
+                    const codeStr = owner.owner_code ? `[編號:${owner.owner_code}] ` : '';
+                    opt.textContent = `${codeStr}${owner.name} (${owner.mobile || ''})`;
                     invoiceOwnerSelect.appendChild(opt);
                 }
             });
@@ -2284,7 +2293,8 @@
                     microchip: pet.microchip || '',
                     weight: pet.weight || 0,
                     owner_id: pet.owner_id,
-                    owner_name: owner ? owner.name : '未知'
+                    owner_name: owner ? owner.name : '未知',
+                    owner_code: owner ? (owner.owner_code || '') : ''
                 };
             });
 
@@ -2297,10 +2307,11 @@
             petsData.forEach(pet => {
                 const owner = ownersData.find(o => o.id === pet.owner_id);
                 const ownerName = owner ? owner.name : '未知';
+                const codeStr = owner && owner.owner_code ? `[編號:${owner.owner_code}] ` : '';
                 if(appointmentSelect) {
                     const opt = document.createElement('option');
                     opt.value = JSON.stringify({id: pet.id, microchip: pet.microchip || '', name: pet.name, owner_id: pet.owner_id, weight: pet.weight || 0, owner_name: ownerName});
-                    opt.textContent = `${pet.name} ${pet.weight ? '(' + pet.weight + 'kg)' : ''} - 飼主: ${ownerName}`;
+                    opt.textContent = `${pet.name} ${pet.weight ? '(' + pet.weight + 'kg)' : ''} - 飼主: ${codeStr}${ownerName}`;
                     appointmentSelect.appendChild(opt);
                 }
             });
@@ -2340,7 +2351,7 @@
             tbody.innerHTML = '';
 
             if (dataList.length === 0) {
-                tbody.innerHTML = `<tr><td colspan="4" style="text-align: center; color: #64748b;">找不到符合的飼主或寵物資料</td></tr>`;
+                tbody.innerHTML = `<tr><td colspan="5" style="text-align: center; color: #64748b;">找不到符合的飼主或寵物資料</td></tr>`;
                 return;
             }
 
@@ -2370,13 +2381,16 @@
                 }
                 petsHtml += '</div>';
 
+                const ownerCodeBadge = owner.owner_code ? `<span style="background: #0284c7; color: white; padding: 2px 6px; border-radius: 4px; font-size: 0.8rem; font-weight: bold; margin-right: 6px;">${owner.owner_code}</span>` : '<span style="color: #94a3b8; font-size: 0.8rem;">(未填編號)</span>';
+
                 const tr = document.createElement('tr');
                 tr.innerHTML = `
-                    <td><b>${owner.name}</b><br><small style="color:#64748b;">手機: ${owner.mobile || ''} / 市話: ${owner.phone || '-'}</small></td>
-                    <td>${owner.address || '-'}<br><small style="color:#64748b;">${owner.email || ''}</small></td>
+                    <td>${ownerCodeBadge}<b>${owner.name}</b></td>
+                    <td>手機: ${owner.mobile || ''} / 市話: ${owner.phone || '-'}<br><small style="color:#64748b;">${owner.address || '-'}</small></td>
+                    <td><span style="color: #475569; font-size: 0.85rem;">${owner.notes || '-'}</span></td>
                     <td>${petsHtml}</td>
                     <td>
-                        <button class="btn-secondary" style="padding: 4px 8px; font-size: 0.8rem; margin-bottom: 4px;" onclick="editOwner('${owner.id}', '${owner.name}', '${owner.mobile || ''}', '${owner.phone || ''}', '${owner.address || ''}')">修改飼主</button>
+                        <button class="btn-secondary" style="padding: 4px 8px; font-size: 0.8rem; margin-bottom: 4px;" onclick="editOwner('${owner.id}', '${owner.owner_code || ''}', '${owner.name}', '${owner.mobile || ''}', '${owner.phone || ''}', '${owner.address || ''}', '${owner.notes || ''}')">修改飼主</button>
                         <br>
                         <button style="padding: 4px 8px; font-size: 0.8rem; background-color: #059669;" onclick="addPetToOwnerPrompt('${owner.id}', '${owner.name}')">+ 新增寵物</button>
                     </td>
@@ -2391,9 +2405,11 @@
 
             const filtered = globalOwnersPetsData.filter(item => {
                 const ownerName = (item.owner.name || '').toLowerCase();
+                const ownerCode = (item.owner.owner_code || '').toLowerCase();
                 const ownerMobile = (item.owner.mobile || '').toLowerCase();
                 const ownerPhone = (item.owner.phone || '').toLowerCase();
-                const matchOwner = ownerName.includes(keyword) || ownerMobile.includes(keyword) || ownerPhone.includes(keyword);
+                const ownerNotes = (item.owner.notes || '').toLowerCase();
+                const matchOwner = ownerName.includes(keyword) || ownerCode.includes(keyword) || ownerMobile.includes(keyword) || ownerPhone.includes(keyword) || ownerNotes.includes(keyword);
                 const matchPet = item.pets.some(p => (p.name || '').toLowerCase().includes(keyword) || (p.microchip || '').toLowerCase().includes(keyword));
                 return matchOwner || matchPet;
             });
@@ -2401,14 +2417,16 @@
         }
 
         async function saveIntegratedOwnerAndPet() {
-            const ownerName = document.getElementById('intOwnerName').value;
-            const ownerMobile = document.getElementById('intOwnerMobile').value;
-            const ownerPhone = document.getElementById('intOwnerPhone').value;
-            const ownerEmail = document.getElementById('intOwnerEmail').value;
-            const ownerAddress = document.getElementById('intOwnerAddress').value;
+            const ownerCode = document.getElementById('intOwnerCode').value.trim();
+            const ownerName = document.getElementById('intOwnerName').value.trim();
+            const ownerMobile = document.getElementById('intOwnerMobile').value.trim();
+            const ownerPhone = document.getElementById('intOwnerPhone').value.trim();
+            const ownerEmail = document.getElementById('intOwnerEmail').value.trim();
+            const ownerAddress = document.getElementById('intOwnerAddress').value.trim();
+            const ownerNotes = document.getElementById('intOwnerNotes').value.trim();
 
-            const petName = document.getElementById('intPetName').value;
-            const microchip = document.getElementById('intPetMicrochip').value;
+            const petName = document.getElementById('intPetName').value.trim();
+            const microchip = document.getElementById('intPetMicrochip').value.trim();
             const birthday = document.getElementById('intPetBirthday').value;
             const species = document.getElementById('intPetSpecies').value;
             const gender = document.getElementById('intPetGender').value;
@@ -2417,10 +2435,20 @@
             if(!ownerName || !ownerMobile || !petName) { alert('請至少填寫「飼主姓名」、「手機」與「寵物名字」！'); return; }
 
             const { data: ownerData, error: ownerError } = await _supabase.from('owners').insert([{
-                tenant_id: CURRENT_TENANT_ID, name: ownerName, mobile: ownerMobile, phone: ownerPhone, email: ownerEmail, address: ownerAddress
+                tenant_id: CURRENT_TENANT_ID, 
+                owner_code: ownerCode || null,
+                name: ownerName, 
+                mobile: ownerMobile, 
+                phone: ownerPhone, 
+                email: ownerEmail, 
+                address: ownerAddress,
+                notes: ownerNotes || null
             }]).select();
 
-            if (ownerError || !ownerData || ownerData.length === 0) { alert('新增飼主失敗！'); return; }
+            if (ownerError || !ownerData || ownerData.length === 0) { 
+                alert('新增飼主失敗：' + (ownerError ? ownerError.message : '未知錯誤')); 
+                return; 
+            }
             const newOwnerId = ownerData[0].id;
 
             const { error: petError } = await _supabase.from('pets').insert([{
@@ -2434,6 +2462,16 @@
             }
 
             alert('已成功建立飼主與關聯寵物！');
+            document.getElementById('intOwnerCode').value = '';
+            document.getElementById('intOwnerName').value = '';
+            document.getElementById('intOwnerMobile').value = '';
+            document.getElementById('intOwnerPhone').value = '';
+            document.getElementById('intOwnerEmail').value = '';
+            document.getElementById('intOwnerAddress').value = '';
+            document.getElementById('intOwnerNotes').value = '';
+            document.getElementById('intPetName').value = '';
+            document.getElementById('intPetMicrochip').value = '';
+            document.getElementById('intPetWeight').value = '';
             loadOwnersAndPetsIntegrated();
         }
 
@@ -2445,7 +2483,6 @@
             const petSpecies = prompt('請輸入種類 (犬/貓/兔/其他)：', '犬');
             const petChip = prompt('請輸入晶片號碼 (選填)：', '');
 
-            // 💡 已補上錯誤檢查與必要欄位，確保順利寫入 Supabase
             const { error } = await _supabase.from('pets').insert([{
                 tenant_id: CURRENT_TENANT_ID, 
                 owner_id: ownerId, 
@@ -2467,7 +2504,9 @@
             loadOwnersAndPetsIntegrated();
         }
 
-        async function editOwner(ownerId, currentName, currentMobile, currentPhone, currentAddress) {
+        async function editOwner(ownerId, currentCode, currentName, currentMobile, currentPhone, currentAddress, currentNotes) {
+            const newCode = prompt('修改客戶編號：', currentCode);
+            if (newCode === null) return;
             const newName = prompt('修改飼主姓名：', currentName);
             if (newName === null) return;
             const newMobile = prompt('修改手機號碼：', currentMobile);
@@ -2476,8 +2515,18 @@
             if (newPhone === null) return;
             const newAddress = prompt('修改聯絡地址：', currentAddress);
             if (newAddress === null) return;
+            const newNotes = prompt('修改備註欄：', currentNotes);
+            if (newNotes === null) return;
 
-            await _supabase.from('owners').update({ name: newName, mobile: newMobile, phone: newPhone, address: newAddress }).eq('id', ownerId);
+            await _supabase.from('owners').update({ 
+                owner_code: newCode || null, 
+                name: newName, 
+                mobile: newMobile, 
+                phone: newPhone, 
+                address: newAddress,
+                notes: newNotes || null
+            }).eq('id', ownerId);
+
             alert('飼主資料已更新！');
             loadOwnersAndPetsIntegrated();
         }
@@ -2565,7 +2614,7 @@
 
             let data = [];
             if (!invError && invData) {
-                const { data: ownersData } = await _supabase.from('owners').select('id, name, mobile').eq('tenant_id', CURRENT_TENANT_ID);
+                const { data: ownersData } = await _supabase.from('owners').select('id, name, mobile, owner_code').eq('tenant_id', CURRENT_TENANT_ID);
                 const { data: petsData } = await _supabase.from('pets').select('id, name').eq('tenant_id', CURRENT_TENANT_ID);
 
                 data = invData.map(inv => {
@@ -2573,7 +2622,7 @@
                     const matchedPet = petsData ? petsData.find(p => p.id === inv.pet_id) : null;
                     return {
                         ...inv,
-                        owners: matchedOwner ? { name: matchedOwner.name, mobile: matchedOwner.mobile } : null,
+                        owners: matchedOwner ? { name: matchedOwner.name, mobile: matchedOwner.mobile, owner_code: matchedOwner.owner_code } : null,
                         pets: matchedPet ? { name: matchedPet.name } : null
                     };
                 });
@@ -2620,7 +2669,8 @@
                     clinicTotal += total;
                 }
 
-                const ownerStr = inv.owners ? `${inv.owners.name} (${inv.owners.mobile || '無'})` : '<span style="color:#94a3b8;">散客 / 無指定飼主</span>';
+                const ownerCodeStr = inv.owners && inv.owners.owner_code ? `[${inv.owners.owner_code}] ` : '';
+                const ownerStr = inv.owners ? `${ownerCodeStr}${inv.owners.name} (${inv.owners.mobile || '無'})` : '<span style="color:#94a3b8;">散客 / 無指定飼主</span>';
                 const petStr = inv.pets ? ` 🐶 <b>${inv.pets.name}</b>` : '';
                 const typeBadgeColor = inv.checkout_type === '商品零售' ? '#059669' : '#0284c7';
 
@@ -2664,13 +2714,13 @@
                 const query = document.getElementById('globalSearchInput').value.trim();
                 if (!query) return;
 
-                let { data: petsData } = await _supabase.from('pets').select('*, owners(id, name, phone, mobile)').eq('tenant_id', CURRENT_TENANT_ID).or(`name.ilike.%${query}%,microchip.ilike.%${query}%`);
+                let { data: petsData } = await _supabase.from('pets').select('*, owners(id, name, phone, mobile, owner_code)').eq('tenant_id', CURRENT_TENANT_ID).or(`name.ilike.%${query}%,microchip.ilike.%${query}%`);
                 let matchedPets = petsData || [];
                 if (matchedPets.length === 0) {
-                    const { data: ownersData } = await _supabase.from('owners').select('id').eq('tenant_id', CURRENT_TENANT_ID).or(`name.ilike.%${query}%,phone.ilike.%${query}%,mobile.ilike.%${query}%`);
+                    const { data: ownersData } = await _supabase.from('owners').select('id').eq('tenant_id', CURRENT_TENANT_ID).or(`name.ilike.%${query}%,phone.ilike.%${query}%,mobile.ilike.%${query}%,owner_code.ilike.%${query}%`);
                     if (ownersData && ownersData.length > 0) {
                         const ownerIds = ownersData.map(o => o.id);
-                        const { data: petsByOwner } = await _supabase.from('pets').select('*, owners(id, name, phone, mobile)').in('owner_id', ownerIds);
+                        const { data: petsByOwner } = await _supabase.from('pets').select('*, owners(id, name, phone, mobile, owner_code)').in('owner_id', ownerIds);
                         if (petsByOwner) matchedPets = petsByOwner;
                     }
                 }
@@ -2791,12 +2841,9 @@
             
             switchTab('medical');
             await loadAllMedicalRecords(petId);
-
-            // 💡 疫苗到期智慧提醒功能
             await checkPetVaccineAlertOnConsultation(petId, petNameStr);
         }
 
-        // 💡 檢查疫苗到期提醒的非同步函式
         async function checkPetVaccineAlertOnConsultation(petId, petName) {
             const { data, error } = await _supabase
                 .from('vaccination_records')
@@ -2879,7 +2926,8 @@
             if (vacSearchInput && hiddenVacPetId) {
                 const matchedPetOption = allPetsListForDropdown.find(p => p.id === currentPetId);
                 if (matchedPetOption) {
-                    vacSearchInput.value = `${matchedPetOption.name} (飼主: ${matchedPetOption.owner_name} / 晶片: ${matchedPetOption.microchip || '無'})`;
+                    const codeStr = matchedPetOption.owner_code ? `[編號:${matchedPetOption.owner_code}] ` : '';
+                    vacSearchInput.value = `${matchedPetOption.name} (${codeStr}飼主: ${matchedPetOption.owner_name} / 晶片: ${matchedPetOption.microchip || '無'})`;
                     hiddenVacPetId.value = currentPetId;
                 }
             }
@@ -2900,7 +2948,8 @@
             if (labSearchInput && hiddenLabPetId) {
                 const matchedPetOption = allPetsListForDropdown.find(p => p.id === currentPetId);
                 if (matchedPetOption) {
-                    labSearchInput.value = `${matchedPetOption.name} (飼主: ${matchedPetOption.owner_name} / 晶片: ${matchedPetOption.microchip || '無'})`;
+                    const codeStr = matchedPetOption.owner_code ? `[編號:${matchedPetOption.owner_code}] ` : '';
+                    labSearchInput.value = `${matchedPetOption.name} (${codeStr}飼主: ${matchedPetOption.owner_name} / 晶片: ${matchedPetOption.microchip || '無'})`;
                     hiddenLabPetId.value = currentPetId;
                 }
             }
@@ -2921,7 +2970,8 @@
             if (rapidSearchInput && hiddenRapidPetId) {
                 const matchedPetOption = allPetsListForDropdown.find(p => p.id === currentPetId);
                 if (matchedPetOption) {
-                    rapidSearchInput.value = `${matchedPetOption.name} (飼主: ${matchedPetOption.owner_name} / 晶片: ${matchedPetOption.microchip || '無'})`;
+                    const codeStr = matchedPetOption.owner_code ? `[編號:${matchedPetOption.owner_code}] ` : '';
+                    rapidSearchInput.value = `${matchedPetOption.name} (${codeStr}飼主: ${matchedPetOption.owner_name} / 晶片: ${matchedPetOption.microchip || '無'})`;
                     hiddenRapidPetId.value = currentPetId;
                 }
             }
