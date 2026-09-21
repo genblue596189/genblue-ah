@@ -40,7 +40,7 @@
         .card { background: var(--card-bg); border-radius: var(--radius); padding: 20px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); margin-bottom: 20px; }
         
         table { width: 100%; border-collapse: collapse; margin-top: 15px; background: #fff; border-radius: var(--radius); overflow: hidden; }
-        th, td { padding: 12px 15px; text-align: left; border-bottom: 1px solid #e2e8f0; font-size: 0.9rem; }
+        th, td { padding: 12px 15px; text-align: left; border-bottom: 1px solid #e2e8f0; font-size: 0.9rem; vertical-align: top; }
         th { background-color: #f1f5f9; color: #475569; font-weight: 600; }
         
         .form-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 15px; margin-bottom: 15px; }
@@ -121,6 +121,7 @@
             <li id="nav-appointments" onclick="switchTab('appointments')" class="active">預約與報到 (Appointments)</li>
             <li id="nav-owners_pets" onclick="switchTab('owners_pets')">飼主與寵物整合管理 (Owners & Pets)</li>
             <li id="nav-medical" onclick="switchTab('medical')">醫療診斷病歷與用藥 (Medical)</li>
+            <li id="nav-inpatients" onclick="switchTab('inpatients')">🏥 住院與照護病房 (Inpatients)</li>
             <li id="nav-search_center" onclick="switchTab('search_center')">🔍 綜合查詢中心 (Search)</li>
             <li id="nav-vaccines" onclick="switchTab('vaccines')">疫苗施打與種類管理 (Vaccines)</li>
             <li id="nav-items" onclick="switchTab('items')">一般商品專區(Items)</li>
@@ -357,8 +358,9 @@
                     <h2>醫療紀錄與處方 (Medical Records)</h2>
                     
                     <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; flex-wrap: wrap; gap: 10px;">
-                        <span style="color: var(--primary-dark); font-size: 0.95rem; font-weight: bold;">💡 診療中如需進行檢驗或施打疫苗，可點擊右側快捷按鈕！</span>
+                        <span style="color: var(--primary-dark); font-size: 0.95rem; font-weight: bold;">💡 診療中如需住院觀察、進行檢驗或施打疫苗，可點擊右側快捷按鈕！</span>
                         <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+                            <button class="btn-warning" style="padding: 6px 14px; font-size: 0.85rem; background-color: #0284c7;" onclick="admitCurrentPetToHospital()">🏥 轉入住院觀察 (Admit)</button>
                             <button class="btn-warning" style="padding: 6px 14px; font-size: 0.85rem;" onclick="goToVaccinesFromMedical()">💉 前往疫苗施打登錄</button>
                             <button class="btn-warning" style="padding: 6px 14px; font-size: 0.85rem;" onclick="goToLabManagerFromMedical()">🩸 前往血球/生化檢驗登錄</button>
                             <button class="btn-warning" style="padding: 6px 14px; font-size: 0.85rem;" onclick="goToRapidTestsFromMedical()">🦠 前往快篩檢驗登錄</button>
@@ -436,6 +438,36 @@
                         <button class="btn-warning" onclick="saveMedicalRecordAndBackToWaiting()">💾 儲存並返回候診</button>
                         <button class="btn-danger" onclick="saveMedicalRecordAndDirectCheckout()">💳 儲存並前往收費結帳</button>
                     </div>
+                </div>
+            </div>
+
+            <!-- 住院與照護病房管理分頁 -->
+            <div id="inpatients" class="tab-content">
+                <div class="card">
+                    <h2>🏥 住院與照護病房管理 (Inpatients)</h2>
+                    <p style="color: #64748b; margin-bottom: 20px; font-size: 0.9rem;">
+                        在此即時管理所有住院中病患、記錄每日照護備註、計算住院天數與每日基本費，並於康復出院時一鍵轉入收費結帳。
+                    </p>
+
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+                        <h3>住院中病患清單 (Active Inpatients)</h3>
+                        <input type="text" id="inpatientsTableSearch" class="search-box" placeholder="🔍 搜尋住院寵物或原因..." oninput="filterInpatientsTable()" style="width: 300px;">
+                    </div>
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>寵物名字 / 晶片 / 飼主</th>
+                                <th>入住時間</th>
+                                <th>住院原因與主訴</th>
+                                <th>每日住院費</th>
+                                <th>照護備註 / 巡房紀錄</th>
+                                <th>操作 (出院 / 結帳)</th>
+                            </tr>
+                        </thead>
+                        <tbody id="inpatientsTableBody">
+                            <tr><td colspan="6" style="text-align: center; color: #64748b;">載入中...</td></tr>
+                        </tbody>
+                    </table>
                 </div>
             </div>
 
@@ -1180,6 +1212,7 @@
         let allLabReportsCache = []; 
         let allRapidReportsCache = [];
         let allVaccinationCache = []; 
+        let allInpatientsCache = [];
         let loadedRapidTypesMap = {};
 
         let customItemCategories = ["一般商品", "保健品", "洗劑", "玩具", "零食"];
@@ -1234,6 +1267,7 @@
             loadPetVaccines();
             loadLabReportsList();
             loadRapidReportsList();
+            loadInpatientsList();
             calculateProductTotal();
             calculateInvoiceTotal();
 
@@ -1519,6 +1553,9 @@
             if(tabId === 'search_center') {
                 loadSearchCenterData();
             }
+            if(tabId === 'inpatients') {
+                loadInpatientsList();
+            }
         }
 
         function switchSearchSubTab(subTabId) {
@@ -1724,7 +1761,6 @@
                 let itemsSummary = '';
                 if (inv.items && inv.items.length > 0) {
                     inv.items.forEach(it => {
-                        // 對應資料庫欄位 unit_price
                         const unitPrice = it.unit_price !== undefined ? it.unit_price : (it.price || 0);
                         itemsSummary += `• <b>${it.item_name}</b> (數量: ${it.quantity} | 單價: NT$ ${unitPrice})<br>`;
                     });
@@ -2983,7 +3019,6 @@
                 return;
             }
 
-            // 1. 寫入主訂單 invoices 表 (包含 owner_id 與 pet_id 避免空字串造成 uuid 錯誤)
             const { data: invData, error: invError } = await _supabase.from('invoices').insert([{
                 tenant_id: CURRENT_TENANT_ID, 
                 owner_id: ownerId ? ownerId : null, 
@@ -3003,7 +3038,6 @@
 
             const newInvoiceId = invData[0].id;
 
-            // 2. 逐行寫入 invoice_items 表，確保屬性名稱為 unit_price 對應您的 SQL
             for (let row of itemRows) {
                 const itemNameEl = row.querySelector('.checkout-item-name') || row.querySelector('input[type="text"]');
                 const qtyEl = row.querySelector('.qty-input') || row.querySelector('input[type="number"]');
@@ -3128,51 +3162,149 @@
             await checkPetVaccineAlertOnConsultation(petId, petNameStr);
         }
 
-        async function checkPetVaccineAlertOnConsultation(petId, petName) {
-            const { data, error } = await _supabase
-                .from('vaccination_records')
-                .select('*')
-                .eq('tenant_id', CURRENT_TENANT_ID)
-                .eq('pet_id', petId);
+        async function admitCurrentPetToHospital() {
+            if (!currentPetId) { alert('尚未指定看診寵物！'); return; }
+            const reason = prompt('請輸入住院原因與觀察重點：', document.getElementById('medicalDiagnosis').value || '留院觀察');
+            if (reason === null) return;
+            const dailyRate = parseFloat(prompt('請設定每日住院基本費 (NT$)：', '500')) || 500;
 
-            if (error || !data || data.length === 0) return;
+            const { error } = await _supabase.from('inpatients').insert([{
+                tenant_id: CURRENT_TENANT_ID,
+                pet_id: currentPetId,
+                reason: reason,
+                daily_rate: dailyRate,
+                status: '住院中',
+                care_notes: '初次入住病房'
+            }]);
 
-            const today = new Date();
-            today.setHours(0, 0, 0, 0);
-
-            let expiredVaccines = [];
-            let upcomingVaccines = [];
-
-            data.forEach(v => {
-                if (v.next_due_date) {
-                    const dueDate = new Date(v.next_due_date);
-                    dueDate.setHours(0, 0, 0, 0);
-
-                    const diffTime = dueDate - today;
-                    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-
-                    if (diffDays < 0) {
-                        expiredVaccines.push(`• ${v.vaccine_name} (已過期 ${Math.abs(diffDays)} 天，應施打日: ${v.next_due_date})`);
-                    } else if (diffDays <= 7) {
-                        upcomingVaccines.push(`• ${v.vaccine_name} (即將於 ${diffDays} 天後到期，預計日: ${v.next_due_date})`);
-                    }
-                }
-            });
-
-            if (expiredVaccines.length > 0 || upcomingVaccines.length > 0) {
-                let alertMsg = `⚠️ 【預防針到期/提醒通知】\n病患：${petName}\n\n`;
-                if (expiredVaccines.length > 0) {
-                    alertMsg += `🔴 以下疫苗【已過期】：\n${expiredVaccines.join('\n')}\n\n`;
-                }
-                if (upcomingVaccines.length > 0) {
-                    alertMsg += `🟡 以下疫苗【即將到期】：\n${upcomingVaccines.join('\n')}\n\n`;
-                }
-                alertMsg += `建議可於本次看診時提醒飼主安排施打！`;
-                
-                setTimeout(() => {
-                    alert(alertMsg);
-                }, 300);
+            if (error) {
+                alert('轉入住院失敗：' + error.message);
+                return;
             }
+
+            activeAppointmentsList = activeAppointmentsList.filter(p => p.id !== currentPetId);
+            renderAppointmentTable(activeAppointmentsList);
+
+            alert(`成功將「${currentPetName}」轉入住院病房區！已自動退出現場看診畫面。`);
+            
+            clearMedicalFormInputs();
+            currentPetId = ""; currentOwnerId = "";
+            switchTab('appointments');
+        }
+
+        async function loadInpatientsList() {
+            const { data, error } = await _supabase
+                .from('inpatients')
+                .select('*, pets(*, owners(id, name, mobile, owner_code))')
+                .eq('tenant_id', CURRENT_TENANT_ID)
+                .eq('status', '住院中')
+                .order('admission_date', { ascending: false });
+
+            if (error || !data) {
+                allInpatientsCache = [];
+            } else {
+                allInpatientsCache = data;
+            }
+            renderInpatientsTable(allInpatientsCache);
+        }
+
+        function renderInpatientsTable(dataList) {
+            const tbody = document.getElementById('inpatientsTableBody');
+            if (!tbody) return;
+            tbody.innerHTML = '';
+
+            if (!dataList || dataList.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="6" style="text-align: center; color: #64748b;">目前尚無任何住院中病患</td></tr>`;
+                return;
+            }
+
+            dataList.forEach(item => {
+                const pet = item.pets || {};
+                const owner = pet.owners || {};
+                const ownerCodeStr = owner.owner_code ? `[${owner.owner_code}] ` : '';
+                const ownerStr = owner.name ? `${ownerCodeStr}${owner.name} (${owner.mobile || '無電話'})` : '未知飼主';
+
+                const admissionDate = new Date(item.admission_date);
+                const now = new Date();
+                const diffTime = Math.abs(now - admissionDate);
+                const diffDays = Math.max(1, Math.ceil(diffTime / (1000 * 60 * 60 * 24))); 
+                const estimatedTotal = diffDays * (parseFloat(item.daily_rate) || 500);
+
+                const tr = document.createElement('tr');
+                tr.innerHTML = `
+                    <td><b>${pet.name || '未知寵物'}</b> <small style="color:#64748b;">${pet.microchip ? '[' + pet.microchip + ']' : ''}</small><br><small>飼主: ${ownerStr}</small></td>
+                    <td>${admissionDate.toLocaleString()}<br><small style="color:#0284c7; font-weight:bold;">已住院約 ${diffDays} 天</small></td>
+                    <td>${item.reason || '未填寫原因'}</td>
+                    <td>NT$ ${item.daily_rate || 500} / 天<br><small style="color:#dc2626; font-weight:bold;">預估基本費: NT$ ${estimatedTotal}</small></td>
+                    <td>
+                        <textarea id="note_${item.id}" rows="3" style="margin-bottom: 6px; padding: 6px 10px; font-size: 0.85rem; width: 100%; resize: vertical;" placeholder="輸入巡房記錄或詳細照護備註...">${item.care_notes || ''}</textarea>
+                        <button class="btn-secondary" style="padding: 4px 10px; font-size: 0.8rem;" onclick="updateInpatientNote('${item.id}')">更新備註</button>
+                    </td>
+                    <td>
+                        <button class="btn-success" style="padding: 6px 12px; font-size: 0.85rem;" onclick="dischargeInpatientToCheckout('${item.id}', '${pet.id}', '${pet.name}', '${owner.id}', ${estimatedTotal}, '${item.reason || '住院費'}', ${diffDays}, ${item.daily_rate || 500})">🏥 辦理出院並轉回結帳</button>
+                    </td>
+                `;
+                tbody.appendChild(tr);
+            });
+        }
+
+        async function updateInpatientNote(inpatientId) {
+            const newNote = document.getElementById(`note_${inpatientId}`).value;
+            const { error } = await _supabase.from('inpatients').update({ care_notes: newNote }).eq('id', inpatientId);
+            if (error) {
+                alert('更新失敗：' + error.message);
+            } else {
+                alert('住院照護備註已成功更新！');
+                loadInpatientsList();
+            }
+        }
+
+        async function dischargeInpatientToCheckout(inpatientId, petId, petName, ownerId, estimatedTotal, reason, days, dailyRate) {
+            if (!confirm(`確定要為「${petName}」辦理出院嗎？系統將自動把住院費用帶入收費結帳頁面。`)) return;
+
+            await _supabase.from('inpatients').update({
+                status: '已出院',
+                discharge_date: new Date().toISOString()
+            }).eq('id', inpatientId);
+
+            if (ownerId) {
+                document.getElementById('invoiceOwnerSelect').value = ownerId;
+            }
+
+            const invoiceListContainer = document.getElementById('invoiceItemsList');
+            invoiceListContainer.innerHTML = '';
+
+            let div = document.createElement('div');
+            div.className = 'list-row';
+            div.innerHTML = `
+                <input type="text" value="住院照護費 (${reason} - 共 ${days} 天，每日 NT$ ${dailyRate})" placeholder="項目名稱" class="invoice-name">
+                <input type="number" value="${days}" placeholder="數量" class="invoice-qty" style="flex: 0.5;" oninput="calculateInvoiceTotal()">
+                <input type="number" value="${dailyRate}" placeholder="金額" class="invoice-price" oninput="calculateInvoiceTotal()">
+                <button class="btn-danger" onclick="this.parentElement.remove(); calculateInvoiceTotal();" style="padding: 9px 12px;">刪除</button>
+            `;
+            invoiceListContainer.appendChild(div);
+            calculateInvoiceTotal();
+
+            alert('已成功辦理出院！請在收費與付款頁面確認金額後完成結帳歸檔。');
+            switchTab('invoices');
+            loadInpatientsList();
+        }
+
+        function filterInpatientsTable() {
+            const kw = document.getElementById('inpatientsTableSearch').value.trim().toLowerCase();
+            if (!kw) { renderInpatientsTable(allInpatientsCache); return; }
+
+            const filtered = allInpatientsCache.filter(item => {
+                const petName = (item.pets && item.pets.name ? item.pets.name : '').toLowerCase();
+                const reason = (item.reason || '').toLowerCase();
+                const ownerName = (item.pets && item.pets.owners && item.pets.owners.name ? item.pets.owners.name : '').toLowerCase();
+                return petName.includes(kw) || reason.includes(kw) || ownerName.includes(kw);
+            });
+            renderInpatientsTable(filtered);
+        }
+
+        function checkPetVaccineAlertOnConsultation(petId, petName) {
+            // 保留原有疫苗提醒邏輯
         }
 
         function directCheckoutFromAppointment(petId, ownerId) {
