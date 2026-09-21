@@ -388,7 +388,7 @@
                     </div>
 
                     <div class="search-add-box">
-                        <h3>處方用藥開立與劑量彈性調整</h3>
+                        <h3>處方用藥與針劑開立（支援口服/針劑智慧切換）</h3>
                         <div class="form-grid" style="margin-bottom: 10px;">
                             <div class="form-group span-2">
                                 <label>選擇或搜尋專區藥品</label>
@@ -396,41 +396,62 @@
                                     <option value="">-- 請選擇藥品 --</option>
                                 </select>
                             </div>
-                            <div class="form-group span-2">
-                                <label>藥品劑量 / 每顆含量</label>
-                                <input type="text" id="medUseDoseDisplay" readonly placeholder="每顆含量" style="background: #fff;">
+                            <div class="form-group">
+                                <label>給藥途徑</label>
+                                <input type="text" id="medRouteDisplay" readonly placeholder="口服/針劑" style="background: #f1f5f9; font-weight: bold;">
+                            </div>
+                            <div class="form-group">
+                                <label>每單位規格含量</label>
+                                <input type="text" id="medUseDoseDisplay" readonly placeholder="規格" style="background: #fff;">
                             </div>
                         </div>
-                        <div class="form-grid" style="margin-bottom: 0;">
+
+                        <!-- 動態切換：口服專用計算區塊 -->
+                        <div id="oralDoseContainer" class="form-grid" style="margin-bottom: 0;">
                             <div class="form-group">
-                                <label>建議劑量 (mg/kg) - 可隨時手動微調</label>
-                                <input type="text" id="medCustomRecDose" placeholder="10" oninput="recalculateDoseWithCustomInput()">
+                                <label>建議劑量 (mg/kg)</label>
+                                <input type="text" id="medCustomRecDose" placeholder="10" oninput="runDoseMathCalculation()">
                             </div>
                             <div class="form-group">
                                 <label>每天幾次</label>
-                                <select id="medFrequency" onchange="onMedicineSelectedForDoseCalculation()">
+                                <select id="medFrequency" onchange="runDoseMathCalculation()">
                                     <option value="1">一天一次 (1次)</option>
                                     <option value="2" selected>一天兩次 (2次)</option>
                                     <option value="3">一天三次 (3次)</option>
-                                    <option value="4">一天四次 (4次)</option>
                                 </select>
                             </div>
                             <div class="form-group">
                                 <label>天數 (Days)</label>
-                                <input type="number" id="medDays" value="3" min="1" placeholder="3" oninput="onMedicineSelectedForDoseCalculation()">
+                                <input type="number" id="medDays" value="3" min="1" oninput="runDoseMathCalculation()">
                             </div>
                             <div class="form-group">
-                                <label>自動計算：建議總數量 (顆)</label>
-                                <input type="text" id="calculatedDoseResult" readonly style="background: #dbeafe; color: var(--primary-dark); font-weight: bold;" placeholder="自動換算結果">
+                                <label>自動換算：總數量 (顆)</label>
+                                <input type="text" id="calculatedDoseResult" readonly style="background: #dbeafe; color: var(--primary-dark); font-weight: bold;" placeholder="自動換算">
                             </div>
-                            <div class="form-group"><label>實際開立數量 (顆)</label><input type="number" id="medPrescribeQty" value="1" placeholder="數量"></div>
-                            <div class="form-group span-2"><label>處方箋顯示之「使用劑量說明」</label><input type="text" id="medPrescribeCustomDoseNote" value="10 mg/kg" placeholder="例如：10 mg/kg 或 1錠"></div>
-                            <div class="form-group span-2"><label>使用頻率 / 備註說明</label><input type="text" id="medPrescribeNote" value="一天兩次，連續5天，飯後服用" placeholder="例如：一天兩次，飯後服用"></div>
-                            <div class="form-group span-4" style="justify-content: flex-end;"><button onclick="addPrescriptionItem()">+ 加入本次處方箋</button></div>
+                            <div class="form-group"><label>實際開立數量</label><input type="number" id="medPrescribeQty" value="1"></div>
+                            <div class="form-group span-3"><label>用法與頻率說明</label><input type="text" id="medPrescribeNote" value="一天兩次，連續3天，飯後服用"></div>
+                            <div class="form-group span-4" style="justify-content: flex-end;"><button onclick="addPrescriptionItem()">+ 加入本次口服處方</button></div>
+                        </div>
+
+                        <!-- 動態切換：針劑專用計算區塊 -->
+                        <div id="injectableDoseContainer" class="form-grid" style="margin-bottom: 0; display: none;">
+                            <div class="form-group">
+                                <label>每公斤劑量 (ml/kg 或 mg/kg)</label>
+                                <input type="text" id="injCustomRate" placeholder="0.1" oninput="runInjectableMathCalculation()">
+                            </div>
+                            <div class="form-group">
+                                <label>自動換算：總施打量 (ml / 針)</label>
+                                <input type="text" id="injCalculatedTotal" readonly style="background: #fef3c7; color: #b45309; font-weight: bold;" placeholder="自動換算">
+                            </div>
+                            <div class="form-group">
+                                <label>實際開立/施打數量</label><input type="number" id="injPrescribeQty" value="1" step="0.1">
+                            </div>
+                            <div class="form-group span-4"><label>注射途徑與說明</label><input type="text" id="injPrescribeNote" value="皮下注射 subcutaneous (SC)"></div>
+                            <div class="form-group span-4" style="justify-content: flex-end;"><button class="btn-warning" onclick="addInjectableItem()">+ 加入本次注射針劑</button></div>
                         </div>
                     </div>
 
-                    <h3>本次處方清單 (含自訂使用劑量)</h3>
+                    <h3>本次處方清單 (含口服與針劑明細)</h3>
                     <div id="prescriptionItemsContainer" style="margin-top: 10px; margin-bottom: 20px;"></div>
                     
                     <div style="display: flex; gap: 15px; flex-wrap: wrap;">
@@ -580,10 +601,10 @@
                 </div>
             </div>
 
-            <!-- 5. 藥品專區與分類 -->
+            <!-- 5. 藥品專區與分類 (已整合口服與針劑) -->
             <div id="medicines" class="tab-content">
                 <div class="card">
-                    <h2>藥品專區與分類建檔</h2>
+                    <h2>藥品專區與分類建檔 (支援口服 / 針劑)</h2>
 
                     <div style="background: #f1f5f9; padding: 12px 15px; border-radius: var(--radius); margin-bottom: 15px; display: flex; gap: 10px; align-items: center;">
                         <input type="text" id="newMedCustomCategory" placeholder="輸入新的藥品分類名稱 (例如: 眼科用藥)" style="flex: 1;">
@@ -591,11 +612,15 @@
                     </div>
 
                     <div class="form-grid">
-                        <div class="form-group span-2"><label>藥名</label><input type="text" id="medName" placeholder="例如：Amoxicillin / 內衛消炎藥"></div>
-                        <div class="form-group span-2"><label>預設建議劑量 (例如：10 mg/kg)</label><input type="text" id="medRecDose" placeholder="10 mg/kg"></div>
-                        <div class="form-group"><label>售價 (NT$)</label><input type="number" id="medPrice" placeholder="50"></div>
-                        <div class="form-group"><label>藥品劑量 / 每顆含量 (例如：250mg/顆)</label><input type="text" id="medUseDose" placeholder="250mg / 顆"></div>
-                        <div class="form-group span-2">
+                        <div class="form-group span-2"><label>藥名</label><input type="text" id="medName" placeholder="例如：Amoxicillin / Atropine"></div>
+                        <div class="form-group">
+                            <label>給藥途徑 (Route)</label>
+                            <select id="medRoute">
+                                <option value="口服" selected>口服 (Oral)</option>
+                                <option value="針劑">針劑 (Injectable)</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
                             <label>藥品分類</label>
                             <select id="medCalcFormula">
                                 <option value="一般藥品">一般藥品</option>
@@ -604,31 +629,34 @@
                                 <option value="消化道用藥">消化道用藥</option>
                                 <option value="關節用藥">關節用藥</option>
                                 <option value="利尿劑">利尿劑</option>
-                                <option value="呼吸道">呼吸道</option>
-                                <option value="泌尿道">泌尿道</option>
-                                <option value="皮膚用藥">皮膚用藥</option>
+                                <option value="急救針劑">急救針劑</option>
+                                <option value="類固醇/消炎針">類固醇/消炎針</option>
                             </select>
                         </div>
+                        <div class="form-group span-2"><label>預設建議劑量 (例如：10 mg/kg 或 0.1 ml/kg)</label><input type="text" id="medRecDose" placeholder="10 mg/kg"></div>
+                        <div class="form-group span-2"><label>每單位規格含量 (例如：250mg/顆 或 2mg/ml)</label><input type="text" id="medUseDose" placeholder="250mg / 顆"></div>
+                        <div class="form-group"><label>售價 (NT$)</label><input type="number" id="medPrice" placeholder="50"></div>
                         <div class="form-group"><label>庫存量</label><input type="number" id="medStock" placeholder="500"></div>
                     </div>
                     <button onclick="saveNewMedicine()">確認新增藥品至專區</button>
                 </div>
                 <div class="card">
-                    <h3>藥品清單與分類總覽</h3>
+                    <h3>藥品與針劑清單總覽</h3>
                     <table>
                         <thead>
                             <tr>
+                                <th>給藥途徑</th>
                                 <th>藥名</th>
                                 <th>建議劑量</th>
                                 <th>售價</th>
-                                <th>藥品劑量 (每顆含量)</th>
+                                <th>規格含量</th>
                                 <th>藥品分類</th>
                                 <th>庫存量</th>
                                 <th>操作</th>
                             </tr>
                         </thead>
                         <tbody id="medicineTableBody">
-                            <tr><td colspan="7" style="text-align: center; color: #64748b;">尚無藥品資料</td></tr>
+                            <tr><td colspan="8" style="text-align: center; color: #64748b;">尚無藥品資料</td></tr>
                         </tbody>
                     </table>
                 </div>
@@ -1123,9 +1151,16 @@
             <h3>編輯藥品完整資料</h3>
             <input type="hidden" id="editMedId">
             <div class="form-group" style="margin-bottom: 10px;"><label>藥名</label><input type="text" id="editMedName"></div>
+            <div class="form-group" style="margin-bottom: 10px;">
+                <label>給藥途徑</label>
+                <select id="editMedRoute">
+                    <option value="口服">口服 (Oral)</option>
+                    <option value="針劑">針劑 (Injectable)</option>
+                </select>
+            </div>
             <div class="form-group" style="margin-bottom: 10px;"><label>預設建議劑量 (例如：10 mg/kg)</label><input type="text" id="editMedRecDose"></div>
             <div class="form-group" style="margin-bottom: 10px;"><label>售價 (NT$)</label><input type="number" id="editMedPrice"></div>
-            <div class="form-group" style="margin-bottom: 10px;"><label>藥品劑量 / 每顆含量 (例如：250mg/顆)</label><input type="text" id="editMedUseDose"></div>
+            <div class="form-group" style="margin-bottom: 10px;"><label>每單位規格含量 (例如：250mg/顆)</label><input type="text" id="editMedUseDose"></div>
             <div class="form-group" style="margin-bottom: 10px;">
                 <label>藥品分類</label>
                 <select id="editMedCalcFormula"></select>
@@ -1216,7 +1251,7 @@
         let loadedRapidTypesMap = {};
 
         let customItemCategories = ["一般商品", "保健品", "洗劑", "玩具", "零食"];
-        let customMedicineCategories = ["一般藥品", "抗生素", "心臟用藥", "消化道用藥", "關節用藥", "利尿劑", "呼吸道", "泌尿道", "皮膚用藥"];
+        let customMedicineCategories = ["一般藥品", "抗生素", "心臟用藥", "消化道用藥", "關節用藥", "利尿劑", "急救針劑", "類固醇/消炎針"];
         
         let speciesBreedsMap = {
             "犬": ["混種犬", "瑪爾濟斯", "貴賓狗", "吉娃娃", "柴犬", "黃金獵犬", "法國鬥牛犬", "博美犬", "拉布拉多"],
@@ -1652,7 +1687,7 @@
                 const chip = rec.pets && rec.pets.microchip ? `[${rec.pets.microchip}]` : '';
                 let rxSummary = '';
                 if(rec.prescription_details && rec.prescription_details.length > 0) {
-                    rec.prescription_details.forEach(p => { rxSummary += `${p.medicine_name} (${p.quantity}顆) | `; });
+                    rec.prescription_details.forEach(p => { rxSummary += `${p.medicine_name} (${p.quantity}) | `; });
                 } else { rxSummary = '無處方用藥'; }
 
                 const tr = document.createElement('tr');
@@ -1725,7 +1760,7 @@
                     <td><b>${item.pet_name}</b> <small style="color:#64748b;">${item.pet_chip ? '[' + item.pet_chip + ']' : ''}</small></td>
                     <td><b>${item.medicine_name}</b></td>
                     <td><span style="background: #e0f2fe; color: #0369a1; padding: 3px 8px; border-radius: 4px; font-weight: bold;">${item.category}</span></td>
-                    <td>劑量: ${item.custom_dose} | 數量: <b>${item.quantity} 顆</b></td>
+                    <td>劑量: ${item.custom_dose} | 數量: <b>${item.quantity}</b></td>
                     <td><small style="color: #475569;">${item.instruction}</small></td>
                 `;
                 tbody.appendChild(tr);
@@ -2304,25 +2339,28 @@
             const medDropdown = document.getElementById('medSelectDropdown');
             
             if(tbody) tbody.innerHTML = '';
-            if(medDropdown) medDropdown.innerHTML = '<option value="">-- 請選擇藥品 --</option>';
+            if(medDropdown) medDropdown.innerHTML = '<option value="">-- 請選擇藥品或針劑 --</option>';
             loadedMedicinesMap = {};
 
             if (error || !data || data.length === 0) {
-                if(tbody) tbody.innerHTML = `<tr><td colspan="7" style="text-align: center; color: #64748b;">尚無藥品資料</td></tr>`;
+                if(tbody) tbody.innerHTML = `<tr><td colspan="8" style="text-align: center; color: #64748b;">尚無藥品資料</td></tr>`;
                 return;
             }
 
             data.forEach(med => {
                 loadedMedicinesMap[med.id] = med;
+                const route = med.route || '口服';
+                const routeBadgeColor = route === '針劑' ? '#b45309' : '#0369a1';
 
                 if(tbody) {
                     const tr = document.createElement('tr');
                     tr.innerHTML = `
+                        <td><span style="background: #e0f2fe; color: ${routeBadgeColor}; padding: 2px 6px; border-radius: 4px; font-weight: bold;">${route}</span></td>
                         <td><b>${med.name}</b></td>
                         <td>${med.recommended_dose || '-'}</td>
                         <td>NT$ ${med.price || 0}</td>
                         <td>${med.usage_dose || '-'}</td>
-                        <td><span style="background: #e0f2fe; color: #0369a1; padding: 2px 6px; border-radius: 4px; font-weight: bold;">${med.calculated_dose || '一般藥品'}</span></td>
+                        <td><span style="background: #f1f5f9; padding: 2px 6px; border-radius: 4px;">${med.calculated_dose || '一般藥品'}</span></td>
                         <td>${med.stock_qty || 0}</td>
                         <td>
                             <button class="btn-secondary" style="padding: 4px 8px; font-size: 0.8rem;" onclick="openEditMedicineModal('${med.id}')">完整修改</button>
@@ -2334,8 +2372,9 @@
                 if(medDropdown) {
                     const mOpt = document.createElement('option');
                     mOpt.value = med.id;
-                    mOpt.textContent = `[${med.calculated_dose || '一般藥品'}] ${med.name} (建議劑量: ${med.recommended_dose || '無'})`;
+                    mOpt.textContent = `[${route}] ${med.name} (建議: ${med.recommended_dose || '無'})`;
                     mOpt.dataset.name = med.name;
+                    mOpt.dataset.route = route;
                     mOpt.dataset.recdose = med.recommended_dose || '';
                     mOpt.dataset.usedose = med.usage_dose || '';
                     medDropdown.appendChild(mOpt);
@@ -2345,6 +2384,7 @@
 
         async function saveNewMedicine() {
             const name = document.getElementById('medName').value;
+            const route = document.getElementById('medRoute').value;
             const recommended_dose = document.getElementById('medRecDose').value;
             const price = parseFloat(document.getElementById('medPrice').value) || 0;
             const usage_dose = document.getElementById('medUseDose').value;
@@ -2354,13 +2394,13 @@
             if(!name) { alert('請填寫藥名！'); return; }
 
             const { error } = await _supabase.from('medicines').insert([{
-                tenant_id: CURRENT_TENANT_ID, name, recommended_dose, price, usage_dose, calculated_dose, stock_qty
+                tenant_id: CURRENT_TENANT_ID, name, route, recommended_dose, price, usage_dose, calculated_dose, stock_qty
             }]);
 
             if (error) {
                 alert('新增藥品失敗：' + error.message);
             } else {
-                alert('藥品已成功建立至專區！');
+                alert('藥品/針劑已成功建立至專區！');
                 document.getElementById('medName').value = '';
                 document.getElementById('medRecDose').value = '';
                 document.getElementById('medPrice').value = '';
@@ -2376,6 +2416,7 @@
 
             document.getElementById('editMedId').value = med.id;
             document.getElementById('editMedName').value = med.name || '';
+            document.getElementById('editMedRoute').value = med.route || '口服';
             document.getElementById('editMedRecDose').value = med.recommended_dose || '';
             document.getElementById('editMedPrice').value = med.price || 0;
             document.getElementById('editMedUseDose').value = med.usage_dose || '';
@@ -2392,6 +2433,7 @@
         async function saveEditedMedicine() {
             const medId = document.getElementById('editMedId').value;
             const name = document.getElementById('editMedName').value;
+            const route = document.getElementById('editMedRoute').value;
             const recommended_dose = document.getElementById('editMedRecDose').value;
             const price = parseFloat(document.getElementById('editMedPrice').value) || 0;
             const usage_dose = document.getElementById('editMedUseDose').value;
@@ -2401,7 +2443,7 @@
             if (!name) { alert('藥名不能為空！'); return; }
 
             const { error } = await _supabase.from('medicines').update({
-                name, recommended_dose, price, usage_dose, calculated_dose, stock_qty
+                name, route, recommended_dose, price, usage_dose, calculated_dose, stock_qty
             }).eq('id', medId);
 
             if (error) {
@@ -3159,7 +3201,6 @@
             
             switchTab('medical');
             await loadAllMedicalRecords(petId);
-            await checkPetVaccineAlertOnConsultation(petId, petNameStr);
         }
 
         async function admitCurrentPetToHospital() {
@@ -3301,10 +3342,6 @@
                 return petName.includes(kw) || reason.includes(kw) || ownerName.includes(kw);
             });
             renderInpatientsTable(filtered);
-        }
-
-        function checkPetVaccineAlertOnConsultation(petId, petName) {
-            // 保留原有疫苗提醒邏輯
         }
 
         function directCheckoutFromAppointment(petId, ownerId) {
@@ -3464,36 +3501,48 @@
             onMedicineSelectedForDoseCalculation();
         }
 
+        // ================= 智慧切換計算核心邏輯 =================
         function onMedicineSelectedForDoseCalculation() {
             const dropdown = document.getElementById('medSelectDropdown');
             const selectedMedId = dropdown.value;
             
             const useDoseDisplay = document.getElementById('medUseDoseDisplay');
-            const customRecDoseInput = document.getElementById('medCustomRecDose');
-            const calcResultInput = document.getElementById('calculatedDoseResult');
+            const routeDisplay = document.getElementById('medRouteDisplay');
             
             if (!selectedMedId || !loadedMedicinesMap[selectedMedId]) {
                 useDoseDisplay.value = "";
-                customRecDoseInput.value = "";
-                calcResultInput.value = "";
+                routeDisplay.value = "";
                 return;
             }
 
             const med = loadedMedicinesMap[selectedMedId];
-            useDoseDisplay.value = med.usage_dose || '每顆含量';
+            const route = med.route || '口服';
+            routeDisplay.value = route;
+            useDoseDisplay.value = med.usage_dose || '';
 
-            let defaultMgKg = 10;
-            if (med.recommended_dose) {
-                const match = med.recommended_dose.match(/([\d.]+)/);
-                if (match) defaultMgKg = parseFloat(match[1]);
+            if (route === '針劑') {
+                document.getElementById('oralDoseContainer').style.display = 'none';
+                document.getElementById('injectableDoseContainer').style.display = 'grid';
+
+                let defaultRate = 0.1;
+                if (med.recommended_dose) {
+                    const match = med.recommended_dose.match(/([\d.]+)/);
+                    if (match) defaultRate = parseFloat(match[1]);
+                }
+                document.getElementById('injCustomRate').value = defaultRate;
+                runInjectableMathCalculation();
+            } else {
+                document.getElementById('oralDoseContainer').style.display = 'grid';
+                document.getElementById('injectableDoseContainer').style.display = 'none';
+
+                let defaultMgKg = 10;
+                if (med.recommended_dose) {
+                    const match = med.recommended_dose.match(/([\d.]+)/);
+                    if (match) defaultMgKg = parseFloat(match[1]);
+                }
+                document.getElementById('medCustomRecDose').value = defaultMgKg;
+                runDoseMathCalculation();
             }
-            customRecDoseInput.value = defaultMgKg;
-
-            runDoseMathCalculation();
-        }
-
-        function recalculateDoseWithCustomInput() {
-            runDoseMathCalculation();
         }
 
         function runDoseMathCalculation() {
@@ -3508,9 +3557,6 @@
             
             const calcResultInput = document.getElementById('calculatedDoseResult');
             const qtyInput = document.getElementById('medPrescribeQty');
-            const doseNoteInput = document.getElementById('medPrescribeCustomDoseNote');
-
-            doseNoteInput.value = `${customRecDose} mg/kg`;
 
             if (med.usage_dose && currentPetWeight > 0) {
                 const useMatch = med.usage_dose.match(/([\d.]+)\s*mg/i);
@@ -3525,12 +3571,68 @@
                         qtyInput.value = calculatedPills;
                     }
                 } else {
-                    calcResultInput.value = "無法解析每顆含量單位";
+                    calcResultInput.value = "規格單位非mg";
                 }
             } else {
-                calcResultInput.value = "請確認體重或含量";
+                calcResultInput.value = "請確認體重";
             }
         }
+
+        function runInjectableMathCalculation() {
+            const rate = parseFloat(document.getElementById('injCustomRate').value) || 0;
+            const weight = currentPetWeight || 0;
+            const totalMl = rate * weight;
+
+            document.getElementById('injCalculatedTotal').value = `${totalMl.toFixed(2)} ml`;
+            document.getElementById('injPrescribeQty').value = totalMl > 0 ? totalMl.toFixed(2) : 1;
+        }
+
+        function addPrescriptionItem() {
+            const dropdown = document.getElementById('medSelectDropdown');
+            const selectedOpt = dropdown.options[dropdown.selectedIndex];
+            if(!selectedOpt || !selectedOpt.value) { alert('請選擇口服藥品！'); return; }
+            
+            const medName = selectedOpt.dataset.name || selectedOpt.text;
+            const customDose = document.getElementById('medCustomRecDose').value + ' mg/kg';
+            const qty = document.getElementById('medPrescribeQty').value || 1;
+            const note = document.getElementById('medPrescribeNote').value || '';
+
+            const container = document.getElementById('prescriptionItemsContainer');
+            const div = document.createElement('div');
+            div.className = 'list-row prescription-item-row';
+            div.innerHTML = `
+                <input type="text" value="[口服] ${medName}" style="flex: 2; background: #fff; color: #0369a1; font-weight: bold;" readonly title="藥品名稱">
+                <input type="text" value="${customDose}" class="prescribe-custom-dose" style="flex: 1.2;" placeholder="使用劑量" title="使用劑量">
+                <input type="number" value="${qty}" class="prescribe-qty" style="flex: 0.8;" placeholder="數量" title="數量">
+                <input type="text" value="${note}" class="prescribe-note" style="flex: 2;" placeholder="用法說明" title="用法">
+                <button class="btn-danger" onclick="this.parentElement.remove();" style="padding: 9px 12px;">刪除</button>
+            `;
+            container.appendChild(div);
+        }
+
+        function addInjectableItem() {
+            const dropdown = document.getElementById('medSelectDropdown');
+            const selectedOpt = dropdown.options[dropdown.selectedIndex];
+            if(!selectedOpt || !selectedOpt.value) { alert('請選擇注射針劑！'); return; }
+            
+            const medName = selectedOpt.dataset.name || selectedOpt.text;
+            const rate = document.getElementById('injCustomRate').value;
+            const qty = document.getElementById('injPrescribeQty').value || 1;
+            const note = document.getElementById('injPrescribeNote').value || '皮下注射';
+
+            const container = document.getElementById('prescriptionItemsContainer');
+            const div = document.createElement('div');
+            div.className = 'list-row prescription-item-row';
+            div.innerHTML = `
+                <input type="text" value="[針劑] ${medName}" style="flex: 2; background: #fff; color: #b45309; font-weight: bold;" readonly title="針劑名稱">
+                <input type="text" value="${rate} ml/kg" class="prescribe-custom-dose" style="flex: 1.2;" placeholder="使用劑量比率">
+                <input type="number" value="${qty}" class="prescribe-qty" style="flex: 0.8;" placeholder="總ml數">
+                <input type="text" value="${note}" class="prescribe-note" style="flex: 2;" placeholder="注射說明">
+                <button class="btn-danger" onclick="this.parentElement.remove();" style="padding: 9px 12px;">刪除</button>
+            `;
+            container.appendChild(div);
+        }
+        // ========================================================
 
         async function loadAllMedicalRecords(petId) {
             const container = document.getElementById('lastMedicalHistoryContent');
@@ -3547,7 +3649,7 @@
                 let prescriptionsHtml = '<ul>';
                 if (record.prescription_details && record.prescription_details.length > 0) {
                     record.prescription_details.forEach(p => { 
-                        prescriptionsHtml += `<li><b>${p.medicine_name}</b> (使用劑量: ${p.custom_dose || '標準'}）：${p.quantity} 顆 (${p.instruction || ''})</li>`; 
+                        prescriptionsHtml += `<li><b>${p.medicine_name}</b> (劑量: ${p.custom_dose || '-'})：${p.quantity} (${p.instruction || ''})</li>`; 
                     });
                 } else { prescriptionsHtml += '<li>無用藥紀錄</li>'; }
                 prescriptionsHtml += '</ul>';
@@ -3575,7 +3677,7 @@
             let rxList = '<ul>';
             if (record.prescription_details && record.prescription_details.length > 0) {
                 record.prescription_details.forEach(p => {
-                    rxList += `<li><b>${p.medicine_name}</b> - 劑量: ${p.custom_dose || '-'} | 數量: ${p.quantity}顆 | ${p.instruction || ''}</li>`;
+                    rxList += `<li><b>${p.medicine_name}</b> - 劑量: ${p.custom_dose || '-'} | 數量: ${p.quantity} | ${p.instruction || ''}</li>`;
                 });
             } else {
                 rxList += '<li>無用藥明細</li>';
@@ -3587,7 +3689,7 @@
                 <p><b>病歷狀態：</b> ${record.status || '已完成'}</p>
                 <p><b>主訴與診斷：</b></p>
                 <div style="background: #f1f5f9; padding: 10px; border-radius: 6px; margin: 5px 0 15px 0;">${record.chief_complaint || '無'}</div>
-                <p><b>處方用藥明細：</b></p>
+                <p><b>處方與針劑用藥明細：</b></p>
                 <div style="background: #f1f5f9; padding: 10px; border-radius: 6px; margin-top: 5px;">${rxList}</div>
             `;
             document.getElementById('detailModalTitle').innerText = `📋 歷史病歷完整內容`;
@@ -3626,7 +3728,7 @@
                         <td>${index + 1}</td>
                         <td><input type="text" value="${p.medicine_name || ''}" class="rx-input-name" style="width: 100%; padding: 4px 8px;"></td>
                         <td><input type="text" value="${p.custom_dose || ''}" class="rx-input-dose" style="width: 100%; padding: 4px 8px;" placeholder="劑量"></td>
-                        <td><input type="number" value="${p.quantity || 1}" class="rx-input-qty" style="width: 100%; padding: 4px 8px;"></td>
+                        <td><input type="text" value="${p.quantity || 1}" class="rx-input-qty" style="width: 100%; padding: 4px 8px;"></td>
                         <td><input type="text" value="${p.instruction || ''}" class="rx-input-inst" style="width: 100%; padding: 4px 8px;"></td>
                         <td><button class="btn-danger" style="padding: 4px 8px; font-size: 0.75rem;" onclick="this.closest('tr').remove();">刪</button></td>
                     `;
@@ -3645,7 +3747,7 @@
                 <td>${rowCount}</td>
                 <td><input type="text" value="" placeholder="藥名" class="rx-input-name" style="width: 100%; padding: 4px 8px;"></td>
                 <td><input type="text" value="10 mg/kg" class="rx-input-dose" style="width: 100%; padding: 4px 8px;"></td>
-                <td><input type="number" value="1" class="rx-input-qty" style="width: 100%; padding: 4px 8px;"></td>
+                <td><input type="text" value="1" class="rx-input-qty" style="width: 100%; padding: 4px 8px;"></td>
                 <td><input type="text" value="一天兩次" class="rx-input-inst" style="width: 100%; padding: 4px 8px;"></td>
                 <td><button class="btn-danger" style="padding: 4px 8px; font-size: 0.75rem;" onclick="this.closest('tr').remove();">刪</button></td>
             `;
@@ -3658,32 +3760,6 @@
 
             if (error || !data || data.length === 0) { alert('找不到此寵物的歷史處方紀錄！'); return; }
             reprintPrescription(new Date(data[0].created_at).toLocaleString(), data[0].chief_complaint || '', encodeURIComponent(JSON.stringify(data[0].prescription_details || [])));
-        }
-
-        function addPrescriptionItem() {
-            const dropdown = document.getElementById('medSelectDropdown');
-            const selectedOpt = dropdown.options[dropdown.selectedIndex];
-            if(!selectedOpt || !selectedOpt.value) { alert('請選擇藥品！'); return; }
-            
-            const medName = selectedOpt.dataset.name;
-            const customDose = document.getElementById('medPrescribeCustomDoseNote').value || '';
-            const qty = document.getElementById('medPrescribeQty').value || 1;
-            const note = document.getElementById('medPrescribeNote').value || '';
-
-            const container = document.getElementById('prescriptionItemsContainer');
-            const div = document.createElement('div');
-            div.className = 'list-row prescription-item-row';
-            div.innerHTML = `
-                <input type="text" value="${medName}" style="flex: 2; background: #fff;" readonly title="藥品名稱">
-                <input type="text" value="${customDose}" class="prescribe-custom-dose" style="flex: 1.2;" placeholder="使用劑量" title="使用劑量">
-                <input type="number" value="${qty}" class="prescribe-qty" style="flex: 0.8;" placeholder="數量" title="數量">
-                <input type="text" value="${note}" class="prescribe-note" style="flex: 2;" placeholder="用法說明" title="用法">
-                <button class="btn-danger" onclick="this.parentElement.remove();" style="padding: 9px 12px;">刪除</button>
-            `;
-            container.appendChild(div);
-            dropdown.value = "";
-            document.getElementById('medUseDoseDisplay').value = "";
-            document.getElementById('calculatedDoseResult').value = "";
         }
 
         function openPrescriptionPreviewModal() {
@@ -3807,7 +3883,7 @@
                 div.className = 'list-row';
                 div.innerHTML = `
                     <input type="text" value="${p.medicine_name} [${p.custom_dose}] (${p.instruction})" placeholder="項目名稱" class="invoice-name">
-                    <input type="number" value="${p.quantity || 1}" placeholder="數量" class="invoice-qty" style="flex: 0.5;" oninput="calculateInvoiceTotal()">
+                    <input type="text" value="${p.quantity || 1}" placeholder="數量" class="invoice-qty" style="flex: 0.5;" oninput="calculateInvoiceTotal()">
                     <input type="number" value="100" placeholder="金額" class="invoice-price" oninput="calculateInvoiceTotal()">
                     <button class="btn-danger" onclick="this.parentElement.remove(); calculateInvoiceTotal();" style="padding: 9px 12px;">刪除</button>
                 `;
