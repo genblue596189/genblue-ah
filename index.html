@@ -149,15 +149,62 @@
         }
 
         @media print {
-            body * { visibility: hidden; }
-            #receipt-modal, #receipt-modal * { visibility: visible; }
+            /* 1. 將畫面上所有元素預設隱藏 */
+            body * {
+                visibility: hidden;
+            }
+
+            /* 2. 僅讓處方箋預覽彈窗、收據彈窗以及其內部的所有子元素顯示 */
+            #prescriptionPreviewModal, 
+            #prescriptionPreviewModal *,
+            #receipt-modal, 
+            #receipt-modal * {
+                visibility: visible;
+            }
+
+            /* 3. 將彈窗定位在頁面最上方並佔滿版面，去除背景陰影與邊框 */
+            #prescriptionPreviewModal,
             #receipt-modal {
                 position: absolute;
-                left: 0; top: 0;
-                width: 100%; height: auto;
+                left: 0;
+                top: 0;
+                width: 100%;
+                height: auto;
                 background: white;
+                display: flex !important;
+                align-items: flex-start;
+                justify-content: center;
+                z-index: 999999;
             }
-            .receipt-actions { display: none; }
+
+            .prescription-modal,
+            .receipt-card {
+                box-shadow: none !important;
+                width: 100% !important;
+                max-width: 100% !important;
+                padding: 10px !important;
+                margin: 0 !important;
+            }
+
+            /* 4. 確實隱藏列印時不需要出現的操作按鈕（如關閉、列印按鈕本身） */
+            .prescription-modal button,
+            .receipt-actions,
+            .modal-overlay button {
+                display: none !important;
+            }
+
+            /* 5. 確保輸入框在列印時以純文字或乾淨外框呈現 */
+            input, select, textarea {
+                border: none !important;
+                background: transparent !important;
+                outline: none !important;
+                box-shadow: none !important;
+                padding: 0 !important;
+            }
+
+            .rx-editable-row input {
+                border-bottom: 1px solid #cbd5e1 !important;
+            }
         }
     </style>
     </head>
@@ -843,7 +890,16 @@
                         <div>折扣後總計: NT$ <span id="checkoutTotalAmount">0</span></div>
                     </div>
                     <br>
-                    <button onclick="processProductCheckoutDatabase()">完成購買並寫入 invoices 表</button>
+                    <!-- 商品專用結帳選項與按鈕 -->
+                    <div style="margin: 15px 0; display: flex; align-items: center; gap: 8px;">
+                        <input type="checkbox" id="needProductReceiptCheckbox" checked style="width: auto; cursor: pointer;">
+                        <label for="needProductReceiptCheckbox" style="cursor: pointer; margin-bottom: 0; color: #1e293b; font-weight: bold;">結帳後同時顯示/列印商品收據</label>
+                    </div>
+                    
+                    <div style="display: flex; gap: 10px;">
+                        <button class="btn-success" onclick="processProductCheckoutToArchive(true)" style="flex: 1;">💾 儲存並列印商品收據</button>
+                        <button class="btn-secondary" onclick="processProductCheckoutToArchive(false)" style="flex: 1;">📁 僅儲存商品並完成歸檔 (不列印)</button>
+                    </div>
                 </div>
             </div>
 
@@ -1000,7 +1056,15 @@
                         <div>折扣後總計: NT$ <span id="invoiceTotalAmount">500</span></div>
                     </div>
                     <br>
-                    <button onclick="processInvoiceCheckoutToArchive()">確認收費並歸檔完成</button>
+                    <div style="margin: 15px 0; display: flex; align-items: center; gap: 8px;">
+    <input type="checkbox" id="needReceiptCheckbox" checked style="width: auto; cursor: pointer;">
+    <label for="needReceiptCheckbox" style="cursor: pointer; margin-bottom: 0; color: #1e293b; font-weight: bold;">結帳後同時顯示/列印正式收據</label>
+</div>
+
+<div style="display: flex; gap: 10px;">
+    <button class="btn-success" onclick="processInvoiceCheckoutToArchive(true)" style="flex: 1;">💾 儲存並列印收據</button>
+    <button class="btn-secondary" onclick="processInvoiceCheckoutToArchive(false)" style="flex: 1;">📁 僅儲存並完成歸檔 (不列印)</button>
+</div>
                 </div>
             </div>
 
@@ -1384,6 +1448,51 @@
         </div>
     </div>
 
+<!-- 結帳收據預覽與列印彈出視窗 -->
+    <div id="receipt-modal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); justify-content: center; align-items: center; z-index: 1000;">
+        <div class="receipt-card">
+            <div class="receipt-header">
+                <h1 id="receiptClinicName">吉布動物醫院</h1>
+                <p id="receiptClinicPhone">電話: 02-8888-9999</p>
+                <p id="receiptClinicAddress">地址: 台北市中正區動物路一段88號</p>
+                <h3 style="margin-top: 10px; font-size: 15px; color: #0369a1;">醫療與商品收費收據 (Receipt)</h3>
+            </div>
+            
+            <div class="receipt-info">
+                <div><span>收據單號：</span><b id="receiptNo">-</b></div>
+                <div><span>開立時間：</span><span id="receiptDate">-</span></div>
+                <div><span>飼主姓名：</span><span id="receiptOwnerName">-</span></div>
+                <div><span>關聯寵物：</span><span id="receiptPetName">-</span></div>
+                <div><span>付款方式：</span><span id="receiptPaymentMethod">-</span></div>
+            </div>
+
+            <table class="receipt-table">
+                <thead>
+                    <tr>
+                        <th>收費項目</th>
+                        <th style="text-align: center;">數量</th>
+                        <th style="text-align: right;">金額</th>
+                    </tr>
+                </thead>
+                <tbody id="receiptItemsTableBody">
+                    <!-- 動態填入明細 -->
+                </tbody>
+            </table>
+
+            <div class="receipt-total">
+                <div style="font-size: 13px; font-weight: normal; color: #475569; margin-bottom: 4px;">
+                    小計: NT$ <span id="receiptSubtotal">0</span> | 折扣: NT$ <span id="receiptDiscount">0</span>
+                </div>
+                實收總計: NT$ <span id="receiptTotalAmount">0</span>
+            </div>
+
+            <div class="receipt-actions">
+                <button class="btn-secondary" onclick="document.getElementById('receipt-modal').style.display='none'">關閉視窗</button>
+                <button class="btn-success" onclick="window.print()">列印正式收據</button>
+            </div>
+        </div>
+    </div>
+
     <script>
         const { createClient } = supabase;
         const SUPABASE_URL = 'https://rfprsbftkwtwjqrjcalq.supabase.co';
@@ -1550,6 +1659,8 @@
         auditNav.style.display = isAdmin ? '' : 'none';
     }
 }
+
+       
         // ==========================================
 // Supabase Authentication
 // ==========================================
@@ -2192,7 +2303,7 @@ bootstrapAuthentication();
                 tbody.appendChild(tr);
             });
         }
-
+        
         async function deleteSearchSaleRecord(invoiceId) {
             if (!confirm('確定要刪除這筆商品銷售紀錄嗎？')) return;
             await _supabase.from('invoice_items').delete().eq('invoice_id', invoiceId);
@@ -2841,47 +2952,72 @@ bootstrapAuthentication();
         }
 
         async function loadOwnersAndPetsIntegrated() {
-            const { data: ownersData, error: ownersError } = await _supabase.from('owners').select('*').eq('tenant_id', CURRENT_TENANT_ID);
-            const { data: petsData, error: petsError } = await _supabase.from('pets').select('*').eq('tenant_id', CURRENT_TENANT_ID);
+    // 直接透過 Supabase 的外鍵關聯一次把 owners 與對應的 pets 全部抓回來
+    const { data: ownersData, error: ownersError } = await _supabase
+        .from('owners')
+        .select(`
+            *,
+            pets (*)
+        `)
+        .eq('tenant_id', CURRENT_TENANT_ID);
 
-            if (ownersError || petsError) return;
+    if (ownersError) {
+        console.error('載入飼主與寵物資料失敗：', ownersError);
+        return;
+    }
 
-            globalOwnersPetsData = ownersData.map(owner => {
-                const ownerPets = petsData.filter(p => p.owner_id === owner.id);
-                return { owner, pets: ownerPets };
-            });
+    // 整理成全域資料結構供前端表格與下拉選單使用
+    globalOwnersPetsData = ownersData.map(owner => {
+        return {
+            owner: {
+                id: owner.id,
+                tenant_id: owner.tenant_id,
+                owner_code: owner.owner_code,
+                name: owner.name,
+                mobile: owner.mobile,
+                phone: owner.phone,
+                email: owner.email,
+                address: owner.address,
+                notes: owner.notes
+            },
+            pets: owner.pets || []
+        };
+    });
 
-            renderIntegratedTable(globalOwnersPetsData);
+    renderIntegratedTable(globalOwnersPetsData);
 
-            allOwnersListForDropdown = ownersData || [];
-            const checkoutDatalist = document.getElementById('checkoutOwnerDatalist');
-            if(checkoutDatalist) {
-                checkoutDatalist.innerHTML = '';
-                allOwnersListForDropdown.forEach(owner => {
-                    const opt = document.createElement('option');
-                    const codeStr = owner.owner_code ? `[編號:${owner.owner_code}] ` : '';
-                    opt.value = `${codeStr}${owner.name} (${owner.mobile || '無手機'})`;
-                    opt.dataset.ownerId = owner.id;
-                    checkoutDatalist.appendChild(opt);
-                });
-            }
+    allOwnersListForDropdown = ownersData || [];
+    const checkoutDatalist = document.getElementById('checkoutOwnerDatalist');
+    if(checkoutDatalist) {
+        checkoutDatalist.innerHTML = '';
+        allOwnersListForDropdown.forEach(owner => {
+            const opt = document.createElement('option');
+            const codeStr = owner.owner_code ? `[編號:${owner.owner_code}] ` : '';
+            opt.value = `${codeStr}${owner.name} (${owner.mobile || '無手機'})`;
+            opt.dataset.ownerId = owner.id;
+            checkoutDatalist.appendChild(opt);
+        });
+    }
 
-            const invoiceOwnerSelect = document.getElementById('invoiceOwnerSelect');
-            if(invoiceOwnerSelect) invoiceOwnerSelect.innerHTML = '<option value="">-- 請選擇飼主 --</option>';
+    const invoiceOwnerSelect = document.getElementById('invoiceOwnerSelect');
+    if(invoiceOwnerSelect) invoiceOwnerSelect.innerHTML = '<option value="">-- 請選擇飼主 --</option>';
 
-            ownersData.forEach(owner => {
-                if(invoiceOwnerSelect) {
-                    const opt = document.createElement('option');
-                    opt.value = owner.id;
-                    const codeStr = owner.owner_code ? `[編號:${owner.owner_code}] ` : '';
-                    opt.textContent = `${codeStr}${owner.name} (${owner.mobile || ''})`;
-                    invoiceOwnerSelect.appendChild(opt);
-                }
-            });
+    ownersData.forEach(owner => {
+        if(invoiceOwnerSelect) {
+            const opt = document.createElement('option');
+            opt.value = owner.id;
+            const codeStr = owner.owner_code ? `[編號:${owner.owner_code}] ` : '';
+            opt.textContent = `${codeStr}${owner.name} (${owner.mobile || ''})`;
+            invoiceOwnerSelect.appendChild(opt);
+        }
+    });
 
-            allPetsListForDropdown = petsData.map(pet => {
-                const owner = ownersData.find(o => o.id === pet.owner_id);
-                return {
+    // 展開所有寵物清單供下拉選單使用
+    allPetsListForDropdown = [];
+    ownersData.forEach(owner => {
+        if (owner.pets && owner.pets.length > 0) {
+            owner.pets.forEach(pet => {
+                allPetsListForDropdown.push({
                     id: pet.id,
                     name: pet.name,
                     microchip: pet.microchip || '',
@@ -2890,41 +3026,42 @@ bootstrapAuthentication();
                     gender: pet.gender || '',
                     species: pet.species || '貓',
                     breed: pet.breed || '',
-                    owner_id: pet.owner_id,
-                    owner_name: owner ? owner.name : '未知',
-                    owner_code: owner ? (owner.owner_code || '') : ''
-                };
-            });
-
-            filterVaccinePetDropdown();
-            filterLabPetDropdown();
-            filterRapidPetDropdown();
-
-            const appointmentSelect = document.getElementById('appointmentPetSelect');
-            if(appointmentSelect) appointmentSelect.innerHTML = '<option value="">-- 請選擇或搜尋現有寵物 --</option>';
-            petsData.forEach(pet => {
-                const owner = ownersData.find(o => o.id === pet.owner_id);
-                const ownerName = owner ? owner.name : '未知';
-                const codeStr = owner && owner.owner_code ? `[編號:${owner.owner_code}] ` : '';
-                if(appointmentSelect) {
-                    const opt = document.createElement('option');
-                    opt.value = JSON.stringify({
-                        id: pet.id, 
-                        microchip: pet.microchip || '', 
-                        name: pet.name, 
-                        owner_id: pet.owner_id, 
-                        weight: pet.weight || 0, 
-                        owner_name: ownerName,
-                        birthday: pet.birthday || '',
-                        gender: pet.gender || '',
-                        species: pet.species || '貓',
-                        breed: pet.breed || ''
-                    });
-                    opt.textContent = `${pet.name} ${pet.weight ? '(' + pet.weight + 'kg)' : ''} - 飼主: ${codeStr}${ownerName}`;
-                    appointmentSelect.appendChild(opt);
-                }
+                    owner_id: owner.id,
+                    owner_name: owner.name,
+                    owner_code: owner.owner_code || ''
+                });
             });
         }
+    });
+
+    filterVaccinePetDropdown();
+    filterLabPetDropdown();
+    filterRapidPetDropdown();
+
+    const appointmentSelect = document.getElementById('appointmentPetSelect');
+    if(appointmentSelect) appointmentSelect.innerHTML = '<option value="">-- 請選擇或搜尋現有寵物 --</option>';
+    
+    allPetsListForDropdown.forEach(pet => {
+        const codeStr = pet.owner_code ? `[編號:${pet.owner_code}] ` : '';
+        if(appointmentSelect) {
+            const opt = document.createElement('option');
+            opt.value = JSON.stringify({
+                id: pet.id, 
+                microchip: pet.microchip || '', 
+                name: pet.name, 
+                owner_id: pet.owner_id, 
+                weight: pet.weight || 0, 
+                owner_name: pet.owner_name,
+                birthday: pet.birthday || '',
+                gender: pet.gender || '',
+                species: pet.species || '貓',
+                breed: pet.breed || ''
+            });
+            opt.textContent = `${pet.name} ${pet.weight ? '(' + pet.weight + 'kg)' : ''} - 飼主: ${codeStr}${pet.owner_name}`;
+            appointmentSelect.appendChild(opt);
+        }
+    });
+}
 
         function onCheckoutOwnerInput(event) {
             const val = event.target.value.trim();
@@ -2955,65 +3092,66 @@ bootstrapAuthentication();
         }
 
         function renderIntegratedTable(dataList) {
-            const tbody = document.getElementById('integratedTableBody');
-            if(!tbody) return;
-            tbody.innerHTML = '';
+    const tbody = document.getElementById('integratedTableBody');
+    if(!tbody) return;
+    tbody.innerHTML = '';
 
-            if (dataList.length === 0) {
-                tbody.innerHTML = `<tr><td colspan="5" style="text-align: center; color: #64748b;">找不到符合的飼主或寵物資料</td></tr>`;
-                return;
-            }
+    if (dataList.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="5" style="text-align: center; color: #64748b;">找不到符合的飼主或寵物資料</td></tr>`;
+        return;
+    }
 
-            dataList.forEach(item => {
-                const owner = item.owner;
-                const ownerPets = item.pets;
+    dataList.forEach(item => {
+        const owner = item.owner;
+        const ownerPets = item.pets;
 
-                let petsHtml = '<div class="nested-pet-container">';
-                if(ownerPets.length > 0) {
-                    ownerPets.forEach(pet => {
-                        const ageStr = calculateAge(pet.birthday);
-                        const breedStr = pet.breed ? `[${pet.breed}]` : '';
-                        const speciesBadge = pet.species ? `(${pet.species})` : '';
-                        
-                        const petDataEncoded = encodeURIComponent(JSON.stringify(pet));
-                        const ownerNameEncoded = encodeURIComponent(owner.name || '');
+        let petsHtml = '<div class="nested-pet-container">';
+        if(ownerPets.length > 0) {
+            ownerPets.forEach(pet => {
+                // 這裡會正確讀取資料庫的 birthday 來計算年齡
+                const ageStr = calculateAge(pet.birthday);
+                const breedStr = pet.breed ? `[${pet.breed}]` : '';
+                const speciesBadge = pet.species ? `(${pet.species})` : '';
+                
+                const petDataEncoded = encodeURIComponent(JSON.stringify(pet));
+                const ownerNameEncoded = encodeURIComponent(owner.name || '');
 
-                        petsHtml += `
-                            <div class="nested-pet-tag">
-                                <span style="cursor: pointer;" title="點擊直接看診" onclick="startConsultationById('${pet.id}', '${pet.microchip || ''}', '${pet.name}', '${owner.id}', ${pet.weight || 0}, '${owner.name}', '${pet.birthday || ''}', '${pet.gender || ''}', '${pet.species || '貓'}', '${pet.breed || ''}')">
-                                    🐾 <b>${pet.name}</b> ${speciesBadge} ${breedStr} (${ageStr} | ${pet.weight !== null ? pet.weight + 'kg' : '未量體重'}) ${pet.microchip ? '[' + pet.microchip + ']' : ''}
-                                </span>
-                                <div class="pet-actions">
-                                    <button class="pet-btn pet-btn-info" title="檢視寵物詳細資料與精確年齡" onclick="openPetDetailModal('${petDataEncoded}', '${ownerNameEncoded}')">詳</button>
-                                    <button class="pet-btn" title="快速補印最後一次處方箋" onclick="printLatestPrescription('${pet.id}', '${pet.name}', ${pet.weight || 0}, '${pet.microchip || ''}')">處方</button>
-                                    <button class="pet-btn pet-btn-edit" title="修改寵物資料" onclick="editPet('${pet.id}', '${pet.name}', '${pet.microchip || ''}', ${pet.weight || 0}, '${pet.birthday || ''}', '${pet.breed || ''}', '${pet.species || '貓'}')">改</button>
-                                    <button class="pet-btn btn-danger" title="刪除寵物" onclick="deletePet('${pet.id}', '${pet.name}')">刪</button>
-                                </div>
-                            </div>
-                        `;
-                    });
-                } else {
-                    petsHtml = '<span style="color: #94a3b8; font-size: 0.85rem;">尚無登記寵物</span>';
-                }
-                petsHtml += '</div>';
-
-                const ownerCodeBadge = owner.owner_code ? `<span style="background: #0284c7; color: white; padding: 2px 6px; border-radius: 4px; font-size: 0.8rem; font-weight: bold; margin-right: 6px;">${owner.owner_code}</span>` : '<span style="color: #94a3b8; font-size: 0.8rem;">(未填編號)</span>';
-
-                const tr = document.createElement('tr');
-                tr.innerHTML = `
-                    <td>${ownerCodeBadge}<b>${owner.name}</b></td>
-                    <td>手機: ${owner.mobile || ''} / 市話: ${owner.phone || '-'}<br><small style="color:#64748b;">${owner.address || '-'}</small></td>
-                    <td><span style="color: #475569; font-size: 0.85rem;">${owner.notes || '-'}</span></td>
-                    <td>${petsHtml}</td>
-                    <td>
-                        <button class="btn-secondary" style="padding: 4px 8px; font-size: 0.8rem; margin-bottom: 4px;" onclick="editOwner('${owner.id}', '${owner.owner_code || ''}', '${owner.name}', '${owner.mobile || ''}', '${owner.phone || ''}', '${owner.address || ''}', '${owner.notes || ''}')">修改飼主</button>
-                        <br>
-                        <button style="padding: 4px 8px; font-size: 0.8rem; background-color: #059669;" onclick="addPetToOwnerPrompt('${owner.id}', '${owner.name}')">+ 新增寵物</button>
-                    </td>
+                petsHtml += `
+                    <div class="nested-pet-tag">
+                        <span style="cursor: pointer;" title="點擊直接看診" onclick="startConsultationById('${pet.id}', '${pet.microchip || ''}', '${pet.name}', '${owner.id}', ${pet.weight || 0}, '${owner.name}', '${pet.birthday || ''}', '${pet.gender || ''}', '${pet.species || '貓'}', '${pet.breed || ''}')">
+                            🐾 <b>${pet.name}</b> ${speciesBadge} ${breedStr} (${ageStr} | ${pet.weight !== null ? pet.weight + 'kg' : '未量體重'}) ${pet.microchip ? '[' + pet.microchip + ']' : ''}
+                        </span>
+                        <div class="pet-actions">
+                            <button class="pet-btn pet-btn-info" title="檢視寵物詳細資料與精確年齡" onclick="openPetDetailModal('${petDataEncoded}', '${ownerNameEncoded}')">詳</button>
+                            <button class="pet-btn" title="快速補印最後一次處方箋" onclick="printLatestPrescription('${pet.id}', '${pet.name}', ${pet.weight || 0}, '${pet.microchip || ''}')">處方</button>
+                            <button class="pet-btn pet-btn-edit" title="修改寵物資料" onclick="editPet('${pet.id}', '${pet.name}', '${pet.microchip || ''}', ${pet.weight || 0}, '${pet.birthday || ''}', '${pet.breed || ''}', '${pet.species || '貓'}')">改</button>
+                            <button class="pet-btn btn-danger" title="刪除寵物" onclick="deletePet('${pet.id}', '${pet.name}')">刪</button>
+                        </div>
+                    </div>
                 `;
-                tbody.appendChild(tr);
             });
+        } else {
+            petsHtml = '<span style="color: #94a3b8; font-size: 0.85rem;">尚無登記寵物</span>';
         }
+        petsHtml += '</div>';
+
+        const ownerCodeBadge = owner.owner_code ? `<span style="background: #0284c7; color: white; padding: 2px 6px; border-radius: 4px; font-size: 0.8rem; font-weight: bold; margin-right: 6px;">${owner.owner_code}</span>` : '<span style="color: #94a3b8; font-size: 0.8rem;">(未填編號)</span>';
+
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+            <td>${ownerCodeBadge}<b>${owner.name}</b></td>
+            <td>手機: ${owner.mobile || ''} / 市話: ${owner.phone || '-'}<br><small style="color:#64748b;">${owner.address || '-'}</small></td>
+            <td><span style="color: #475569; font-size: 0.85rem;">${owner.notes || '-'}</span></td>
+            <td>${petsHtml}</td>
+            <td>
+                <button class="btn-secondary" style="padding: 4px 8px; font-size: 0.8rem; margin-bottom: 4px;" onclick="editOwner('${owner.id}', '${owner.owner_code || ''}', '${owner.name}', '${owner.mobile || ''}', '${owner.phone || ''}', '${owner.address || ''}', '${owner.notes || ''}')">修改飼主</button>
+                <br>
+                <button style="padding: 4px 8px; font-size: 0.8rem; background-color: #059669;" onclick="addPetToOwnerPrompt('${owner.id}', '${owner.name}')">+ 新增寵物</button>
+            </td>
+        `;
+        tbody.appendChild(tr);
+    });
+}
 
         function openPetDetailModal(petDataEncoded, ownerNameEncoded) {
             const pet = JSON.parse(decodeURIComponent(petDataEncoded));
@@ -3610,52 +3748,7 @@ bootstrapAuthentication();
             alert(`已成功套用「${packageName}」醫療套餐組合！`);
         }
 
-        async function processInvoiceCheckoutToArchive() {
-            const ownerId = document.getElementById('invoiceOwnerSelect').value;
-            const paymentMethod = document.getElementById('invoicePaymentMethod').value;
-            const subtotal = parseFloat(document.getElementById('invoiceSubTotal').innerText.replace(/,/g, '')) || 0;
-            const discount = parseFloat(document.getElementById('invoiceDiscount').value) || 0;
-            const totalAmount = parseFloat(document.getElementById('invoiceTotalAmount').innerText.replace(/,/g, '')) || 0;
-
-            const { data: invData, error: invError } = await _supabase.from('invoices').insert([{
-                tenant_id: CURRENT_TENANT_ID, 
-                owner_id: ownerId ? ownerId : null, 
-                checkout_type: `門診收費 (${paymentMethod})`, 
-                subtotal, 
-                discount, 
-                total_amount: totalAmount
-            }]).select();
-
-            if (invError || !invData || invData.length === 0) {
-                alert('門診收費結帳失敗：' + (invError ? invError.message : '未知錯誤'));
-                return;
-            }
-
-            const newInvoiceId = invData[0].id;
-
-            const rows = document.querySelectorAll('#invoiceItemsList .list-row');
-            for (let row of rows) {
-                const nameEl = row.querySelector('.invoice-name');
-                const qtyEl = row.querySelector('.invoice-qty');
-                const priceEl = row.querySelector('.invoice-price');
-                if (nameEl && nameEl.value.trim() !== '') {
-                    const q = parseInt(qtyEl.value) || 1;
-                    const p = parseFloat(priceEl.value) || 0;
-                    await _supabase.from('invoice_items').insert([{
-                        invoice_id: newInvoiceId,
-                        item_name: `${nameEl.value.trim()} [付款: ${paymentMethod}]`,
-                        quantity: q,
-                        unit_price: p,
-                        subtotal: q * p
-                    }]);
-                }
-            }
-
-            alert(`收費成功！付款方式：${paymentMethod}，病歷與帳單已順利歸檔完成！`);
-            currentPetId = ""; currentOwnerId = "";
-            switchTab('appointments');
-        }
-
+        processInvoiceCheckoutToArchive
         async function startConsultationById(petId, chipId, petNameStr, ownerId, weight, ownerName, birthday, gender, species, breed) {
             currentPetId = petId;
             currentPetMicrochip = chipId;
@@ -4788,6 +4881,266 @@ bootstrapAuthentication();
             const { error } = await _supabase.from('rapid_test_records').delete().eq('id', id);
             if(error) { alert('刪除失敗'); } else { loadRapidReportsList(); }
         }
+
+        async function processInvoiceCheckoutToArchive(shouldPrintReceipt = true) {
+            console.log("=== 準備執行收費與結帳 ===", "是否列印收據：", shouldPrintReceipt);
+            
+            const ownerSelect = document.getElementById('invoiceOwnerSelect');
+            const ownerId = ownerSelect ? ownerSelect.value : "";
+            let ownerNameStr = '散客 / 未指定飼主';
+            if (ownerId && ownerSelect && ownerSelect.selectedIndex >= 0) {
+                const selectedOpt = ownerSelect.options[ownerSelect.selectedIndex];
+                if (selectedOpt) ownerNameStr = selectedOpt.text;
+            }
+
+            const paymentMethodEl = document.getElementById('invoicePaymentMethod');
+            const paymentMethod = paymentMethodEl ? paymentMethodEl.value : '現金 (Cash)';
+
+            const subTotalEl = document.getElementById('invoiceSubTotal');
+            const subtotal = subTotalEl ? parseFloat(subTotalEl.innerText.replace(/,/g, '')) || 0 : 0;
+
+            const discountEl = document.getElementById('invoiceDiscount');
+            const discount = discountEl ? parseFloat(discountEl.value) || 0 : 0;
+
+            const totalAmountEl = document.getElementById('invoiceTotalAmount');
+            const totalAmount = totalAmountEl ? parseFloat(totalAmountEl.innerText.replace(/,/g, '')) || 0 : subtotal - discount;
+
+            let savedItems = [];
+            const rows = document.querySelectorAll('#invoiceItemsList .list-row');
+            rows.forEach(row => {
+                const nameEl = row.querySelector('.invoice-name');
+                const qtyEl = row.querySelector('.invoice-qty');
+                const priceEl = row.querySelector('.invoice-price');
+                if (nameEl && nameEl.value.trim() !== '') {
+                    const q = qtyEl ? parseInt(qtyEl.value) || 1 : 1;
+                    const p = priceEl ? parseFloat(priceEl.value) || 0 : 0;
+                    savedItems.push({
+                        item_name: `${nameEl.value.trim()} [付款: ${paymentMethod}]`,
+                        quantity: q,
+                        subtotal: q * p
+                    });
+                }
+            });
+
+            if (savedItems.length === 0) {
+                savedItems.push({
+                    item_name: `門診收費 [付款: ${paymentMethod}]`,
+                    quantity: 1,
+                    subtotal: totalAmount > 0 ? totalAmount : 500
+                });
+            }
+
+            const tempInvoiceData = {
+                id: 'REC-' + Math.floor(Math.random() * 899999 + 100000),
+                created_at: new Date().toISOString(),
+                checkout_type: `門診收費 (${paymentMethod})`,
+                subtotal: subtotal > 0 ? subtotal : totalAmount,
+                discount: discount,
+                total_amount: totalAmount > 0 ? totalAmount : 500
+            };
+
+            const petNameStr = (typeof currentPetName !== 'undefined' && currentPetName) ? currentPetName : '無指定寵物';
+            
+            // 嚴格依照按鈕傳入的參數決定是否彈出收據
+            if (shouldPrintReceipt === true) {
+                openReceiptModal(tempInvoiceData, ownerNameStr, petNameStr, savedItems);
+            }
+
+            // 背景非同步寫入 Supabase 資料庫
+            try {
+                if (typeof _supabase !== 'undefined' && typeof CURRENT_TENANT_ID !== 'undefined' && CURRENT_TENANT_ID) {
+                    const { data: invData, error: invError } = await _supabase.from('invoices').insert([{
+                        tenant_id: CURRENT_TENANT_ID,
+                        owner_id: ownerId ? ownerId : null,
+                        checkout_type: `門診收費 (${paymentMethod})`,
+                        subtotal: tempInvoiceData.subtotal,
+                        discount: discount,
+                        total_amount: tempInvoiceData.total_amount
+                    }]).select();
+
+                    if (!invError && invData && invData.length > 0) {
+                        const newInvoiceId = invData[0].id;
+                        for (let item of savedItems) {
+                            await _supabase.from('invoice_items').insert([{
+                                invoice_id: newInvoiceId,
+                                item_name: item.item_name,
+                                quantity: item.quantity,
+                                unit_price: item.subtotal / item.quantity,
+                                subtotal: item.subtotal
+                            }]);
+                        }
+                    }
+                }
+            } catch (err) {
+                console.warn("背景資料庫寫入失敗:", err);
+            }
+
+            if (shouldPrintReceipt === false) {
+                alert("已成功完成結帳與歸檔！");
+            }
+        }
+
+        function openReceiptModal(invoiceData, ownerName, petName, itemsArray) {
+            console.log("正在開啟收據彈窗...");
+            try {
+                const setTxt = (id, val) => {
+                    const el = document.getElementById(id);
+                    if (el) el.innerText = val;
+                };
+
+                setTxt('receiptClinicName', (typeof clinicSettings !== 'undefined' && clinicSettings.name) ? clinicSettings.name : '吉布動物醫院');
+                setTxt('receiptClinicPhone', `電話: ${(typeof clinicSettings !== 'undefined' && clinicSettings.phone) ? clinicSettings.phone : '02-8888-9999'}`);
+                setTxt('receiptClinicAddress', `地址: ${(typeof clinicSettings !== 'undefined' && clinicSettings.address) ? clinicSettings.address : '台北市中正區動物路一段88號'}`);
+
+                const rawId = invoiceData.id ? String(invoiceData.id) : 'REC-001';
+                setTxt('receiptNo', rawId.length > 8 ? rawId.slice(0, 8).toUpperCase() : rawId.toUpperCase());
+                setTxt('receiptDate', new Date(invoiceData.created_at || Date.now()).toLocaleString());
+                setTxt('receiptOwnerName', ownerName || '散客 / 未指定飼主');
+                setTxt('receiptPetName', petName || '無指定寵物');
+                setTxt('receiptPaymentMethod', invoiceData.checkout_type || '現金');
+
+                const tbody = document.getElementById('receiptItemsTableBody');
+                if (tbody) {
+                    tbody.innerHTML = '';
+                    if (itemsArray && itemsArray.length > 0) {
+                        itemsArray.forEach(item => {
+                            const tr = document.createElement('tr');
+                            const sub = item.subtotal !== undefined ? item.subtotal : (item.quantity * (item.unit_price || 0));
+                            tr.innerHTML = `
+                                <td>${item.item_name}</td>
+                                <td style="text-align: center;">${item.quantity}</td>
+                                <td style="text-align: right;">NT$ ${sub.toLocaleString()}</td>
+                            `;
+                            tbody.appendChild(tr);
+                        });
+                    }
+                }
+
+                setTxt('receiptSubtotal', (invoiceData.subtotal || 0).toLocaleString());
+                setTxt('receiptDiscount', (invoiceData.discount || 0).toLocaleString());
+                setTxt('receiptTotalAmount', (invoiceData.total_amount || 0).toLocaleString());
+
+                const modal = document.getElementById('receipt-modal');
+                if (modal) {
+                    modal.style.display = 'flex';
+                    modal.style.zIndex = '999999';
+                    console.log("收據彈窗已成功強制顯示！");
+                } else {
+                    alert("找不到收據彈窗元件 (#receipt-modal)，請檢查 HTML！");
+                }
+            } catch (e) {
+                console.error("開啟收據發生例外狀況:", e);
+                alert("顯示收據時發生錯誤：" + e.message);
+            }
+        }
+
+async function processProductCheckoutToArchive(shouldPrintReceipt = true) {
+            console.log("=== 準備執行純商品結帳 ===", "是否列印收據：", shouldPrintReceipt);
+            
+            const ownerId = document.getElementById('selectedCheckoutOwnerId') ? document.getElementById('selectedCheckoutOwnerId').value : "";
+            const petId = document.getElementById('checkoutPetSelect') ? document.getElementById('checkoutPetSelect').value : "";
+            
+            // 取得飼主名稱供收據顯示
+            let ownerNameStr = '散客 / 未指定飼主';
+            const ownerSearchInput = document.getElementById('checkoutOwnerSearch');
+            if (ownerSearchInput && ownerSearchInput.value.trim() !== '') {
+                ownerNameStr = ownerSearchInput.value.trim();
+            }
+
+            const subtotal = parseFloat(document.getElementById('checkoutSubTotal').innerText.replace(/,/g, '')) || 0;
+            const discount = parseFloat(document.getElementById('checkoutDiscount').value) || 0;
+            const totalAmount = parseFloat(document.getElementById('checkoutTotalAmount').innerText.replace(/,/g, '')) || 0;
+
+            let primaryCategory = '一般商品';
+            let savedItems = [];
+            
+            // 抓取購物車中的商品列
+            const rows = document.querySelectorAll('#productCheckoutItems .checkout-item-row');
+            rows.forEach(row => {
+                const nameEl = row.querySelector('.checkout-item-name');
+                const qtyEl = row.querySelector('.qty-input');
+                const priceEl = row.querySelector('.price-input');
+                const catEl = row.querySelector('.checkout-item-cat');
+                
+                if (nameEl && nameEl.value.trim() !== '') {
+                    const q = qtyEl ? parseInt(qtyEl.value) || 1 : 1;
+                    const p = priceEl ? parseFloat(priceEl.value) || 0 : 0;
+                    if (catEl && catEl.innerText) {
+                        primaryCategory = catEl.innerText;
+                    }
+                    savedItems.push({
+                        item_name: nameEl.value.trim(),
+                        quantity: q,
+                        unit_price: p,
+                        subtotal: q * p
+                    });
+                }
+            });
+
+            if (savedItems.length === 0) {
+                alert('購物車中沒有品項可結帳！');
+                return;
+            }
+
+            const tempInvoiceData = {
+                id: 'REC-' + Math.floor(Math.random() * 899999 + 100000),
+                created_at: new Date().toISOString(),
+                checkout_type: '商品零售',
+                subtotal: subtotal > 0 ? subtotal : totalAmount,
+                discount: discount,
+                total_amount: totalAmount > 0 ? totalAmount : 0
+            };
+
+            const petNameStr = '商品選購 (無指定寵物)';
+            
+            // 依照參數決定是否彈出收據
+            if (shouldPrintReceipt === true) {
+                openReceiptModal(tempInvoiceData, ownerNameStr, petNameStr, savedItems);
+            }
+
+            // 背景寫入 Supabase 資料庫
+            try {
+                if (typeof _supabase !== 'undefined' && typeof CURRENT_TENANT_ID !== 'undefined' && CURRENT_TENANT_ID) {
+                    const { data: invData, error: invError } = await _supabase.from('invoices').insert([{
+                        tenant_id: CURRENT_TENANT_ID,
+                        owner_id: ownerId ? ownerId : null,
+                        pet_id: petId ? petId : null,
+                        checkout_type: '商品零售',
+                        category: primaryCategory,
+                        subtotal: tempInvoiceData.subtotal,
+                        discount: discount,
+                        total_amount: tempInvoiceData.total_amount
+                    }]).select();
+
+                    if (!invError && invData && invData.length > 0) {
+                        const newInvoiceId = invData[0].id;
+                        for (let item of savedItems) {
+                            await _supabase.from('invoice_items').insert([{
+                                invoice_id: newInvoiceId,
+                                item_name: item.item_name,
+                                quantity: item.quantity,
+                                unit_price: item.unit_price,
+                                subtotal: item.subtotal
+                            }]);
+                        }
+                    }
+                }
+            } catch (err) {
+                console.warn("背景資料庫寫入失敗:", err);
+            }
+
+            // 清空購物車與輸入
+            document.getElementById('productCheckoutItems').innerHTML = '';
+            if (document.getElementById('checkoutOwnerSearch')) document.getElementById('checkoutOwnerSearch').value = '';
+            if (document.getElementById('selectedCheckoutOwnerId')) document.getElementById('selectedCheckoutOwnerId').value = '';
+            if (document.getElementById('checkoutPetSelect')) document.getElementById('checkoutPetSelect').innerHTML = '<option value="">-- 請先選擇飼主或不指定寵物 --</option>';
+            calculateProductTotal();
+
+            if (shouldPrintReceipt === false) {
+                alert("商品結帳與歸檔已成功完成！");
+            }
+        }
+
     </script>
 </body>
 </html>
