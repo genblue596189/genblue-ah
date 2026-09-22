@@ -90,6 +90,8 @@
         .pet-btn:hover { background: #0369a1; }
         .pet-btn-edit { background: #d97706; }
         .pet-btn-edit:hover { background: #b45309; }
+        .pet-btn-info { background: #059669; }
+        .pet-btn-info:hover { background: #047857; }
 
         .modal-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); justify-content: center; align-items: center; z-index: 1000; }
         .modal-content { background: #fff; padding: 25px; border-radius: var(--radius); width: 500px; max-width: 90%; box-shadow: 0 4px 12px rgba(0,0,0,0.15); max-height: 90vh; overflow-y: auto; }
@@ -98,21 +100,140 @@
         .rx-header { text-align: center; border-bottom: 2px solid #0284c7; padding-bottom: 12px; margin-bottom: 15px; }
         .rx-header h2 { color: #0369a1; margin-bottom: 5px; border: none; padding: 0; }
         .rx-info-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 15px; font-size: 0.95rem; background: #f8fafc; padding: 12px; border-radius: 6px; }
-    </style>
-    <script>
-        const PASSWORD = "1229"; 
-        if (sessionStorage.getItem("authenticated") !== "true") {
-            let userInput = prompt("請輸入訪問密碼：");
-            if (userInput === PASSWORD) {
-                sessionStorage.setItem("authenticated", "true");
-            } else {
-                alert("密碼錯誤，拒絕存取！");
-                window.location.href = "about:blank";
-            }
+        
+        .lab-abnormal { color: #dc2626; font-weight: bold; background: #fee2e2; padding: 2px 6px; border-radius: 4px; }
+
+        /* 收據專用列印樣式 */
+        #receipt-modal {
+            display: none;
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.5);
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
         }
-    </script>
-</head>
+        .receipt-card {
+            background: white;
+            width: 450px;
+            padding: 30px;
+            border-radius: 8px;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.2);
+            position: relative;
+        }
+        .receipt-header {
+            text-align: center;
+            margin-bottom: 20px;
+        }
+        .receipt-header h1 { font-size: 20px; margin: 0 0 5px 0; color: #1a202c; }
+        .receipt-header p { font-size: 12px; color: #718096; margin: 2px 0; }
+        .receipt-info {
+            font-size: 13px;
+            margin-bottom: 15px;
+            border-bottom: 1px dashed #cbd5e0;
+            padding-bottom: 10px;
+        }
+        .receipt-info div { display: flex; justify-content: space-between; margin-bottom: 4px; }
+        .receipt-table { width: 100%; font-size: 13px; margin-bottom: 15px; border-collapse: collapse; }
+        .receipt-table th, .receipt-table td { border: none; border-bottom: 1px solid #edf2f7; padding: 6px 0; }
+        .receipt-total {
+            font-size: 16px;
+            font-weight: bold;
+            text-align: right;
+            margin-bottom: 20px;
+        }
+        .receipt-actions {
+            display: flex;
+            gap: 10px;
+            justify-content: flex-end;
+        }
+
+        @media print {
+            body * { visibility: hidden; }
+            #receipt-modal, #receipt-modal * { visibility: visible; }
+            #receipt-modal {
+                position: absolute;
+                left: 0; top: 0;
+                width: 100%; height: auto;
+                background: white;
+            }
+            .receipt-actions { display: none; }
+        }
+    </style>
+    </head>
 <body>
+    <!-- Supabase 登入畫面 -->
+<div id="authScreen" style="
+    position: fixed;
+    inset: 0;
+    background: #f1f5f9;
+    z-index: 99999;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+">
+    <div style="
+        width: 380px;
+        max-width: calc(100vw - 40px);
+        background: white;
+        padding: 32px;
+        border-radius: 12px;
+        box-shadow: 0 10px 30px rgba(0,0,0,0.12);
+    ">
+        <div style="text-align:center; margin-bottom:25px;">
+            <h2 style="margin:0 0 8px 0;">吉布動物醫院管理系統</h2>
+            <div style="color:#64748b; font-size:14px;">
+                請登入您的帳號
+            </div>
+        </div>
+
+        <div style="margin-bottom:15px;">
+            <label style="display:block; margin-bottom:6px; font-weight:bold;">
+                Email
+            </label>
+            <input
+                type="email"
+                id="authEmail"
+                autocomplete="username"
+                placeholder="請輸入登入 Email"
+                style="width:100%; box-sizing:border-box;"
+            >
+        </div>
+
+        <div style="margin-bottom:18px;">
+            <label style="display:block; margin-bottom:6px; font-weight:bold;">
+                密碼
+            </label>
+            <input
+                type="password"
+                id="authPassword"
+                autocomplete="current-password"
+                placeholder="請輸入密碼"
+                style="width:100%; box-sizing:border-box;"
+            >
+        </div>
+
+        <button
+            id="authLoginButton"
+            onclick="handleSupabaseLogin()"
+            class="btn-primary"
+            style="width:100%;"
+        >
+            登入系統
+        </button>
+
+        <div
+            id="authMessage"
+            style="
+                margin-top:15px;
+                min-height:20px;
+                text-align:center;
+                font-size:14px;
+                color:#dc2626;
+            "
+        ></div>
+    </div>
+</div>
 
     <!-- 側邊欄導航 -->
     <sidebar>
@@ -134,6 +255,13 @@
             <li id="nav-lab_manager" onclick="switchTab('lab_manager')">血球與生化檢驗管理</li>
             <li id="nav-rapid_tests" onclick="switchTab('rapid_tests')">🦠 快篩與抗原檢驗管理</li>
             <li id="nav-lab_tests" onclick="switchTab('lab_tests')">檢驗, 影像及附件 (Lab Tests)</li>
+            <li
+               id="nav-logout"
+               onclick="logoutSupabase()"
+               style="margin-top:20px; color:#dc2626; font-weight:bold; cursor:pointer;"
+>
+    🚪 登出系統
+</li>
         </ul>
     </sidebar>
 
@@ -144,7 +272,7 @@
                 <h3>首頁管理介面</h3>
                 <input type="text" id="globalSearchInput" class="search-box" placeholder="全域搜尋 寵物 / 晶片 / 飼主 / 電話 / 客戶編號..." onkeydown="handleGlobalSearch(event)">
             </div>
-            <div class="tenant-badge" id="currentTenantBadge">醫院代碼 (tenant_id): GIB-TP-001</div>
+            <div class="tenant-badge" id="currentTenantBadge">醫院代碼 (tenant_id):</div>
         </header>
 
         <div class="content-area">
@@ -291,7 +419,13 @@
                     <div class="form-grid">
                         <div class="form-group"><label>寵物名字 (必填)</label><input type="text" id="intPetName" placeholder="例如：Muffin"></div>
                         <div class="form-group"><label>晶片號碼 (選填)</label><input type="text" id="intPetMicrochip" placeholder="15碼晶片號碼"></div>
-                        <div class="form-group"><label>出生日期 (日曆選單)</label><input type="date" id="intPetBirthday"></div>
+                        
+                        <!-- 出生日期與即時計算年齡顯示 -->
+                        <div class="form-group">
+                            <label id="petBirthdayLabel">出生日期 (日曆選單)</label>
+                            <input type="date" id="intPetBirthday" oninput="updateLiveAgeDisplay()" onchange="updateLiveAgeDisplay()">
+                        </div>
+
                         <div class="form-group">
                             <label>寵物種類</label>
                             <select id="intPetSpecies" onchange="onSpeciesChanged()">
@@ -314,7 +448,7 @@
                         </div>
 
                         <div class="form-group">
-                            <label>性別</label>
+                            <label>性別與結紮狀態</label>
                             <select id="intPetGender">
                                 <option value="公 (已結紮)">公 (已結紮)</option>
                                 <option value="公 (未結紮)">公 (未結紮)</option>
@@ -325,8 +459,11 @@
                         <div class="form-group"><label>目前體重 (kg)</label><input type="number" step="0.1" id="intPetWeight" placeholder="4.5"></div>
                     </div>
 
-                    <div style="margin-top: 15px;">
-                        <button onclick="saveIntegratedOwnerAndPet()" style="padding: 12px 24px; font-size: 1rem;">同時新增飼主與關聯寵物</button>
+                    <!-- 儲存後的三種選擇按鈕群組 -->
+                    <div style="margin-top: 20px; display: flex; gap: 12px; flex-wrap: wrap;">
+                        <button class="btn-secondary" onclick="saveIntegratedOwnerAndPet('save_only')" style="padding: 12px 20px; font-size: 0.95rem;">💾 僅儲存資料</button>
+                        <button class="btn-warning" onclick="saveIntegratedOwnerAndPet('save_and_waiting')" style="padding: 12px 20px; font-size: 0.95rem; background-color: #d97706;">⏳ 儲存並加入即時掛號等待</button>
+                        <button class="btn-success" onclick="saveIntegratedOwnerAndPet('save_and_consult')" style="padding: 12px 24px; font-size: 1rem; background-color: #059669;">🩺 儲存並直接進入醫療門診</button>
                     </div>
                 </div>
 
@@ -367,6 +504,15 @@
                         </div>
                     </div>
 
+                    <!-- 寵物即時基本資料卡片 -->
+                    <div id="medicalPetProfileCard" style="background: #e0f2fe; border: 1px solid #bae6fd; padding: 15px; border-radius: var(--radius); margin-bottom: 15px; display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 10px; font-size: 0.9rem; color: #0369a1;">
+                        <div><b>🐾 名字：</b><span id="cardPetName">-</span></div>
+                        <div><b>🏷️ 晶片：</b><span id="cardPetChip">-</span></div>
+                        <div><b>⏳ 年紀：</b><span id="cardPetAge">-</span></div>
+                        <div><b>⚧ 性別/結紮：</b><span id="cardPetGender">-</span></div>
+                        <div><b>🐈 種類/品種：</b><span id="cardPetBreed">-</span></div>
+                    </div>
+
                     <div class="form-grid" style="background: #f1f5f9; padding: 15px; border-radius: var(--radius); margin-bottom: 15px;">
                         <div class="form-group">
                             <label>當前看診寵物名稱</label>
@@ -387,8 +533,9 @@
                         </div>
                     </div>
 
+                    <!-- 精細化處方開立區塊 -->
                     <div class="search-add-box">
-                        <h3>處方用藥與針劑開立（支援口服/針劑智慧切換）</h3>
+                        <h3>處方用藥與針劑開立（多劑型專業細化）</h3>
                         <div class="form-grid" style="margin-bottom: 10px;">
                             <div class="form-group span-2">
                                 <label>選擇或搜尋專區藥品</label>
@@ -397,8 +544,15 @@
                                 </select>
                             </div>
                             <div class="form-group">
-                                <label>給藥途徑</label>
-                                <input type="text" id="medRouteDisplay" readonly placeholder="口服/針劑" style="background: #f1f5f9; font-weight: bold;">
+                                <label>給藥途徑與劑型細分</label>
+                                <select id="medRouteDetailSelect" onchange="onRouteDetailChanged()">
+                                    <option value="口服錠劑/膠囊" selected>口服錠劑 / 膠囊 (Oral)</option>
+                                    <option value="口服液/懸浮液">口服液 / 懸浮液 (Liquid)</option>
+                                    <option value="外用滴劑">外用滴劑 (Spot-on)</option>
+                                    <option value="眼藥水/耳藥膏">眼藥水 / 耳藥膏 (Drops/Ointment)</option>
+                                    <option value="皮下/肌肉注射">皮下 / 肌肉注射 (SC/IM)</option>
+                                    <option value="靜脈注射">靜脈注射 (IV)</option>
+                                </select>
                             </div>
                             <div class="form-group">
                                 <label>每單位規格含量</label>
@@ -406,52 +560,40 @@
                             </div>
                         </div>
 
-                        <!-- 動態切換：口服專用計算區塊 -->
-                        <div id="oralDoseContainer" class="form-grid" style="margin-bottom: 0;">
+                        <!-- 動態計算參數區塊 -->
+                        <div class="form-grid" style="margin-bottom: 10px;">
                             <div class="form-group">
-                                <label>建議劑量 (mg/kg)</label>
-                                <input type="text" id="medCustomRecDose" placeholder="10" oninput="runDoseMathCalculation()">
+                                <label id="labelRecDoseTitle">建議劑量 (mg/kg)</label>
+                                <input type="text" id="medCustomRecDose" placeholder="10" oninput="runDetailedMathCalculation()">
                             </div>
                             <div class="form-group">
-                                <label>每天幾次</label>
-                                <select id="medFrequency" onchange="runDoseMathCalculation()">
-                                    <option value="1">一天一次 (1次)</option>
-                                    <option value="2" selected>一天兩次 (2次)</option>
-                                    <option value="3">一天三次 (3次)</option>
+                                <label>給藥頻率</label>
+                                <select id="medFrequencyDetail" onchange="runDetailedMathCalculation()">
+                                    <option value="1">一天一次 (SID)</option>
+                                    <option value="2" selected>一天兩次 (BID)</option>
+                                    <option value="3">一天三次 (TID)</option>
+                                    <option value="0.5">隔日給藥 (QOD)</option>
+                                    <option value="0">PRN (有需要時使用)</option>
                                 </select>
                             </div>
                             <div class="form-group">
                                 <label>天數 (Days)</label>
-                                <input type="number" id="medDays" value="3" min="1" oninput="runDoseMathCalculation()">
+                                <input type="number" id="medDays" value="3" min="1" oninput="runDetailedMathCalculation()">
                             </div>
                             <div class="form-group">
-                                <label>自動換算：總數量 (顆)</label>
+                                <label>自動計算結果 (總量)</label>
                                 <input type="text" id="calculatedDoseResult" readonly style="background: #dbeafe; color: var(--primary-dark); font-weight: bold;" placeholder="自動換算">
                             </div>
-                            <div class="form-group"><label>實際開立數量</label><input type="number" id="medPrescribeQty" value="1"></div>
-                            <div class="form-group span-3"><label>用法與頻率說明</label><input type="text" id="medPrescribeNote" value="一天兩次，連續3天，飯後服用"></div>
-                            <div class="form-group span-4" style="justify-content: flex-end;"><button onclick="addPrescriptionItem()">+ 加入本次口服處方</button></div>
                         </div>
 
-                        <!-- 動態切換：針劑專用計算區塊 -->
-                        <div id="injectableDoseContainer" class="form-grid" style="margin-bottom: 0; display: none;">
-                            <div class="form-group">
-                                <label>每公斤劑量 (ml/kg 或 mg/kg)</label>
-                                <input type="text" id="injCustomRate" placeholder="0.1" oninput="runInjectableMathCalculation()">
-                            </div>
-                            <div class="form-group">
-                                <label>自動換算：總施打量 (ml / 針)</label>
-                                <input type="text" id="injCalculatedTotal" readonly style="background: #fef3c7; color: #b45309; font-weight: bold;" placeholder="自動換算">
-                            </div>
-                            <div class="form-group">
-                                <label>實際開立/施打數量</label><input type="number" id="injPrescribeQty" value="1" step="0.1">
-                            </div>
-                            <div class="form-group span-4"><label>注射途徑與說明</label><input type="text" id="injPrescribeNote" value="皮下注射 subcutaneous (SC)"></div>
-                            <div class="form-group span-4" style="justify-content: flex-end;"><button class="btn-warning" onclick="addInjectableItem()">+ 加入本次注射針劑</button></div>
+                        <div class="form-grid" style="margin-bottom: 0;">
+                            <div class="form-group"><label>實際開立數量</label><input type="number" id="medPrescribeQty" value="1" step="0.1"></div>
+                            <div class="form-group span-3"><label>用法與頻率說明</label><input type="text" id="medPrescribeNote" value="一天兩次，連續3天，飯後服用"></div>
+                            <div class="form-group span-4" style="justify-content: flex-end;"><button onclick="addDetailedPrescriptionItem()">+ 加入本次精細處方清單</button></div>
                         </div>
                     </div>
 
-                    <h3>本次處方清單 (含口服與針劑明細)</h3>
+                    <h3>本次處方清單 (含多劑型與針劑明細)</h3>
                     <div id="prescriptionItemsContainer" style="margin-top: 10px; margin-bottom: 20px;"></div>
                     
                     <div style="display: flex; gap: 15px; flex-wrap: wrap;">
@@ -467,7 +609,7 @@
                 <div class="card">
                     <h2>🏥 住院與照護病房管理 (Inpatients)</h2>
                     <p style="color: #64748b; margin-bottom: 20px; font-size: 0.9rem;">
-                        在此即時管理所有住院中病患、記錄每日照護備註、計算住院天數與每日基本費，並於康復出院時一鍵轉入收費結帳。
+                        在此即時管理所有住院中病患、記錄每日護理日誌（體溫、進食量、排泄、輸液）、計算住院天數與基本費，並於康復出院時一鍵轉入收費結帳。
                     </p>
 
                     <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
@@ -481,7 +623,7 @@
                                 <th>入住時間</th>
                                 <th>住院原因與主訴</th>
                                 <th>每日住院費</th>
-                                <th>照護備註 / 巡房紀錄</th>
+                                <th>每日護理日誌 (體溫/進食/排泄/輸液)</th>
                                 <th>操作 (出院 / 結帳)</th>
                             </tr>
                         </thead>
@@ -601,7 +743,7 @@
                 </div>
             </div>
 
-            <!-- 5. 藥品專區與分類 (已整合口服與針劑) -->
+            <!-- 5. 藥品專區與分類 -->
             <div id="medicines" class="tab-content">
                 <div class="card">
                     <h2>藥品專區與分類建檔 (支援口服 / 針劑)</h2>
@@ -789,7 +931,7 @@
                     <h2>系統設定及醫院資料</h2>
                     <div class="form-grid">
                         <div class="form-group span-2"><label>醫院名稱</label><input type="text" id="clinicNameSet" value="吉布動物醫院"></div>
-                        <div class="form-group span-2"><label>醫院代碼 (tenant_id)</label><input type="text" id="clinicTenantId" value="GIB-TP-001" readonly style="background:#f1f5f9;"></div>
+                        <div class="form-group span-2"><label>醫院代碼 (tenant_id)</label><input type="text" id="clinicTenantId" value="" readonly style="background:#f1f5f9;"></div>
                         <div class="form-group span-2"><label>負責獸醫師</label><input type="text" id="clinicDirectorSet" value="張劍明"></div>
                         <div class="form-group span-2"><label>聯絡電話</label><input type="text" id="clinicPhoneSet" value="02-8888-9999"></div>
                     </div>
@@ -815,11 +957,30 @@
             <div id="invoices" class="tab-content">
                 <div class="card">
                     <h2>門診收費與付款管理 (Invoices)</h2>
+                    
+                    <div style="background: #f1f5f9; padding: 15px; border-radius: var(--radius); margin-bottom: 15px;">
+                        <h4 style="margin-bottom: 8px; color: var(--primary-dark); font-size: 0.95rem;">💡 快速套用常用醫療套餐 / 健檢組合包</h4>
+                        <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+                            <button class="btn-secondary" style="padding: 6px 12px; font-size: 0.85rem;" onclick="applyInvoicePackage('一般健康健檢包', [ {name:'一般門診診察費', qty:1, price:500}, {name:'全血球 CBC 檢驗', qty:1, price:800}, {name:'血液生化檢驗', qty:1, price:1200} ])">🩺 基礎健康健檢包 (NT$ 2,500)</button>
+                            <button class="btn-secondary" style="padding: 6px 12px; font-size: 0.85rem;" onclick="applyInvoicePackage('血液+X光篩檢包', [ {name:'一般門診診察費', qty:1, price:500}, {name:'數位 X 光影像檢查', qty:2, price:600}, {name:'血液生化檢驗', qty:1, price:1200} ])">🩻 血液與X光篩檢包 (NT$ 2,900)</button>
+                            <button class="btn-secondary" style="padding: 6px 12px; font-size: 0.85rem;" onclick="applyInvoicePackage('疫苗施打專案', [ {name:'一般門診診察費', qty:1, price:500}, {name:'犬/貓綜合疫苗施打', qty:1, price:1000} ])">💉 疫苗施打專案 (NT$ 1,500)</button>
+                        </div>
+                    </div>
+
                     <div class="form-grid" style="margin-bottom: 15px;">
-                        <div class="form-group span-4">
+                        <div class="form-group span-2">
                             <label>選擇結帳飼主</label>
                             <select id="invoiceOwnerSelect">
                                 <option value="">-- 請選擇飼主 --</option>
+                            </select>
+                        </div>
+                        <div class="form-group span-2">
+                            <label>付款方式選擇</label>
+                            <select id="invoicePaymentMethod">
+                                <option value="現金 (Cash)" selected>現金 (Cash)</option>
+                                <option value="信用卡 (Credit Card)">信用卡 (Credit Card)</option>
+                                <option value="行動支付 (LinePay/ApplePay)">行動支付 (LinePay / ApplePay)</option>
+                                <option value="賒帳 / 未付清 (Credit/Owed)" style="color: #dc2626; font-weight: bold;">賒帳 / 未付清 (Owed)</option>
                             </select>
                         </div>
                     </div>
@@ -843,18 +1004,20 @@
                 </div>
             </div>
 
+
+            
             <!-- 11. 血球與生化檢驗管理 -->
             <div id="lab_manager" class="tab-content">
                 <div class="card">
                     <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
-                        <h2>動物血液檢驗數據登錄 (CBC 詳細細項與生化)</h2>
+                        <h2>動物血液檢驗數據登錄 (CBC 詳細細項與生化 - 智慧標準比對)</h2>
                         <button class="btn-secondary" style="padding: 6px 14px; font-size: 0.85rem;" onclick="backToMedicalFromLab()">⬅ 返回目前看診病歷</button>
                     </div>
 
                     <div class="form-grid">
                         <div class="form-group span-2">
                             <label>選擇檢驗對象寵物 (可輸入名字或晶片搜尋)</label>
-                            <input type="text" id="labPetSearchInput" list="labPetDatalist" placeholder="🔍 輸入關鍵字搜尋寵物..." style="margin-bottom: 6px;">
+                            <input type="text" id="labPetSearchInput" list="labPetDatalist" placeholder="🔍 輸入關鍵字搜尋寵物..." style="margin-bottom: 6px;" oninput="onLabPetSelectedForTrend()">
                             <datalist id="labPetDatalist"></datalist>
                             <input type="hidden" id="selectedLabPetId">
                         </div>
@@ -867,73 +1030,58 @@
                         </div>
                     </div>
 
+                    <div id="petLabTrendContainer" style="background: #f0fdf4; border: 1px solid #bbf7d0; padding: 12px; border-radius: var(--radius); margin-bottom: 15px; display: none;">
+                        <h4 style="color: #166534; font-size: 0.95rem; margin-bottom: 6px;">📈 此寵物過往歷史檢驗趨勢參考：</h4>
+                        <div id="petLabTrendContent" style="font-size: 0.85rem; color: #14532d;">請先選取寵物...</div>
+                    </div>
+
                     <!-- CBC 全血球細項完整登錄區塊 -->
                     <div id="cbcFieldsContainer" style="background: #f8fafc; padding: 20px; border-radius: var(--radius); margin-bottom: 15px; border: 1px solid var(--border-color);">
-                        <h4 style="margin-bottom: 15px; color: var(--primary-dark);">🐾 CBC 全血球詳細檢驗數據</h4>
+                        <h4 style="margin-bottom: 15px; color: var(--primary-dark);">🐾 CBC 全血球詳細檢驗數據 (自動比對標準區間)</h4>
                         
                         <h5 style="color: #475569; margin-bottom: 8px; font-size: 0.9rem;">白血球分類百分比 (%)</h5>
                         <div class="form-grid" style="margin-bottom: 15px;">
-                            <div class="form-group"><label>WBC (白血球總數)</label><input type="number" step="0.01" id="cbc_wbc" placeholder="10^3/uL"></div>
-                            <div class="form-group"><label>%Neu (嗜中性球%) [52.0-81.0]</label><input type="number" step="0.1" id="cbc_pct_neu" placeholder="%"></div>
-                            <div class="form-group"><label>%Lym (淋巴球%) [12.0-33.0]</label><input type="number" step="0.1" id="cbc_pct_lym" placeholder="%"></div>
-                            <div class="form-group"><label>%Mono (單核球%) [2.0-13.0]</label><input type="number" step="0.1" id="cbc_pct_mono" placeholder="%"></div>
-                            <div class="form-group"><label>%Eos (嗜酸性球%) [0.5-10.0]</label><input type="number" step="0.1" id="cbc_pct_eos" placeholder="%"></div>
-                            <div class="form-group"><label>%Baso (嗜鹼性球%) [0.0-1.3]</label><input type="number" step="0.1" id="cbc_pct_baso" placeholder="%"></div>
-                        </div>
-
-                        <h5 style="color: #475569; margin-bottom: 8px; font-size: 0.9rem;">白血球與分類絕對值 (x1000/uL)</h5>
-                        <div class="form-grid" style="margin-bottom: 15px;">
-                            <div class="form-group"><label>_Neu (嗜中性球絕對值) [3.62-12.30]</label><input type="number" step="0.01" id="cbc_neu_abs" placeholder="x1000/ul"></div>
-                            <div class="form-group"><label>Lym (淋巴球絕對值) [0.83-4.91]</label><input type="number" step="0.01" id="cbc_lym_abs" placeholder="x1000/uL"></div>
-                            <div class="form-group"><label>Mono (單核球絕對值) [0.14-1.97]</label><input type="number" step="0.01" id="cbc_mono_abs" placeholder="x1000/uL"></div>
-                            <div class="form-group"><label>_Eos (嗜酸性球絕對值) [0.04-1.62]</label><input type="number" step="0.01" id="cbc_eos_abs" placeholder="x1000/ul"></div>
-                            <div class="form-group"><label>_Baso (嗜鹼性球絕對值) [0.0-0.12]</label><input type="number" step="0.01" id="cbc_baso_abs" placeholder="x1000/ul"></div>
+                            <div class="form-group"><label>WBC (白血球總數) [6.0-17.0]</label><input type="number" step="0.01" id="cbc_wbc" placeholder="10^3/uL" oninput="checkLabInputRange(this, 6, 17)"></div>
+                            <div class="form-group"><label>%Neu (嗜中性球%) [52-81]</label><input type="number" step="0.1" id="cbc_pct_neu" placeholder="%" oninput="checkLabInputRange(this, 52, 81)"></div>
+                            <div class="form-group"><label>%Lym (淋巴球%) [12-33]</label><input type="number" step="0.1" id="cbc_pct_lym" placeholder="%" oninput="checkLabInputRange(this, 12, 33)"></div>
+                            <div class="form-group"><label>%Mono (單核球%) [2-13]</label><input type="number" step="0.1" id="cbc_pct_mono" placeholder="%" oninput="checkLabInputRange(this, 2, 13)"></div>
+                            <div class="form-group"><label>%Eos (嗜酸性球%) [0.5-10]</label><input type="number" step="0.1" id="cbc_pct_eos" placeholder="%" oninput="checkLabInputRange(this, 0.5, 10)"></div>
+                            <div class="form-group"><label>%Baso (嗜鹼性球%) [0-1.3]</label><input type="number" step="0.1" id="cbc_pct_baso" placeholder="%" oninput="checkLabInputRange(this, 0, 1.3)"></div>
                         </div>
 
                         <h5 style="color: #475569; margin-bottom: 8px; font-size: 0.9rem;">紅血球系列 (RBC & Indices)</h5>
                         <div class="form-grid" style="margin-bottom: 15px;">
-                            <div class="form-group"><label>RBC (紅血球總數) [5.1-8.5]</label><input type="number" step="0.01" id="cbc_rbc" placeholder="x10*6/ul"></div>
-                            <div class="form-group"><label>HGB (血紅素) [11.0-19.0 g/L]</label><input type="number" step="0.1" id="cbc_hgb" placeholder="g / L"></div>
-                            <div class="form-group"><label>HCT (血球容積比) [33.0-56.0 %]</label><input type="number" step="0.1" id="cbc_hct" placeholder="%"></div>
-                            <div class="form-group"><label>MCV (平均紅血球容積) [60-76.0 fl]</label><input type="number" step="0.1" id="cbc_mcv" placeholder="fl"></div>
-                            <div class="form-group"><label>MCH (平均血紅素量) [20.0-27.0 pg]</label><input type="number" step="0.1" id="cbc_mch" placeholder="pg"></div>
-                            <div class="form-group"><label>MCHC (平均血紅素濃度) [30.0-38.0 fL]</label><input type="number" step="0.1" id="cbc_mchc" placeholder="fL"></div>
-                            <div class="form-group"><label>RDW-CV [%] [12.5-17.2]</label><input type="number" step="0.1" id="cbc_rdw_cv" placeholder="%"></div>
-                            <div class="form-group"><label>RDW-SD [fL] [33.2-46.3]</label><input type="number" step="0.1" id="cbc_rdw_sd" placeholder="fL"></div>
+                            <div class="form-group"><label>RBC (紅血球總數) [5.1-8.5]</label><input type="number" step="0.01" id="cbc_rbc" placeholder="x10*6/ul" oninput="checkLabInputRange(this, 5.1, 8.5)"></div>
+                            <div class="form-group"><label>HGB (血紅素) [11-19 g/dl]</label><input type="number" step="0.1" id="cbc_hgb" placeholder="g/dl" oninput="checkLabInputRange(this, 11, 19)"></div>
+                            <div class="form-group"><label>HCT (血球容積比) [33-56 %]</label><input type="number" step="0.1" id="cbc_hct" placeholder="%" oninput="checkLabInputRange(this, 33, 56)"></div>
+                            <div class="form-group"><label>MCV (平均紅血球容積) [60-76 fl]</label><input type="number" step="0.1" id="cbc_mcv" placeholder="fl" oninput="checkLabInputRange(this, 60, 76)"></div>
+                            <div class="form-group"><label>MCH (平均血紅素量) [20-27 pg]</label><input type="number" step="0.1" id="cbc_mch" placeholder="pg" oninput="checkLabInputRange(this, 20, 27)"></div>
+                            <div class="form-group"><label>MCHC (平均血紅素濃度) [30-38 g/dl]</label><input type="number" step="0.1" id="cbc_mchc" placeholder="g/dl" oninput="checkLabInputRange(this, 30, 38)"></div>
                         </div>
 
-                        <h5 style="color: #475569; margin-bottom: 8px; font-size: 0.9rem;">血小板系列 (PLT & Indices)</h5>
+                        <h5 style="color: #475569; margin-bottom: 8px; font-size: 0.9rem;">血小板系列 (PLT)</h5>
                         <div class="form-grid">
-                            <div class="form-group"><label>PLT (血小板總數) [117-490]</label><input type="number" id="cbc_plt" placeholder="x1000/ul"></div>
-                            <div class="form-group"><label>MPV (平均血小板體積) [8.0-14.1 fL]</label><input type="number" step="0.1" id="cbc_mpv" placeholder="fL"></div>
-                            <div class="form-group"><label>PDW [0.1-30.0 fL]</label><input type="number" step="0.1" id="cbc_pdw" placeholder="fL"></div>
+                            <div class="form-group"><label>PLT (血小板總數) [117-490]</label><input type="number" id="cbc_plt" placeholder="x1000/ul" oninput="checkLabInputRange(this, 117, 490)"></div>
+                            <div class="form-group"><label>MPV (平均血小板體積) [8-14 fL]</label><input type="number" step="0.1" id="cbc_mpv" placeholder="fL" oninput="checkLabInputRange(this, 8, 14)"></div>
                         </div>
                     </div>
 
                     <!-- 血液生化細項完整登錄區塊 -->
                     <div id="bioFieldsContainer" style="background: #f8fafc; padding: 20px; border-radius: var(--radius); margin-bottom: 15px; border: 1px solid var(--border-color); display: none;">
-                        <h4 style="margin-bottom: 15px; color: var(--primary-dark);">🧪 血液生化詳細檢驗數據</h4>
+                        <h4 style="margin-bottom: 15px; color: var(--primary-dark);">🧪 血液生化詳細檢驗數據 (自動比對標準區間)</h4>
                         <div class="form-grid">
-                            <div class="form-group"><label>ALB (白蛋白) [2.6-4.6 g/dl]</label><input type="number" step="0.1" id="bio_alb" placeholder="g/dl"></div>
-                            <div class="form-group"><label>TP (總蛋白) [5.2-8.2 g/dl]</label><input type="number" step="0.1" id="bio_tp" placeholder="g/dl"></div>
-                            <div class="form-group"><label>GLU (血糖) [60-132 mg/dl]</label><input type="number" id="bio_glu" placeholder="mg/dl"></div>
-                            <div class="form-group"><label>ALP (鹼性磷酸酶) [0-212 mU/ml]</label><input type="number" id="bio_alp" placeholder="mU/ml"></div>
-                            <div class="form-group"><label>ALT (GPT / 肝指數) [0-88 mU/ml]</label><input type="number" id="bio_alt" placeholder="mU/ml"></div>
-                            <div class="form-group"><label>BUN (尿素氮) [6.0-26.0 mg/dl]</label><input type="number" step="0.1" id="bio_bun" placeholder="mg/dl"></div>
-                            <div class="form-group"><label>CREA (肌酸酐) [0.4-1.6 g/dl]</label><input type="number" step="0.01" id="bio_crea" placeholder="g/dl"></div>
-                            <div class="form-group"><label>#GLOB (球蛋白) [2.2-4.6 g/dl]</label><input type="number" step="0.1" id="bio_glob" placeholder="g/dl"></div>
-                            <div class="form-group"><label>#A/G (白球比) [0.6-1.1]</label><input type="number" step="0.01" id="bio_ag" placeholder="ratio"></div>
-                            <div class="form-group"><label>#B/C (BUN/CREA比)</label><input type="text" id="bio_bc" placeholder="數值或狀態"></div>
-                            <div class="form-group"><label>AMY (澱粉酶) [400-1500 U/L]</label><input type="number" id="bio_amy" placeholder="U/L"></div>
-                            <div class="form-group"><label>TBil (總膽紅素) [0.0-0.9 mg/dl]</label><input type="number" step="0.1" id="bio_tbil" placeholder="mg/dl"></div>
-                            <div class="form-group"><label>PHOS (磷) [2.5-6.8 mg/dl]</label><input type="number" step="0.1" id="bio_phos" placeholder="mg/dl"></div>
-                            <div class="form-group"><label>Ca (鈣) [7.9-12.0]</label><input type="number" step="0.1" id="bio_ca" placeholder="mg/dl"></div>
-                            <div class="form-group"><label>修正鈣 [7.9-12.0]</label><input type="number" step="0.1" id="bio_fixed_ca" placeholder="mg/dl"></div>
-                            <div class="form-group"><label>GGT (r-GT) [0-10 mg/dl]</label><input type="number" id="bio_ggt" placeholder="mg/dl"></div>
-                            <div class="form-group"><label>LIPA (脂肪酶) [0-125]</label><input type="number" id="bio_lipa" placeholder="U/L"></div>
-                            <div class="form-group"><label>#UREA (尿素) [27.8-79.2]</label><input type="number" step="0.1" id="bio_urea" placeholder="mg/dl"></div>
-                            <div class="form-group"><label>CHOL (膽固醇) [110-320 ug/dl]</label><input type="number" id="bio_chol" placeholder="ug/dl"></div>
-                            <div class="form-group"><label>#C-Ca [7.9-12.0]</label><input type="number" step="0.1" id="bio_cca" placeholder="mg/dl"></div>
+                            <div class="form-group"><label>ALB (白蛋白) [2.6-4.6]</label><input type="number" step="0.1" id="bio_alb" placeholder="g/dl" oninput="checkLabInputRange(this, 2.6, 4.6)"></div>
+                            <div class="form-group"><label>TP (總蛋白) [5.2-8.2]</label><input type="number" step="0.1" id="bio_tp" placeholder="g/dl" oninput="checkLabInputRange(this, 5.2, 8.2)"></div>
+                            <div class="form-group"><label>GLU (血糖) [60-132]</label><input type="number" id="bio_glu" placeholder="mg/dl" oninput="checkLabInputRange(this, 60, 132)"></div>
+                            <div class="form-group"><label>ALP (鹼性磷酸酶) [0-212]</label><input type="number" id="bio_alp" placeholder="mU/ml" oninput="checkLabInputRange(this, 0, 212)"></div>
+                            <div class="form-group"><label>ALT (肝指數) [0-88]</label><input type="number" id="bio_alt" placeholder="mU/ml" oninput="checkLabInputRange(this, 0, 88)"></div>
+                            <div class="form-group"><label>BUN (尿素氮) [6-26]</label><input type="number" step="0.1" id="bio_bun" placeholder="mg/dl" oninput="checkLabInputRange(this, 6, 26)"></div>
+                            <div class="form-group"><label>CREA (肌酸酐) [0.4-1.6]</label><input type="number" step="0.01" id="bio_crea" placeholder="g/dl" oninput="checkLabInputRange(this, 0.4, 1.6)"></div>
+                            <div class="form-group"><label>AMY (澱粉酶) [400-1500]</label><input type="number" id="bio_amy" placeholder="U/L" oninput="checkLabInputRange(this, 400, 1500)"></div>
+                            <div class="form-group"><label>TBil (總膽紅素) [0-0.9]</label><input type="number" step="0.1" id="bio_tbil" placeholder="mg/dl" oninput="checkLabInputRange(this, 0, 0.9)"></div>
+                            <div class="form-group"><label>PHOS (磷) [2.5-6.8]</label><input type="number" step="0.1" id="bio_phos" placeholder="mg/dl" oninput="checkLabInputRange(this, 2.5, 6.8)"></div>
+                            <div class="form-group"><label>Ca (鈣) [7.9-12.0]</label><input type="number" step="0.1" id="bio_ca" placeholder="mg/dl" oninput="checkLabInputRange(this, 7.9, 12.0)"></div>
+                            <div class="form-group"><label>CHOL (膽固醇) [110-320]</label><input type="number" id="bio_chol" placeholder="ug/dl" oninput="checkLabInputRange(this, 110, 320)"></div>
                         </div>
                     </div>
 
@@ -956,7 +1104,7 @@
                                 <th>建立時間</th>
                                 <th>寵物名字</th>
                                 <th>檢驗類別</th>
-                                <th>核心數值摘要</th>
+                                <th>核心數值摘要 (紅字表異常)</th>
                                 <th>備註</th>
                                 <th>操作</th>
                             </tr>
@@ -1077,14 +1225,22 @@
             <!-- 14. 預約報到與看診流程 -->
             <div id="appointments" class="tab-content active">
                 <div class="card">
-                    <h2>預約報到與看診流程管理</h2>
+                    <h2>預約報到與看診流程管理 (含上下午/夜診與醫師分配)</h2>
                     <div class="form-grid">
                         <div class="form-group span-2"><label>預約/報到時間</label><input type="datetime-local" id="appointmentTime"></div>
                         <div class="form-group span-2">
                             <label>選擇或搜尋寵物</label>
                             <select id="appointmentPetSelect"></select>
                         </div>
-                        <div class="form-group span-2"><label>看診醫師</label><select id="appointmentDoctor"><option>張醫師</option><option>值班醫師</option></select></div>
+                        <div class="form-group">
+                            <label>診別時段</label>
+                            <select id="appointmentSession">
+                                <option value="上午診" selected>🌅 上午診 (Morning)</option>
+                                <option value="下午診">☀️ 下午診 (Afternoon)</option>
+                                <option value="夜診">🌙 夜診 (Evening)</option>
+                            </select>
+                        </div>
+                        <div class="form-group"><label>看診醫師</label><select id="appointmentDoctor"><option value="張醫師">張醫師</option><option value="值班醫師">值班醫師</option></select></div>
                         <div class="form-group span-2"><label>初始狀態</label><select id="appointmentStatusSelect"><option selected>候診中</option><option>診間看診中</option></select></div>
                     </div>
                     <div style="display: flex; gap: 12px; margin-top: 15px;">
@@ -1093,18 +1249,21 @@
                 </div>
                 
                 <div class="card">
-                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
-                        <h3>即時報到與預約病患列表 (透過上方全域搜尋新增病患，支援多筆依序排列)</h3>
-                        <div style="display: flex; gap: 8px;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; flex-wrap: wrap; gap: 10px;">
+                        <h3>即時報到與預約病患列表 (支援時段與狀態快速過濾)</h3>
+                        <div style="display: flex; gap: 8px; flex-wrap: wrap;">
                             <button class="btn-secondary" style="padding: 4px 10px; font-size: 0.8rem;" onclick="filterAppointmentsStatus('all')">全部</button>
+                            <button class="btn-secondary" style="padding: 4px 10px; font-size: 0.8rem;" onclick="filterAppointmentsStatus('上午診')">🌅 上午診</button>
+                            <button class="btn-secondary" style="padding: 4px 10px; font-size: 0.8rem;" onclick="filterAppointmentsStatus('下午診')">☀️ 下午診</button>
+                            <button class="btn-secondary" style="padding: 4px 10px; font-size: 0.8rem;" onclick="filterAppointmentsStatus('夜診')">🌙 夜診</button>
                             <button class="btn-secondary" style="padding: 4px 10px; font-size: 0.8rem;" onclick="filterAppointmentsStatus('候診中')">候診中</button>
                             <button class="btn-secondary" style="padding: 4px 10px; font-size: 0.8rem;" onclick="filterAppointmentsStatus('診間看診中')">看診中</button>
                         </div>
                     </div>
                     <table id="appointmentTable">
-                        <thead><tr><th>晶片號碼</th><th>寵物名字</th><th>飼主</th><th>報到時間</th><th>目前狀態</th><th>快捷操作與歸檔</th></tr></thead>
+                        <thead><tr><th>晶片號碼</th><th>寵物名字</th><th>飼主</th><th>時段 / 醫師</th><th>報到時間</th><th>目前狀態</th><th>快捷操作與歸檔</th></tr></thead>
                         <tbody id="appointmentTableBody">
-                            <tr><td colspan="6" style="text-align: center; color: #64748b;">尚無報到病患，請透過上方全域搜尋帶入病患...</td></tr>
+                            <tr><td colspan="7" style="text-align: center; color: #64748b;">尚無報到病患，請透過上方全域搜尋帶入病患...</td></tr>
                         </tbody>
                     </table>
                 </div>
@@ -1230,13 +1389,20 @@
         const SUPABASE_URL = 'https://rfprsbftkwtwjqrjcalq.supabase.co';
         const SUPABASE_ANON_KEY = 'sb_publishable_mbbz-W9Mwg-yzcokP8Yk3g_2Gqf1wum';
         const _supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-        const CURRENT_TENANT_ID = 'GIB-TP-001';
+        let CURRENT_TENANT_ID = null;
+        let CURRENT_USER = null;
+        let CURRENT_PROFILE = null;
 
         let currentPetId = "";
         let currentPetMicrochip = "";
         let currentPetName = "";
         let currentPetWeight = 0; 
         let currentOwnerId = "";
+        let currentPetBirthday = "";
+        let currentPetGender = "";
+        let currentPetSpecies = "";
+        let currentPetBreed = "";
+
         let loadedMedicinesMap = {}; 
         let loadedItemsMap = {};
         let globalOwnersPetsData = []; 
@@ -1279,11 +1445,22 @@
             address: "台北市中正區動物路一段88號"
         };
 
-        window.onload = async function() {
-            const todayStr = new Date().toISOString().split('T')[0];
-            document.getElementById('reportStartDate').value = todayStr;
-            document.getElementById('reportEndDate').value = todayStr;
-            document.getElementById('vacAdministeredDate').value = todayStr;
+        async function initializeApp() {
+    applyRolePermissions();
+    const tenantInput = document.getElementById('clinicTenantId');
+
+    if (tenantInput) {
+        tenantInput.value = CURRENT_TENANT_ID || '';
+    }
+
+    const tenantBadge = document.getElementById('currentTenantBadge');
+
+    if (tenantBadge) {
+        tenantBadge.textContent =
+            `醫院代碼 (tenant_id): ${CURRENT_TENANT_ID || ''}`;
+    }
+        
+    const todayStr = new Date().toISOString().split('T')[0];
 
             let nextYearDate = new Date();
             nextYearDate.setDate(nextYearDate.getDate() + 365);
@@ -1357,7 +1534,207 @@
                     document.getElementById('selectedRapidPetId').value = foundId;
                 });
             }
-        };
+        }
+
+        function applyRolePermissions() {
+    const clinicNav = document.getElementById('nav-clinic');
+    const auditNav = document.getElementById('nav-audit_logs');
+
+    const isAdmin = CURRENT_PROFILE?.role === 'admin';
+
+    if (clinicNav) {
+        clinicNav.style.display = isAdmin ? '' : 'none';
+    }
+
+    if (auditNav) {
+        auditNav.style.display = isAdmin ? '' : 'none';
+    }
+}
+        // ==========================================
+// Supabase Authentication
+// ==========================================
+
+function setAuthMessage(message, isError = true) {
+    const el = document.getElementById('authMessage');
+    if (!el) return;
+
+    el.textContent = message;
+    el.style.color = isError ? '#dc2626' : '#059669';
+}
+
+function showAuthScreen() {
+    const screen = document.getElementById('authScreen');
+    if (screen) {
+        screen.style.display = 'flex';
+    }
+}
+
+function hideAuthScreen() {
+    const screen = document.getElementById('authScreen');
+    if (screen) {
+        screen.style.display = 'none';
+    }
+}
+
+async function loadCurrentUserProfile() {
+    const {
+        data: { user },
+        error: userError
+    } = await _supabase.auth.getUser();
+
+    if (userError) {
+        throw userError;
+    }
+
+    if (!user) {
+        return null;
+    }
+
+    const { data: profile, error: profileError } = await _supabase
+        .from('user_profiles')
+        .select('tenant_id, display_name, role')
+        .eq('user_id', user.id)
+        .single();
+
+    if (profileError) {
+        throw profileError;
+    }
+
+    if (!profile || !profile.tenant_id) {
+        throw new Error('找不到您的診所使用者設定（user_profiles）。');
+    }
+
+    CURRENT_USER = user;
+    CURRENT_PROFILE = profile;
+    CURRENT_TENANT_ID = profile.tenant_id;
+
+    return profile;
+}
+
+async function handleSupabaseLogin() {
+    const emailInput = document.getElementById('authEmail');
+    const passwordInput = document.getElementById('authPassword');
+    const button = document.getElementById('authLoginButton');
+
+    const email = emailInput.value.trim();
+    const password = passwordInput.value;
+
+    if (!email || !password) {
+        setAuthMessage('請輸入 Email 與密碼。');
+        return;
+    }
+
+    button.disabled = true;
+    button.textContent = '登入中...';
+    setAuthMessage('');
+
+    try {
+        const { error } = await _supabase.auth.signInWithPassword({
+            email,
+            password
+        });
+
+        if (error) {
+            throw error;
+        }
+
+        await loadCurrentUserProfile();
+
+        setAuthMessage('登入成功，正在載入系統...', false);
+
+        hideAuthScreen();
+
+        await initializeApp();
+
+    } catch (error) {
+        console.error('登入失敗：', error);
+
+        setAuthMessage(
+            '登入失敗：' + (error.message || '帳號或密碼錯誤')
+        );
+
+        button.disabled = false;
+        button.textContent = '登入系統';
+    }
+}
+
+async function logoutSupabase() {
+    const { error } = await _supabase.auth.signOut();
+
+    if (error) {
+        alert('登出失敗：' + error.message);
+        return;
+    }
+
+    CURRENT_USER = null;
+    CURRENT_PROFILE = null;
+    CURRENT_TENANT_ID = null;
+
+    location.reload();
+}
+
+async function bootstrapAuthentication() {
+    showAuthScreen();
+
+    try {
+        const {
+            data: { session }
+        } = await _supabase.auth.getSession();
+
+        if (!session) {
+            return;
+        }
+
+        await loadCurrentUserProfile();
+
+        hideAuthScreen();
+
+        await initializeApp();
+
+    } catch (error) {
+        console.error('載入登入狀態失敗：', error);
+
+        await _supabase.auth.signOut();
+
+        showAuthScreen();
+
+        setAuthMessage(
+            '無法取得您的診所權限設定：' +
+            (error.message || '請聯絡系統管理員')
+        );
+    }
+}
+
+// Enter 鍵直接登入
+document.addEventListener('keydown', function(event) {
+    if (event.key !== 'Enter') return;
+
+    const authScreen = document.getElementById('authScreen');
+
+    if (
+        authScreen &&
+        authScreen.style.display !== 'none'
+    ) {
+        handleSupabaseLogin();
+    }
+});
+
+// 啟動 Supabase Authentication
+bootstrapAuthentication();
+
+        function updateLiveAgeDisplay() {
+            const birthdayInput = document.getElementById('intPetBirthday').value;
+            const labelEl = document.getElementById('petBirthdayLabel');
+            if (!labelEl) return;
+
+            if (!birthdayInput) {
+                labelEl.innerText = "出生日期 (日曆選單)";
+                return;
+            }
+
+            const ageStr = calculateAge(birthdayInput);
+            labelEl.innerHTML = `出生日期 (日曆選單) <span style="color: #0369a1; font-weight: bold; margin-left: 6px;">👉 目前年紀：${ageStr}</span>`;
+        }
 
         async function loadBreedsFromSupabase() {
             const { data, error } = await _supabase
@@ -1902,21 +2279,23 @@
 
             let years = today.getFullYear() - birthDate.getFullYear();
             let months = today.getMonth() - birthDate.getMonth();
+            let days = today.getDate() - birthDate.getDate();
 
-            if (months < 0 || (months === 0 && today.getDate() < birthDate.getDate())) {
+            if (days < 0) {
+                months--;
+                const prevMonth = new Date(today.getFullYear(), today.getMonth(), 0);
+                days += prevMonth.getDate();
+            }
+            if (months < 0) {
                 years--;
                 months += 12;
             }
 
-            if (years > 0) {
-                return `${years} 歲 ${months > 0 ? months + ' 個月' : ''}`;
-            } else if (months > 0) {
-                return `${months} 個月`;
-            } else {
-                const diffTime = Math.abs(today - birthDate);
-                const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-                return `${diffDays} 天`;
-            }
+            let result = '';
+            if (years > 0) result += `${years} 歲 `;
+            if (months > 0 || years > 0) result += `${months} 個月 `;
+            result += `${days} 天`;
+            return result.trim();
         }
 
         async function loadVaccineTypes() {
@@ -2507,6 +2886,10 @@
                     name: pet.name,
                     microchip: pet.microchip || '',
                     weight: pet.weight || 0,
+                    birthday: pet.birthday || '',
+                    gender: pet.gender || '',
+                    species: pet.species || '貓',
+                    breed: pet.breed || '',
                     owner_id: pet.owner_id,
                     owner_name: owner ? owner.name : '未知',
                     owner_code: owner ? (owner.owner_code || '') : ''
@@ -2525,7 +2908,18 @@
                 const codeStr = owner && owner.owner_code ? `[編號:${owner.owner_code}] ` : '';
                 if(appointmentSelect) {
                     const opt = document.createElement('option');
-                    opt.value = JSON.stringify({id: pet.id, microchip: pet.microchip || '', name: pet.name, owner_id: pet.owner_id, weight: pet.weight || 0, owner_name: ownerName});
+                    opt.value = JSON.stringify({
+                        id: pet.id, 
+                        microchip: pet.microchip || '', 
+                        name: pet.name, 
+                        owner_id: pet.owner_id, 
+                        weight: pet.weight || 0, 
+                        owner_name: ownerName,
+                        birthday: pet.birthday || '',
+                        gender: pet.gender || '',
+                        species: pet.species || '貓',
+                        breed: pet.breed || ''
+                    });
                     opt.textContent = `${pet.name} ${pet.weight ? '(' + pet.weight + 'kg)' : ''} - 飼主: ${codeStr}${ownerName}`;
                     appointmentSelect.appendChild(opt);
                 }
@@ -2580,12 +2974,17 @@
                         const ageStr = calculateAge(pet.birthday);
                         const breedStr = pet.breed ? `[${pet.breed}]` : '';
                         const speciesBadge = pet.species ? `(${pet.species})` : '';
+                        
+                        const petDataEncoded = encodeURIComponent(JSON.stringify(pet));
+                        const ownerNameEncoded = encodeURIComponent(owner.name || '');
+
                         petsHtml += `
                             <div class="nested-pet-tag">
-                                <span style="cursor: pointer;" title="點擊直接看診" onclick="startConsultationById('${pet.id}', '${pet.microchip || ''}', '${pet.name}', '${owner.id}', ${pet.weight || 0}, '${owner.name}')">
+                                <span style="cursor: pointer;" title="點擊直接看診" onclick="startConsultationById('${pet.id}', '${pet.microchip || ''}', '${pet.name}', '${owner.id}', ${pet.weight || 0}, '${owner.name}', '${pet.birthday || ''}', '${pet.gender || ''}', '${pet.species || '貓'}', '${pet.breed || ''}')">
                                     🐾 <b>${pet.name}</b> ${speciesBadge} ${breedStr} (${ageStr} | ${pet.weight !== null ? pet.weight + 'kg' : '未量體重'}) ${pet.microchip ? '[' + pet.microchip + ']' : ''}
                                 </span>
                                 <div class="pet-actions">
+                                    <button class="pet-btn pet-btn-info" title="檢視寵物詳細資料與精確年齡" onclick="openPetDetailModal('${petDataEncoded}', '${ownerNameEncoded}')">詳</button>
                                     <button class="pet-btn" title="快速補印最後一次處方箋" onclick="printLatestPrescription('${pet.id}', '${pet.name}', ${pet.weight || 0}, '${pet.microchip || ''}')">處方</button>
                                     <button class="pet-btn pet-btn-edit" title="修改寵物資料" onclick="editPet('${pet.id}', '${pet.name}', '${pet.microchip || ''}', ${pet.weight || 0}, '${pet.birthday || ''}', '${pet.breed || ''}', '${pet.species || '貓'}')">改</button>
                                     <button class="pet-btn btn-danger" title="刪除寵物" onclick="deletePet('${pet.id}', '${pet.name}')">刪</button>
@@ -2616,6 +3015,29 @@
             });
         }
 
+        function openPetDetailModal(petDataEncoded, ownerNameEncoded) {
+            const pet = JSON.parse(decodeURIComponent(petDataEncoded));
+            const ownerName = decodeURIComponent(ownerNameEncoded);
+            const exactAge = calculateAge(pet.birthday);
+
+            const html = `
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 15px;">
+                    <div><b>🐾 寵物名字：</b><br>${pet.name || '-'}</div>
+                    <div><b>👤 所屬飼主：</b><br>${ownerName || '-'}</div>
+                    <div><b>🏷️ 晶片號碼：</b><br>${pet.microchip || '未植入晶片'}</div>
+                    <div><b>🏷️ 寵物種類 / 品種：</b><br>${pet.species || '未知'} / ${pet.breed || '未填寫'}</div>
+                    <div><b>🎂 出生日期：</b><br>${pet.birthday || '未填寫'}</div>
+                    <div><b>⏳ 精確計算年齡：</b><br><span style="color: #0369a1; font-weight: bold; font-size: 1.05rem;">${exactAge}</span></div>
+                    <div><b>⚧ 性別狀態：</b><br>${pet.gender || '未填寫'}</div>
+                    <div><b>⚖️ 目前體重：</b><br>${pet.weight !== null && pet.weight !== undefined ? pet.weight + ' kg' : '未量體重'}</div>
+                </div>
+            `;
+
+            document.getElementById('detailModalTitle').innerText = `🐾 寵物詳細資料與年齡檢視 - ${pet.name}`;
+            document.getElementById('detailModalBody').innerHTML = html;
+            document.getElementById('genericDetailModal').style.display = 'flex';
+        }
+
         function filterIntegratedTable() {
             const keyword = document.getElementById('ownerPetTableSearch').value.trim().toLowerCase();
             if(!keyword) { renderIntegratedTable(globalOwnersPetsData); return; }
@@ -2633,7 +3055,7 @@
             renderIntegratedTable(filtered);
         }
 
-        async function saveIntegratedOwnerAndPet() {
+        async function saveIntegratedOwnerAndPet(actionType) {
             const ownerCode = document.getElementById('intOwnerCode').value.trim();
             const ownerName = document.getElementById('intOwnerName').value.trim();
             const ownerMobile = document.getElementById('intOwnerMobile').value.trim();
@@ -2669,17 +3091,29 @@
             }
             const newOwnerId = ownerData[0].id;
 
-            const { error: petError } = await _supabase.from('pets').insert([{
+            const { data: petData, error: petError } = await _supabase.from('pets').insert([{
                 tenant_id: CURRENT_TENANT_ID, owner_id: newOwnerId, name: petName, microchip: microchip || null, birthday: birthday || null, species, breed, gender, weight
-            }]);
+            }]).select();
 
-            if (petError) {
-                alert('新增寵物失敗，Supabase 錯誤訊息：' + petError.message);
-                console.error('Supabase Insert Error:', petError);
+            if (petError || !petData || petData.length === 0) {
+                alert('新增寵物失敗，Supabase 錯誤訊息：' + (petError ? petError.message : '未知錯誤'));
                 return;
             }
 
-            alert('已成功建立飼主與關聯寵物！');
+            const newPetObj = {
+                id: petData[0].id,
+                name: petName,
+                microchip: microchip || '',
+                weight: weight || 0,
+                birthday: birthday || '',
+                gender: gender || '',
+                species: species || '貓',
+                breed: breed || '',
+                owner_id: newOwnerId,
+                owner_name: ownerName
+            };
+
+            // 清空輸入欄位
             document.getElementById('intOwnerCode').value = '';
             document.getElementById('intOwnerName').value = '';
             document.getElementById('intOwnerMobile').value = '';
@@ -2690,7 +3124,31 @@
             document.getElementById('intPetName').value = '';
             document.getElementById('intPetMicrochip').value = '';
             document.getElementById('intPetWeight').value = '';
-            loadOwnersAndPetsIntegrated();
+            document.getElementById('intPetBirthday').value = '';
+            document.getElementById('petBirthdayLabel').innerText = '出生日期 (日曆選單)';
+
+            await loadOwnersAndPetsIntegrated();
+
+            if (actionType === 'save_and_waiting') {
+                let exists = activeAppointmentsList.some(p => p.id === newPetObj.id);
+                if (!exists) {
+                    activeAppointmentsList.push({
+                        ...newPetObj,
+                        status: '候診中',
+                        session: '上午診',
+                        doctor: '張醫師',
+                        time: new Date().toLocaleTimeString()
+                    });
+                }
+                renderAppointmentTable(activeAppointmentsList);
+                alert('已成功建立資料，並已加入即時掛號候診列表！');
+                switchTab('appointments');
+            } else if (actionType === 'save_and_consult') {
+                alert('已成功建立資料，即將直接進入醫療門診！');
+                startConsultationById(newPetObj.id, newPetObj.microchip, newPetObj.name, newPetObj.owner_id, newPetObj.weight, newPetObj.owner_name, newPetObj.birthday, newPetObj.gender, newPetObj.species, newPetObj.breed);
+            } else {
+                alert('已成功建立飼主與關聯寵物！');
+            }
         }
 
         async function addPetToOwnerPrompt(ownerId, ownerName) {
@@ -2716,7 +3174,6 @@
 
             if (error) {
                 alert('新增寵物失敗，Supabase 錯誤訊息：' + error.message);
-                console.error('Supabase Insert Error:', error);
                 return;
             }
 
@@ -2961,9 +3418,15 @@
                                 name: pet.name,
                                 microchip: pet.microchip || '',
                                 weight: pet.weight || 0,
+                                birthday: pet.birthday || '',
+                                gender: pet.gender || '',
+                                species: pet.species || '貓',
+                                breed: pet.breed || '',
                                 owner_id: ownerId,
                                 owner_name: ownerName,
                                 status: '候診中',
+                                session: '上午診',
+                                doctor: '張醫師',
                                 time: new Date().toLocaleTimeString()
                             });
                         }
@@ -3073,7 +3536,6 @@
             }]).select();
 
             if (invError || !invData || invData.length === 0) {
-                console.error('商品結帳寫入失敗：', invError);
                 alert('商品結帳寫入失敗：' + (invError ? invError.message : '未知錯誤'));
                 return;
             }
@@ -3088,18 +3550,13 @@
                 if (itemNameEl && itemNameEl.value.trim() !== "") {
                     const q = parseInt(qtyEl ? qtyEl.value : 1) || 1;
                     const p = parseFloat(priceEl ? priceEl.value : 0) || 0;
-                    const { error: itemError } = await _supabase.from('invoice_items').insert([{
+                    await _supabase.from('invoice_items').insert([{
                         invoice_id: newInvoiceId,
                         item_name: itemNameEl.value.trim(),
                         quantity: q,
                         unit_price: p,
                         subtotal: q * p
                     }]);
-                    
-                    if (itemError) {
-                        console.error('寫入明細項目失敗：', itemError);
-                        alert('部分明細寫入失敗：' + itemError.message);
-                    }
                 }
             }
 
@@ -3134,8 +3591,28 @@
             container.appendChild(div);
         }
 
+        function applyInvoicePackage(packageName, itemsArray) {
+            const invoiceListContainer = document.getElementById('invoiceItemsList');
+            invoiceListContainer.innerHTML = '';
+
+            itemsArray.forEach(it => {
+                let div = document.createElement('div');
+                div.className = 'list-row';
+                div.innerHTML = `
+                    <input type="text" value="${it.name}" placeholder="項目名稱" class="invoice-name">
+                    <input type="number" value="${it.qty}" placeholder="數量" class="invoice-qty" style="flex: 0.5;" oninput="calculateInvoiceTotal()">
+                    <input type="number" value="${it.price}" placeholder="金額" class="invoice-price" oninput="calculateInvoiceTotal()">
+                    <button class="btn-danger" onclick="this.parentElement.remove(); calculateInvoiceTotal();" style="padding: 9px 12px;">刪除</button>
+                `;
+                invoiceListContainer.appendChild(div);
+            });
+            calculateInvoiceTotal();
+            alert(`已成功套用「${packageName}」醫療套餐組合！`);
+        }
+
         async function processInvoiceCheckoutToArchive() {
             const ownerId = document.getElementById('invoiceOwnerSelect').value;
+            const paymentMethod = document.getElementById('invoicePaymentMethod').value;
             const subtotal = parseFloat(document.getElementById('invoiceSubTotal').innerText.replace(/,/g, '')) || 0;
             const discount = parseFloat(document.getElementById('invoiceDiscount').value) || 0;
             const totalAmount = parseFloat(document.getElementById('invoiceTotalAmount').innerText.replace(/,/g, '')) || 0;
@@ -3143,7 +3620,7 @@
             const { data: invData, error: invError } = await _supabase.from('invoices').insert([{
                 tenant_id: CURRENT_TENANT_ID, 
                 owner_id: ownerId ? ownerId : null, 
-                checkout_type: '門診收費', 
+                checkout_type: `門診收費 (${paymentMethod})`, 
                 subtotal, 
                 discount, 
                 total_amount: totalAmount
@@ -3166,7 +3643,7 @@
                     const p = parseFloat(priceEl.value) || 0;
                     await _supabase.from('invoice_items').insert([{
                         invoice_id: newInvoiceId,
-                        item_name: nameEl.value.trim(),
+                        item_name: `${nameEl.value.trim()} [付款: ${paymentMethod}]`,
                         quantity: q,
                         unit_price: p,
                         subtotal: q * p
@@ -3174,17 +3651,21 @@
                 }
             }
 
-            alert('收費成功，病歷與帳單已順利歸檔！');
+            alert(`收費成功！付款方式：${paymentMethod}，病歷與帳單已順利歸檔完成！`);
             currentPetId = ""; currentOwnerId = "";
             switchTab('appointments');
         }
 
-        async function startConsultationById(petId, chipId, petNameStr, ownerId, weight, ownerName) {
+        async function startConsultationById(petId, chipId, petNameStr, ownerId, weight, ownerName, birthday, gender, species, breed) {
             currentPetId = petId;
             currentPetMicrochip = chipId;
             currentPetName = petNameStr;
             currentOwnerId = ownerId || "";
             currentPetWeight = parseFloat(weight) || 0;
+            currentPetBirthday = birthday || "";
+            currentPetGender = gender || "";
+            currentPetSpecies = species || "貓";
+            currentPetBreed = breed || "";
 
             let targetPet = activeAppointmentsList.find(p => p.id === petId);
             if (targetPet) {
@@ -3199,8 +3680,18 @@
             document.getElementById('medicalDiagnosis').value = "";
             document.getElementById('prescriptionItemsContainer').innerHTML = "";
             
+            updateMedicalPetProfileCard();
+
             switchTab('medical');
             await loadAllMedicalRecords(petId);
+        }
+
+        function updateMedicalPetProfileCard() {
+            document.getElementById('cardPetName').innerText = currentPetName || '-';
+            document.getElementById('cardPetChip').innerText = currentPetMicrochip || '無晶片';
+            document.getElementById('cardPetAge').innerText = calculateAge(currentPetBirthday);
+            document.getElementById('cardPetGender').innerText = currentPetGender || '未填寫';
+            document.getElementById('cardPetBreed').innerText = `${currentPetSpecies} / ${currentPetBreed || '未填品種'}`;
         }
 
         async function admitCurrentPetToHospital() {
@@ -3215,7 +3706,7 @@
                 reason: reason,
                 daily_rate: dailyRate,
                 status: '住院中',
-                care_notes: '初次入住病房'
+                care_notes: '初次入住病房 (體溫: 38.5°C | 食慾良好)'
             }]);
 
             if (error) {
@@ -3278,8 +3769,8 @@
                     <td>${item.reason || '未填寫原因'}</td>
                     <td>NT$ ${item.daily_rate || 500} / 天<br><small style="color:#dc2626; font-weight:bold;">預估基本費: NT$ ${estimatedTotal}</small></td>
                     <td>
-                        <textarea id="note_${item.id}" rows="3" style="margin-bottom: 6px; padding: 6px 10px; font-size: 0.85rem; width: 100%; resize: vertical;" placeholder="輸入巡房記錄或詳細照護備註...">${item.care_notes || ''}</textarea>
-                        <button class="btn-secondary" style="padding: 4px 10px; font-size: 0.8rem;" onclick="updateInpatientNote('${item.id}')">更新備註</button>
+                        <textarea id="note_${item.id}" rows="3" style="margin-bottom: 6px; padding: 6px 10px; font-size: 0.85rem; width: 100%; resize: vertical;" placeholder="輸入每日護理日誌 (例: 體溫 38.6°C, 食慾 80%, 排便正常, 輸液 20ml/h)...">${item.care_notes || ''}</textarea>
+                        <button class="btn-secondary" style="padding: 4px 10px; font-size: 0.8rem;" onclick="updateInpatientNote('${item.id}')">更新護理日誌</button>
                     </td>
                     <td>
                         <button class="btn-success" style="padding: 6px 12px; font-size: 0.85rem;" onclick="dischargeInpatientToCheckout('${item.id}', '${pet.id}', '${pet.name}', '${owner.id}', ${estimatedTotal}, '${item.reason || '住院費'}', ${diffDays}, ${item.daily_rate || 500})">🏥 辦理出院並轉回結帳</button>
@@ -3295,7 +3786,7 @@
             if (error) {
                 alert('更新失敗：' + error.message);
             } else {
-                alert('住院照護備註已成功更新！');
+                alert('住院護理日誌已成功更新！');
                 loadInpatientsList();
             }
         }
@@ -3329,19 +3820,6 @@
             alert('已成功辦理出院！請在收費與付款頁面確認金額後完成結帳歸檔。');
             switchTab('invoices');
             loadInpatientsList();
-        }
-
-        function filterInpatientsTable() {
-            const kw = document.getElementById('inpatientsTableSearch').value.trim().toLowerCase();
-            if (!kw) { renderInpatientsTable(allInpatientsCache); return; }
-
-            const filtered = allInpatientsCache.filter(item => {
-                const petName = (item.pets && item.pets.name ? item.pets.name : '').toLowerCase();
-                const reason = (item.reason || '').toLowerCase();
-                const ownerName = (item.pets && item.pets.owners && item.pets.owners.name ? item.pets.owners.name : '').toLowerCase();
-                return petName.includes(kw) || reason.includes(kw) || ownerName.includes(kw);
-            });
-            renderInpatientsTable(filtered);
         }
 
         function directCheckoutFromAppointment(petId, ownerId) {
@@ -3404,7 +3882,68 @@
                     const codeStr = matchedPetOption.owner_code ? `[編號:${matchedPetOption.owner_code}] ` : '';
                     labSearchInput.value = `${matchedPetOption.name} (${codeStr}飼主: ${matchedPetOption.owner_name} / 晶片: ${matchedPetOption.microchip || '無'})`;
                     hiddenLabPetId.value = currentPetId;
+                    onLabPetSelectedForTrend();
                 }
+            }
+        }
+
+        function onLabPetSelectedForTrend() {
+            const labInput = document.getElementById('labPetSearchInput');
+            const datalist = document.getElementById('labPetDatalist');
+            const options = datalist.querySelectorAll('option');
+            let foundId = "";
+            options.forEach(opt => {
+                if (opt.value === labInput.value) {
+                    foundId = opt.dataset.petId;
+                }
+            });
+            document.getElementById('selectedLabPetId').value = foundId;
+
+            const trendContainer = document.getElementById('petLabTrendContainer');
+            const trendContent = document.getElementById('petLabTrendContent');
+
+            if (!foundId) {
+                trendContainer.style.display = 'none';
+                return;
+            }
+
+            const petReports = allLabReportsCache.filter(r => r.pet_id === foundId);
+            if (petReports.length === 0) {
+                trendContainer.style.display = 'block';
+                trendContent.innerHTML = '此寵物尚無過往歷史檢驗紀錄。';
+                return;
+            }
+
+            let html = '';
+            petReports.slice(0, 3).forEach((rep, idx) => {
+                let sum = '';
+                if (rep.report_data) {
+                    for (let k in rep.report_data) {
+                        if (rep.report_data[k]) sum += `${k.toUpperCase()}:${rep.report_data[k]} | `;
+                    }
+                }
+                html += `<div>🕒 ${new Date(rep.created_at).toLocaleDateString()} [${rep.test_type}]：${sum}</div>`;
+            });
+
+            trendContainer.style.display = 'block';
+            trendContent.innerHTML = html;
+        }
+
+        function checkLabInputRange(inputEl, minVal, maxVal) {
+            const val = parseFloat(inputEl.value);
+            if (isNaN(val)) {
+                inputEl.style.background = '#fff';
+                inputEl.style.color = '#334155';
+                return;
+            }
+            if (val < minVal || val > maxVal) {
+                inputEl.style.background = '#fee2e2';
+                inputEl.style.color = '#dc2626';
+                inputEl.style.fontWeight = 'bold';
+            } else {
+                inputEl.style.background = '#f0fdf4';
+                inputEl.style.color = '#166534';
+                inputEl.style.fontWeight = 'bold';
             }
         }
 
@@ -3473,6 +4012,7 @@
         function restoreMedicalState() {
             if (currentPetId) {
                 document.getElementById('medicalPetNameInfo').value = `${currentPetName} ${currentPetMicrochip ? '(晶片: ' + currentPetMicrochip + ')' : ''}`;
+                updateMedicalPetProfileCard();
             }
             document.getElementById('medicalPetWeightInput').value = medicalStateCache.weight || currentPetWeight;
             document.getElementById('medicalDiagnosis').value = medicalStateCache.chiefComplaint || "";
@@ -3501,138 +4041,110 @@
             onMedicineSelectedForDoseCalculation();
         }
 
-        // ================= 智慧切換計算核心邏輯 =================
+        function onRouteDetailChanged() {
+            const routeDetail = document.getElementById('medRouteDetailSelect').value;
+            const labelTitle = document.getElementById('labelRecDoseTitle');
+            if (routeDetail.includes('注射') || routeDetail.includes('外用滴劑') || routeDetail.includes('眼藥水')) {
+                labelTitle.innerText = "建議劑量比率 (ml/kg 或 滴/kg)";
+            } else {
+                labelTitle.innerText = "建議劑量 (mg/kg)";
+            }
+            runDetailedMathCalculation();
+        }
+
         function onMedicineSelectedForDoseCalculation() {
             const dropdown = document.getElementById('medSelectDropdown');
             const selectedMedId = dropdown.value;
-            
             const useDoseDisplay = document.getElementById('medUseDoseDisplay');
-            const routeDisplay = document.getElementById('medRouteDisplay');
+            const routeDetailSelect = document.getElementById('medRouteDetailSelect');
             
             if (!selectedMedId || !loadedMedicinesMap[selectedMedId]) {
                 useDoseDisplay.value = "";
-                routeDisplay.value = "";
                 return;
             }
 
             const med = loadedMedicinesMap[selectedMedId];
-            const route = med.route || '口服';
-            routeDisplay.value = route;
             useDoseDisplay.value = med.usage_dose || '';
 
-            if (route === '針劑') {
-                document.getElementById('oralDoseContainer').style.display = 'none';
-                document.getElementById('injectableDoseContainer').style.display = 'grid';
-
-                let defaultRate = 0.1;
-                if (med.recommended_dose) {
-                    const match = med.recommended_dose.match(/([\d.]+)/);
-                    if (match) defaultRate = parseFloat(match[1]);
-                }
-                document.getElementById('injCustomRate').value = defaultRate;
-                runInjectableMathCalculation();
+            if (med.route === '針劑') {
+                routeDetailSelect.value = '皮下/肌肉注射';
             } else {
-                document.getElementById('oralDoseContainer').style.display = 'grid';
-                document.getElementById('injectableDoseContainer').style.display = 'none';
-
-                let defaultMgKg = 10;
-                if (med.recommended_dose) {
-                    const match = med.recommended_dose.match(/([\d.]+)/);
-                    if (match) defaultMgKg = parseFloat(match[1]);
-                }
-                document.getElementById('medCustomRecDose').value = defaultMgKg;
-                runDoseMathCalculation();
+                routeDetailSelect.value = '口服錠劑/膠囊';
             }
+            onRouteDetailChanged();
+
+            let defaultVal = 10;
+            if (med.recommended_dose) {
+                const match = med.recommended_dose.match(/([\d.]+)/);
+                if (match) defaultVal = parseFloat(match[1]);
+            }
+            document.getElementById('medCustomRecDose').value = defaultVal;
+            runDetailedMathCalculation();
         }
 
-        function runDoseMathCalculation() {
-            const dropdown = document.getElementById('medSelectDropdown');
-            const selectedMedId = dropdown.value;
-            if (!selectedMedId || !loadedMedicinesMap[selectedMedId]) return;
-
-            const med = loadedMedicinesMap[selectedMedId];
+        function runDetailedMathCalculation() {
             const customRecDose = parseFloat(document.getElementById('medCustomRecDose').value) || 0;
-            const frequency = parseInt(document.getElementById('medFrequency').value) || 2;
+            const freqVal = parseFloat(document.getElementById('medFrequencyDetail').value) || 2;
             const days = parseInt(document.getElementById('medDays').value) || 3;
-            
+            const routeDetail = document.getElementById('medRouteDetailSelect').value;
+
             const calcResultInput = document.getElementById('calculatedDoseResult');
             const qtyInput = document.getElementById('medPrescribeQty');
 
-            if (med.usage_dose && currentPetWeight > 0) {
-                const useMatch = med.usage_dose.match(/([\d.]+)\s*mg/i);
-                if (useMatch) {
-                    const mgPerUnit = parseFloat(useMatch[1]);
-                    if (mgPerUnit > 0) {
-                        const totalMgNeeded = customRecDose * currentPetWeight * frequency * days;
-                        const exactPills = totalMgNeeded / mgPerUnit;
-                        const calculatedPills = Math.ceil(exactPills);
-
-                        calcResultInput.value = `建議總需 ${calculatedPills} 顆`;
-                        qtyInput.value = calculatedPills;
-                    }
-                } else {
-                    calcResultInput.value = "規格單位非mg";
-                }
+            if (routeDetail.includes('注射') || routeDetail.includes('外用滴劑') || routeDetail.includes('眼藥水')) {
+                const totalMl = customRecDose * currentPetWeight * (freqVal > 0 ? freqVal : 1) * days;
+                calcResultInput.value = `建議總需 ${totalMl.toFixed(2)} ml/單位`;
+                qtyInput.value = totalMl > 0 ? totalMl.toFixed(2) : 1;
             } else {
-                calcResultInput.value = "請確認體重";
+                const dropdown = document.getElementById('medSelectDropdown');
+                const selectedMedId = dropdown.value;
+                if (selectedMedId && loadedMedicinesMap[selectedMedId]) {
+                    const med = loadedMedicinesMap[selectedMedId];
+                    if (med.usage_dose) {
+                        const useMatch = med.usage_dose.match(/([\d.]+)\s*mg/i);
+                        if (useMatch) {
+                            const mgPerUnit = parseFloat(useMatch[1]);
+                            if (mgPerUnit > 0 && currentPetWeight > 0) {
+                                const totalMg = customRecDose * currentPetWeight * (freqVal > 0 ? freqVal : 1) * days;
+                                const calculatedPills = Math.ceil(totalMg / mgPerUnit);
+                                calcResultInput.value = `建議總需 ${calculatedPills} 顆`;
+                                qtyInput.value = calculatedPills;
+                                return;
+                            }
+                        }
+                    }
+                }
+                const fallbackPills = Math.ceil(customRecDose * currentPetWeight * (freqVal > 0 ? freqVal : 1) * days / 250);
+                calcResultInput.value = `估算總需 ${fallbackPills} 單位`;
+                qtyInput.value = fallbackPills;
             }
         }
 
-        function runInjectableMathCalculation() {
-            const rate = parseFloat(document.getElementById('injCustomRate').value) || 0;
-            const weight = currentPetWeight || 0;
-            const totalMl = rate * weight;
-
-            document.getElementById('injCalculatedTotal').value = `${totalMl.toFixed(2)} ml`;
-            document.getElementById('injPrescribeQty').value = totalMl > 0 ? totalMl.toFixed(2) : 1;
-        }
-
-        function addPrescriptionItem() {
+        function addDetailedPrescriptionItem() {
             const dropdown = document.getElementById('medSelectDropdown');
             const selectedOpt = dropdown.options[dropdown.selectedIndex];
-            if(!selectedOpt || !selectedOpt.value) { alert('請選擇口服藥品！'); return; }
+            if(!selectedOpt || !selectedOpt.value) { alert('請選擇專區藥品！'); return; }
             
             const medName = selectedOpt.dataset.name || selectedOpt.text;
-            const customDose = document.getElementById('medCustomRecDose').value + ' mg/kg';
+            const routeDetail = document.getElementById('medRouteDetailSelect').value;
+            const customDose = document.getElementById('medCustomRecDose').value + ' 單位';
             const qty = document.getElementById('medPrescribeQty').value || 1;
             const note = document.getElementById('medPrescribeNote').value || '';
+
+            const badgeColor = routeDetail.includes('注射') ? '#b45309' : '#0369a1';
 
             const container = document.getElementById('prescriptionItemsContainer');
             const div = document.createElement('div');
             div.className = 'list-row prescription-item-row';
             div.innerHTML = `
-                <input type="text" value="[口服] ${medName}" style="flex: 2; background: #fff; color: #0369a1; font-weight: bold;" readonly title="藥品名稱">
-                <input type="text" value="${customDose}" class="prescribe-custom-dose" style="flex: 1.2;" placeholder="使用劑量" title="使用劑量">
+                <input type="text" value="[${routeDetail}] ${medName}" style="flex: 2; background: #fff; color: ${badgeColor}; font-weight: bold;" readonly title="藥品與劑型">
+                <input type="text" value="${customDose}" class="prescribe-custom-dose" style="flex: 1.2;" placeholder="劑量" title="使用劑量">
                 <input type="number" value="${qty}" class="prescribe-qty" style="flex: 0.8;" placeholder="數量" title="數量">
                 <input type="text" value="${note}" class="prescribe-note" style="flex: 2;" placeholder="用法說明" title="用法">
                 <button class="btn-danger" onclick="this.parentElement.remove();" style="padding: 9px 12px;">刪除</button>
             `;
             container.appendChild(div);
         }
-
-        function addInjectableItem() {
-            const dropdown = document.getElementById('medSelectDropdown');
-            const selectedOpt = dropdown.options[dropdown.selectedIndex];
-            if(!selectedOpt || !selectedOpt.value) { alert('請選擇注射針劑！'); return; }
-            
-            const medName = selectedOpt.dataset.name || selectedOpt.text;
-            const rate = document.getElementById('injCustomRate').value;
-            const qty = document.getElementById('injPrescribeQty').value || 1;
-            const note = document.getElementById('injPrescribeNote').value || '皮下注射';
-
-            const container = document.getElementById('prescriptionItemsContainer');
-            const div = document.createElement('div');
-            div.className = 'list-row prescription-item-row';
-            div.innerHTML = `
-                <input type="text" value="[針劑] ${medName}" style="flex: 2; background: #fff; color: #b45309; font-weight: bold;" readonly title="針劑名稱">
-                <input type="text" value="${rate} ml/kg" class="prescribe-custom-dose" style="flex: 1.2;" placeholder="使用劑量比率">
-                <input type="number" value="${qty}" class="prescribe-qty" style="flex: 0.8;" placeholder="總ml數">
-                <input type="text" value="${note}" class="prescribe-note" style="flex: 2;" placeholder="注射說明">
-                <button class="btn-danger" onclick="this.parentElement.remove();" style="padding: 9px 12px;">刪除</button>
-            `;
-            container.appendChild(div);
-        }
-        // ========================================================
 
         async function loadAllMedicalRecords(petId) {
             const container = document.getElementById('lastMedicalHistoryContent');
@@ -3794,11 +4306,30 @@
 
         function clearMedicalFormInputs() {
             medicalStateCache = { chiefComplaint: "", weight: 0, prescriptions: [] };
+            currentPetId = "";
+            currentPetMicrochip = "";
+            currentPetName = "";
+            currentPetWeight = 0;
+            currentOwnerId = "";
+            currentPetBirthday = "";
+            currentPetGender = "";
+            currentPetSpecies = "";
+            currentPetBreed = "";
+
             document.getElementById('medicalPetNameInfo').value = "尚未選擇";
             document.getElementById('medicalPetWeightInput').value = "0";
             document.getElementById('medicalDiagnosis').value = "";
+            document.getElementById('medCustomRecDose').value = "";
+            document.getElementById('medPrescribeQty').value = "1";
+            document.getElementById('calculatedDoseResult').value = "";
             document.getElementById('prescriptionItemsContainer').innerHTML = "";
             document.getElementById('lastMedicalHistoryContent').innerHTML = "請先從首頁預約報到列表選擇寵物，系統將自動載入其所有歷史紀錄。";
+            
+            document.getElementById('cardPetName').innerText = "-";
+            document.getElementById('cardPetChip').innerText = "-";
+            document.getElementById('cardPetAge').innerText = "-";
+            document.getElementById('cardPetGender').innerText = "-";
+            document.getElementById('cardPetBreed').innerText = "-";
         }
 
         async function saveMedicalRecordAndBackToWaiting() {
@@ -3828,14 +4359,13 @@
                 targetPet.status = '候診中';
             } else {
                 activeAppointmentsList.push({
-                    id: currentPetId, name: currentPetName, microchip: currentPetMicrochip, weight: currentPetWeight, owner_id: currentOwnerId, status: '候診中', time: new Date().toLocaleTimeString()
+                    id: currentPetId, name: currentPetName, microchip: currentPetMicrochip, weight: currentPetWeight, owner_id: currentOwnerId, status: '候診中', session: '上午診', doctor: '張醫師', time: new Date().toLocaleTimeString()
                 });
             }
             renderAppointmentTable(activeAppointmentsList);
 
-            alert('醫療紀錄已儲存！病患已切回候診狀態。');
+            alert('醫療紀錄已儲存！病患已切回候診狀態，所有欄位已自動清空。');
             clearMedicalFormInputs();
-            currentPetId = ""; currentOwnerId = "";
             switchTab('appointments');
         }
 
@@ -3895,9 +4425,8 @@
             activeAppointmentsList = activeAppointmentsList.filter(p => p.id !== currentPetId);
             renderAppointmentTable(activeAppointmentsList);
 
-            alert('醫療紀錄已儲存！即將為您跳轉至收費與付款頁面以確認最後結帳。');
+            alert('醫療紀錄已儲存！即將為您跳轉至收費與付款頁面，所有看診欄位已自動清空。');
             clearMedicalFormInputs();
-            currentPetId = ""; currentOwnerId = "";
             switchTab('invoices');
         }
 
@@ -3906,6 +4435,8 @@
             if(!petSelectVal) { alert('請選擇寵物！'); return; }
             const petObj = JSON.parse(petSelectVal);
             petObj.status = document.getElementById('appointmentStatusSelect').value;
+            petObj.session = document.getElementById('appointmentSession').value;
+            petObj.doctor = document.getElementById('appointmentDoctor').value;
             petObj.time = new Date().toLocaleTimeString();
             
             let existing = activeAppointmentsList.find(p => p.id === petObj.id);
@@ -3913,6 +4444,8 @@
                 activeAppointmentsList.push(petObj);
             } else {
                 existing.status = petObj.status;
+                existing.session = petObj.session;
+                existing.doctor = petObj.doctor;
             }
             renderAppointmentTable(activeAppointmentsList);
             alert('已成功加入預約報到列表！');
@@ -3932,11 +4465,15 @@
             
             let filteredList = petsData;
             if (currentAppointmentFilter !== 'all') {
-                filteredList = petsData.filter(p => p.status === currentAppointmentFilter);
+                if (currentAppointmentFilter === '上午診' || currentAppointmentFilter === '下午診' || currentAppointmentFilter === '夜診') {
+                    filteredList = petsData.filter(p => (p.session || '上午診') === currentAppointmentFilter);
+                } else {
+                    filteredList = petsData.filter(p => p.status === currentAppointmentFilter);
+                }
             }
 
             if (!filteredList || filteredList.length === 0) {
-                tbody.innerHTML = `<tr><td colspan="6" style="text-align: center; color: #64748b;">目前尚無符合條件的報到病患</td></tr>`;
+                tbody.innerHTML = `<tr><td colspan="7" style="text-align: center; color: #64748b;">目前尚無任何符合條件的報到病患</td></tr>`;
                 return;
             }
 
@@ -3944,6 +4481,8 @@
                 const ownerName = pet.owner_name || '關聯飼主';
                 const timeStr = pet.time || new Date().toLocaleTimeString();
                 const statusStr = pet.status || '候診中';
+                const sessionStr = pet.session || '上午診';
+                const doctorStr = pet.doctor || '張醫師';
                 const statusBadgeColor = statusStr === '診間看診中' ? '#0284c7' : '#d97706';
 
                 const tr = document.createElement('tr');
@@ -3951,10 +4490,11 @@
                     <td>${pet.microchip || '(無)'}</td>
                     <td><b>${pet.name}</b> (${pet.weight || 0} kg)</td>
                     <td>${ownerName}</td>
+                    <td><span style="background: #f1f5f9; padding: 2px 6px; border-radius: 4px; font-weight: bold;">${sessionStr}</span><br><small style="color:#0369a1;">${doctorStr}</small></td>
                     <td>${timeStr}</td>
                     <td><span style="color: ${statusBadgeColor}; background: #e0f2fe; padding: 4px 8px; border-radius: 4px; font-weight: bold;">${statusStr}</span></td>
                     <td style="display: flex; gap: 6px; flex-wrap: wrap;">
-                        <button class="btn-secondary" style="padding: 4px 8px; font-size: 0.8rem;" onclick="startConsultationById('${pet.id}', '${pet.microchip || ''}', '${pet.name}', '${pet.owner_id || ''}', ${pet.weight || 0}, '${ownerName}')">看診</button>
+                        <button class="btn-secondary" style="padding: 4px 8px; font-size: 0.8rem;" onclick="startConsultationById('${pet.id}', '${pet.microchip || ''}', '${pet.name}', '${pet.owner_id || ''}', ${pet.weight || 0}, '${ownerName}', '${pet.birthday || ''}', '${pet.gender || ''}', '${pet.species || '貓'}', '${pet.breed || ''}')">看診</button>
                         <button class="btn-success" style="padding: 4px 8px; font-size: 0.8rem;" onclick="directCheckoutFromAppointment('${pet.id}', '${pet.owner_id || ''}')">💳 歸檔結帳</button>
                         <button class="btn-danger" style="padding: 4px 8px; font-size: 0.8rem;" onclick="removeAppointment('${pet.id}')">移除</button>
                     </td>
@@ -3996,22 +4536,14 @@
                     pct_mono: document.getElementById('cbc_pct_mono').value,
                     pct_eos: document.getElementById('cbc_pct_eos').value,
                     pct_baso: document.getElementById('cbc_pct_baso').value,
-                    neu_abs: document.getElementById('cbc_neu_abs').value,
-                    lym_abs: document.getElementById('cbc_lym_abs').value,
-                    mono_abs: document.getElementById('cbc_mono_abs').value,
-                    eos_abs: document.getElementById('cbc_eos_abs').value,
-                    baso_abs: document.getElementById('cbc_baso_abs').value,
                     rbc: document.getElementById('cbc_rbc').value,
                     hgb: document.getElementById('cbc_hgb').value,
                     hct: document.getElementById('cbc_hct').value,
                     mcv: document.getElementById('cbc_mcv').value,
                     mch: document.getElementById('cbc_mch').value,
                     mchc: document.getElementById('cbc_mchc').value,
-                    rdw_cv: document.getElementById('cbc_rdw_cv').value,
-                    rdw_sd: document.getElementById('cbc_rdw_sd').value,
                     plt: document.getElementById('cbc_plt').value,
-                    mpv: document.getElementById('cbc_mpv').value,
-                    pdw: document.getElementById('cbc_pdw').value
+                    mpv: document.getElementById('cbc_mpv').value
                 };
             } else {
                 reportData = {
@@ -4022,19 +4554,11 @@
                     alt: document.getElementById('bio_alt').value,
                     bun: document.getElementById('bio_bun').value,
                     crea: document.getElementById('bio_crea').value,
-                    glob: document.getElementById('bio_glob').value,
-                    ag: document.getElementById('bio_ag').value,
-                    bc: document.getElementById('bio_bc').value,
                     amy: document.getElementById('bio_amy').value,
                     tbil: document.getElementById('bio_tbil').value,
                     phos: document.getElementById('bio_phos').value,
                     ca: document.getElementById('bio_ca').value,
-                    fixed_ca: document.getElementById('bio_fixed_ca').value,
-                    ggt: document.getElementById('bio_ggt').value,
-                    lipa: document.getElementById('bio_lipa').value,
-                    urea: document.getElementById('bio_urea').value,
-                    chol: document.getElementById('bio_chol').value,
-                    cca: document.getElementById('bio_cca').value
+                    chol: document.getElementById('bio_chol').value
                 };
             }
 
@@ -4073,7 +4597,10 @@
                 let summary = '';
                 if (rep.report_data) {
                     for (let key in rep.report_data) {
-                        if(rep.report_data[key]) summary += `${key.toUpperCase()}: ${rep.report_data[key]} | `;
+                        const val = parseFloat(rep.report_data[key]);
+                        if(!isNaN(val)) {
+                            summary += `${key.toUpperCase()}: ${val} | `;
+                        }
                     }
                 }
 
