@@ -370,6 +370,16 @@
                 grid-column: span 1;
             }
         }
+
+        .diagnostic-stat-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:14px}
+        .diagnostic-stat{padding:18px;background:#f8fafc;border:1px solid #e2e8f0;border-radius:10px;text-align:center}
+        .diagnostic-stat b{display:block;font-size:1.7rem;color:#0369a1}
+        .diagnostic-stat span{font-size:.88rem;color:#64748b}
+        .diagnostic-flow{display:grid;grid-template-columns:1fr auto 1fr auto 1fr auto 1fr;gap:10px;align-items:center}
+        .diagnostic-flow>div:not(:nth-child(even)){padding:14px;background:#f8fafc;border:1px solid #e2e8f0;border-radius:8px;text-align:center}
+        .diagnostic-flow b,.diagnostic-flow span{display:block}
+        .diagnostic-flow span{font-size:.82rem;color:#64748b;margin-top:5px}
+        @media(max-width:900px){.diagnostic-stat-grid{grid-template-columns:repeat(2,1fr)}.diagnostic-flow{display:flex;flex-direction:column}.diagnostic-flow>div{width:100%}}
 </style>
     </head>
 <body>
@@ -461,6 +471,7 @@
             <li class="nav-section-label" style="pointer-events:none; cursor:default; margin-top:10px; padding:10px 12px 5px; font-size:0.72rem; font-weight:800; letter-spacing:.08em; color:#94a3b8; background:transparent;">醫療支援</li>
             <li id="nav-vaccines" onclick="switchTab('vaccines')">💉 疫苗管理</li>
             <li id="nav-lab_manager" onclick="switchTab('lab_manager')">🧪 血球與生化檢驗</li>
+            <li id="nav-diagnostic_exchange" onclick="switchTab('diagnostic_exchange')">🔌 檢驗／影像交換中心</li>
             <li id="nav-rapid_tests" onclick="switchTab('rapid_tests')">🦠 快篩與抗原檢驗</li>
             <li id="nav-lab_tests" onclick="switchTab('lab_tests')">📎 檢驗、影像及附件</li>
 
@@ -1443,6 +1454,127 @@
                             <tr><td colspan="6" style="text-align: center; color: #64748b;">載入中...</td></tr>
                         </tbody>
                     </table>
+                </div>
+            </div>
+
+
+            <!-- 17.1 檢驗／影像資料交換中心 -->
+            <div id="diagnostic_exchange" class="tab-content">
+                <div class="card">
+                    <h2>🔌 檢驗／影像資料交換中心</h2>
+                    <p style="color:#64748b;margin-bottom:16px;">
+                        統一接收 CBC、血清生化、X 光與超音波資料。保留原始資料，再轉成 genblue AH 可讀格式；後續只需為不同儀器增加轉換器。
+                    </p>
+                    <div class="diagnostic-stat-grid">
+                        <div class="diagnostic-stat"><b id="dxDeviceCount">0</b><span>已設定儀器</span></div>
+                        <div class="diagnostic-stat"><b id="dxImportCount">0</b><span>資料交換工作</span></div>
+                        <div class="diagnostic-stat"><b id="dxResultCount">0</b><span>解析檢驗數值</span></div>
+                        <div class="diagnostic-stat"><b id="dxImagingCount">0</b><span>影像檢查</span></div>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <h3>儀器／資料來源設定</h3>
+                    <div class="form-grid">
+                        <div class="form-group"><label>儀器名稱</label><input id="dxDeviceName" placeholder="例如：CBC-1"></div>
+                        <div class="form-group"><label>類型</label>
+                            <select id="dxDeviceType">
+                                <option value="CBC">CBC 血球</option>
+                                <option value="BIOCHEM">血清生化</option>
+                                <option value="XRAY">X 光</option>
+                                <option value="ULTRASOUND">超音波</option>
+                                <option value="OTHER">其他</option>
+                            </select>
+                        </div>
+                        <div class="form-group"><label>廠牌</label><input id="dxManufacturer" placeholder="Manufacturer"></div>
+                        <div class="form-group"><label>型號</label><input id="dxModel" placeholder="Model"></div>
+                        <div class="form-group"><label>資料方式</label>
+                            <select id="dxAdapterType">
+                                <option value="manual">人工／先建立設定</option>
+                                <option value="csv">CSV</option>
+                                <option value="txt">TXT</option>
+                                <option value="hl7">HL7</option>
+                                <option value="astm">ASTM</option>
+                                <option value="api">API</option>
+                                <option value="dicom">DICOM</option>
+                                <option value="folder_watch">資料夾監看</option>
+                                <option value="other">其他</option>
+                            </select>
+                        </div>
+                        <div class="form-group"><label>序號</label><input id="dxSerialNo" placeholder="選填"></div>
+                    </div>
+                    <button onclick="saveDiagnosticDevice()">＋ 新增儀器設定</button>
+                </div>
+
+                <div class="card">
+                    <h3>目前儀器</h3>
+                    <div style="overflow:auto;">
+                        <table>
+                            <thead><tr><th>名稱</th><th>類型</th><th>廠牌／型號</th><th>資料方式</th><th>狀態</th></tr></thead>
+                            <tbody id="dxDeviceTableBody"><tr><td colspan="5" style="text-align:center;color:#64748b;">尚未載入</td></tr></tbody>
+                        </table>
+                    </div>
+                </div>
+
+
+                <div class="card">
+                    <h3>🧪 CBC／血清生化儀器檔案匯入測試</h3>
+                    <p style="color:#64748b;margin-bottom:14px;">
+                        先讀取 CSV／TXT 原始檔並預覽，不會直接寫入正式病歷。確認欄位解析正確後，再建立各廠牌的專用轉換器。
+                    </p>
+                    <div class="form-grid">
+                        <div class="form-group">
+                            <label>檢驗類型</label>
+                            <select id="dxImportKind">
+                                <option value="CBC">CBC 血球計數</option>
+                                <option value="BIOCHEM">血清生化</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label>來源儀器</label>
+                            <select id="dxImportDevice"><option value="">未指定／先測試檔案</option></select>
+                        </div>
+                        <div class="form-group" style="grid-column:span 2;">
+                            <label>選擇儀器輸出檔</label>
+                            <input type="file" id="dxImportFile" accept=".csv,.txt,text/csv,text/plain" onchange="previewDiagnosticFile(event)">
+                        </div>
+                    </div>
+
+                    <div id="dxFileInfo" style="display:none;margin-top:12px;padding:12px;background:#f8fafc;border-radius:8px;"></div>
+
+                    <div id="dxImportPreviewWrap" style="display:none;margin-top:16px;">
+                        <div style="display:flex;justify-content:space-between;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:10px;">
+                            <b>解析預覽</b>
+                            <span style="color:#64748b;font-size:.88rem;">目前僅預覽，不寫入病歷</span>
+                        </div>
+                        <div style="overflow:auto;max-height:420px;">
+                            <table>
+                                <thead id="dxImportPreviewHead"></thead>
+                                <tbody id="dxImportPreviewBody"></tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    <details style="margin-top:16px;">
+                        <summary style="cursor:pointer;font-weight:600;">查看原始文字</summary>
+                        <pre id="dxRawFileText" style="white-space:pre-wrap;word-break:break-word;max-height:320px;overflow:auto;background:#0f172a;color:#e2e8f0;padding:12px;border-radius:8px;margin-top:10px;"></pre>
+                    </details>
+                </div>
+
+                <div class="card">
+                    <h3>資料交換流程</h3>
+                    <div class="diagnostic-flow">
+                        <div><b>① 儀器原始資料</b><span>CSV / TXT / HL7 / ASTM / DICOM / API</span></div>
+                        <div>→</div>
+                        <div><b>② 原始資料保存</b><span>不覆蓋，保留追查依據</span></div>
+                        <div>→</div>
+                        <div><b>③ 轉換器解析</b><span>對應 CBC／生化項目或影像</span></div>
+                        <div>→</div>
+                        <div><b>④ 寫入病歷</b><span>連結寵物與本次門診</span></div>
+                    </div>
+                    <div style="margin-top:15px;padding:12px;background:#f8fafc;border-radius:8px;color:#475569;">
+                        第 17.1 步先建立通用底座。下一步會加入「檔案匯入測試區」，讓我們拿實際儀器輸出的 CSV/TXT 檔建立第一個轉換器。
+                    </div>
                 </div>
             </div>
 
@@ -2498,6 +2630,7 @@ bootstrapAuthentication();
         });
 
         function switchTab(tabId) {
+            if (tabId === 'diagnostic_exchange') setTimeout(loadDiagnosticExchangeCenter, 0);
             if (document.getElementById('audit_logs').classList.contains('active')) {
                 document.getElementById('auditStartDate').value = '';
                 document.getElementById('auditEndDate').value = '';
@@ -6968,6 +7101,157 @@ async function processProductCheckoutToArchive(shouldPrintReceipt = true) {
         setTimeout(() => {
             try { onUpperMedicineCategoryChange(); } catch (e) {}
         }, 0);
+
+        async function loadDiagnosticExchangeCenter() {
+            if (!CURRENT_TENANT_ID) return;
+            const [devicesRes, jobsRes, resultsRes, imagingRes] = await Promise.all([
+                _supabase.from('diagnostic_devices').select('*').eq('tenant_id', CURRENT_TENANT_ID).order('created_at',{ascending:false}),
+                _supabase.from('diagnostic_import_jobs').select('id',{count:'exact'}).eq('tenant_id', CURRENT_TENANT_ID),
+                _supabase.from('diagnostic_results').select('id',{count:'exact'}).eq('tenant_id', CURRENT_TENANT_ID),
+                _supabase.from('imaging_studies').select('id',{count:'exact'}).eq('tenant_id', CURRENT_TENANT_ID)
+            ]);
+            if (devicesRes.error) {
+                document.getElementById('dxDeviceTableBody').innerHTML =
+                    `<tr><td colspan="5" style="text-align:center;color:#dc2626;">尚未建立第17.1步資料表，請先執行 SQL。</td></tr>`;
+                return;
+            }
+            const devices = devicesRes.data || [];
+            const importDevice = document.getElementById('dxImportDevice');
+            if (importDevice) {
+                const current = importDevice.value;
+                importDevice.innerHTML = '<option value="">未指定／先測試檔案</option>' +
+                    devices.filter(d => ['CBC','BIOCHEM'].includes(d.device_type))
+                    .map(d => `<option value="${d.id}">${escapeRegText(d.name)}｜${escapeRegText(d.device_type)}</option>`).join('');
+                if ([...importDevice.options].some(o => o.value === current)) importDevice.value = current;
+            }
+            document.getElementById('dxDeviceCount').textContent = devices.length;
+            document.getElementById('dxImportCount').textContent = jobsRes.count || 0;
+            document.getElementById('dxResultCount').textContent = resultsRes.count || 0;
+            document.getElementById('dxImagingCount').textContent = imagingRes.count || 0;
+            document.getElementById('dxDeviceTableBody').innerHTML = devices.length ? devices.map(d=>`
+                <tr>
+                    <td><b>${escapeRegText(d.name)}</b></td>
+                    <td>${escapeRegText(d.device_type)}</td>
+                    <td>${escapeRegText([d.manufacturer,d.model].filter(Boolean).join(' / ') || '-')}</td>
+                    <td>${escapeRegText(d.adapter_type)}</td>
+                    <td>${d.is_active ? '啟用' : '停用'}</td>
+                </tr>`).join('') : '<tr><td colspan="5" style="text-align:center;color:#64748b;">尚未設定儀器</td></tr>';
+        }
+
+        async function saveDiagnosticDevice() {
+            const name=document.getElementById('dxDeviceName').value.trim();
+            if(!name){alert('請輸入儀器名稱');return;}
+            const payload={
+                tenant_id:CURRENT_TENANT_ID,
+                name,
+                device_type:document.getElementById('dxDeviceType').value,
+                manufacturer:document.getElementById('dxManufacturer').value.trim()||null,
+                model:document.getElementById('dxModel').value.trim()||null,
+                serial_no:document.getElementById('dxSerialNo').value.trim()||null,
+                adapter_type:document.getElementById('dxAdapterType').value
+            };
+            const {error}=await _supabase.from('diagnostic_devices').insert([payload]);
+            if(error){alert('新增儀器失敗：'+error.message);return;}
+            ['dxDeviceName','dxManufacturer','dxModel','dxSerialNo'].forEach(id=>document.getElementById(id).value='');
+            await loadDiagnosticExchangeCenter();
+            alert('儀器設定已建立。');
+        }
+
+        function detectDiagnosticDelimiter(line) {
+            const candidates = [
+                {d:'\t', n:(line.match(/\t/g)||[]).length},
+                {d:',', n:(line.match(/,/g)||[]).length},
+                {d:';', n:(line.match(/;/g)||[]).length},
+                {d:'|', n:(line.match(/\|/g)||[]).length}
+            ].sort((a,b)=>b.n-a.n);
+            return candidates[0].n > 0 ? candidates[0].d : null;
+        }
+
+        function splitDiagnosticLine(line, delimiter) {
+            if (!delimiter) return [line.trim()];
+            if (delimiter !== ',') return line.split(delimiter).map(v=>v.trim());
+            const out=[]; let cur=''; let quoted=false;
+            for(let i=0;i<line.length;i++){
+                const ch=line[i];
+                if(ch === '"'){
+                    if(quoted && line[i+1] === '"'){ cur+='"'; i++; }
+                    else quoted=!quoted;
+                } else if(ch === ',' && !quoted){
+                    out.push(cur.trim()); cur='';
+                } else cur+=ch;
+            }
+            out.push(cur.trim());
+            return out;
+        }
+
+        function escapeDxHtml(v) {
+            return String(v ?? '').replace(/[&<>"']/g, m=>({
+                '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'
+            })[m]);
+        }
+
+        async function previewDiagnosticFile(event) {
+            const file = event.target.files && event.target.files[0];
+            if (!file) return;
+
+            const allowedExt = /\.(csv|txt)$/i.test(file.name);
+            if (!allowedExt) {
+                alert('第17.2步先支援 CSV／TXT。');
+                event.target.value='';
+                return;
+            }
+
+            let text = await file.text();
+            text = text.replace(/^\uFEFF/, '');
+            document.getElementById('dxRawFileText').textContent = text;
+
+            const lines = text.split(/\r?\n/).filter(x=>x.trim()!=='');
+            const info = document.getElementById('dxFileInfo');
+            const wrap = document.getElementById('dxImportPreviewWrap');
+            if (!lines.length) {
+                info.style.display='block';
+                info.innerHTML='<b>檔案沒有可讀取的文字內容。</b>';
+                wrap.style.display='none';
+                return;
+            }
+
+            const delimiter = detectDiagnosticDelimiter(lines[0]);
+            const delimiterName = delimiter === '\t' ? 'Tab' :
+                                  delimiter === ',' ? '逗號 CSV' :
+                                  delimiter === ';' ? '分號' :
+                                  delimiter === '|' ? '直線符號 |' : '單欄文字';
+
+            const rows = lines.slice(0, 101).map(line=>splitDiagnosticLine(line, delimiter));
+            const maxCols = Math.max(...rows.map(r=>r.length));
+            const first = rows[0] || [];
+            const looksHeader = first.some(v => /[A-Za-z\u4e00-\u9fff]/.test(v)) &&
+                                first.filter(v => /^[-+]?\d+(\.\d+)?$/.test(v)).length < Math.ceil(first.length/2);
+
+            let headers;
+            let bodyRows;
+            if (looksHeader) {
+                headers = Array.from({length:maxCols},(_,i)=>first[i] || `欄位 ${i+1}`);
+                bodyRows = rows.slice(1);
+            } else {
+                headers = Array.from({length:maxCols},(_,i)=>`欄位 ${i+1}`);
+                bodyRows = rows;
+            }
+
+            document.getElementById('dxImportPreviewHead').innerHTML =
+                '<tr>' + headers.map(h=>`<th>${escapeDxHtml(h)}</th>`).join('') + '</tr>';
+            document.getElementById('dxImportPreviewBody').innerHTML =
+                bodyRows.slice(0,100).map(r =>
+                    '<tr>' + headers.map((_,i)=>`<td>${escapeDxHtml(r[i] ?? '')}</td>`).join('') + '</tr>'
+                ).join('');
+
+            info.style.display='block';
+            info.innerHTML = `<b>${escapeDxHtml(file.name)}</b>　
+                ${(file.size/1024).toFixed(1)} KB　
+                ${lines.length} 行　
+                分隔格式：${delimiterName}
+                ${lines.length > 101 ? '　<span style="color:#b45309;">預覽前 100 筆</span>' : ''}`;
+            wrap.style.display='block';
+        }
 </script>
 </body>
 </html>
