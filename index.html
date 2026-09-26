@@ -7,6 +7,7 @@
     <!-- 引入 Supabase JS SDK CDN -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
     <style>
         :root {
             --primary-color: #0284c7;
@@ -380,6 +381,30 @@
         .diagnostic-flow b,.diagnostic-flow span{display:block}
         .diagnostic-flow span{font-size:.82rem;color:#64748b;margin-top:5px}
         @media(max-width:900px){.diagnostic-stat-grid{grid-template-columns:repeat(2,1fr)}.diagnostic-flow{display:flex;flex-direction:column}.diagnostic-flow>div{width:100%}}
+    body.role-staff button[onclick^="saveMedicalRecord"],
+    body.role-staff button[onclick^="addDetailedPrescriptionItem"],
+    body.role-staff button[onclick^="admitCurrentPetToHospital"],
+    body.role-staff button[onclick^="saveRapidTestToDatabase"],
+    body.role-staff button[onclick^="recordPetVaccine"],
+    body.role-staff button[onclick^="saveSkylaFromExchange"],
+    body.role-staff button[onclick^="deleteRapidReport"],
+    body.role-staff button[onclick^="deleteLabReport"],
+    body.role-staff button[onclick^="deletePetVaccine"],
+    body.role-staff button[onclick^="updateInpatientNote"],
+    body.role-staff button[onclick^="dischargeInpatientToCheckout"] {
+        display: none !important;
+    }
+    body.role-nonadmin button[onclick^="adjustStock"],
+    body.role-nonadmin button[onclick^="openRegulatedLotReceipt"],
+    body.role-nonadmin button[onclick^="saveRegulatedLotReceipt"],
+    body.role-nonadmin button[onclick^="openEditItemModal"],
+    body.role-nonadmin button[onclick^="openEditMedicineModal"],
+    body.role-nonadmin button[onclick^="deleteItem"],
+    body.role-nonadmin button[onclick^="deleteMedicine"],
+    body.role-nonadmin button[onclick^="saveNewVaccineType"],
+    body.role-nonadmin button[onclick^="saveNewRapidType"] {
+        display: none !important;
+    }
 </style>
     </head>
 <body>
@@ -489,6 +514,7 @@
 
             <li class="nav-section-label" style="pointer-events:none; cursor:default; margin-top:10px; padding:10px 12px 5px; font-size:0.72rem; font-weight:800; letter-spacing:.08em; color:#94a3b8; background:transparent;">系統</li>
             <li id="nav-clinic" onclick="switchTab('clinic')">⚙️ 系統設定及醫院資料</li>
+            <li id="nav-staff_management" onclick="switchTab('staff_management')">👥 人員與權限</li>
             <li
                id="nav-logout"
                onclick="logoutSupabase()"
@@ -503,7 +529,7 @@
     <div class="main-container">
         <header>
             <div class="header-left">
-                <h3>首頁管理介面</h3>
+                <h3>首頁管理介面 <small style="color:#64748b;font-size:12px">版本 18.6.1 測試版</small></h3>
                 <input type="text" id="globalSearchInput" class="search-box" placeholder="全域搜尋 寵物 / 晶片 / 飼主 / 電話 / 客戶編號..." onkeydown="handleGlobalSearch(event)">
             </div>
             <div class="tenant-badge" id="currentTenantBadge">醫院代碼 (tenant_id):</div>
@@ -1311,6 +1337,27 @@
             </div>
 
             <!-- 9. 操作歷程與稽核 -->
+            <div id="staff_management" class="tab-content">
+                <div class="card">
+                    <h2>👥 人員與權限</h2>
+                    <p style="color:#64748b">管理者直接建立員工帳號與初始密碼，不需寄送邀請信。請私下將登入資料交給員工。</p>
+                    <div class="form-grid">
+                        <div class="form-group"><label>人員姓名</label><input id="newStaffName" maxlength="80" autocomplete="off" placeholder="例如：王醫師"></div>
+                        <div class="form-group"><label>登入 Email</label><input id="newStaffEmail" type="email" autocomplete="off" placeholder="name@example.com"></div>
+                        <div class="form-group"><label>初始密碼（至少 8 字元）</label><input id="newStaffPassword" type="password" minlength="8" maxlength="72" autocomplete="new-password" placeholder="由管理者設定"></div>
+                        <div class="form-group"><label>角色</label><select id="newStaffRole" onchange="document.getElementById('newDoctorCheckout').disabled=this.value!=='doctor'; if(this.value!=='doctor') document.getElementById('newDoctorCheckout').checked=false"><option value="staff">櫃台／一般人員</option><option value="doctor">醫師</option></select></div>
+                        <div class="form-group"><label><input id="newDoctorCheckout" type="checkbox" disabled> 允許這位醫師結帳</label></div>
+                    </div>
+                    <button id="staffInviteButton" type="button" onclick="createStaffMember()">新增員工帳號</button>
+                    <p id="staffActionMessage" role="status" style="margin-top:12px;color:#475569"></p>
+                </div>
+                <div class="card">
+                    <h3>現有人員</h3>
+                    <button type="button" class="btn-secondary" onclick="loadStaffMembers()">重新整理</button>
+                    <div style="overflow:auto;margin-top:12px"><table><thead><tr><th>姓名</th><th>Email</th><th>角色</th><th>醫師可結帳</th><th>建立時間</th><th>管理</th></tr></thead><tbody id="staffMembersBody"><tr><td colspan="6">載入中...</td></tr></tbody></table></div>
+                </div>
+            </div>
+
             <div id="audit_logs" class="tab-content">
                 <div class="card">
                     <h2>操作歷程與稽核紀錄 (Audit Logs)</h2>
@@ -1520,7 +1567,7 @@
                 <div class="card">
                     <h3>🧪 CBC／血清生化儀器檔案匯入測試</h3>
                     <p style="color:#64748b;margin-bottom:14px;">
-                        先讀取 CSV／TXT 原始檔並預覽，不會直接寫入正式病歷。確認欄位解析正確後，再建立各廠牌的專用轉換器。
+                        CSV／TXT 可預覽；Skyla VC-P21 PDF 可選擇寵物、核對後儲存為血液生化報告。
                     </p>
                     <div class="form-grid">
                         <div class="form-group">
@@ -1536,8 +1583,26 @@
                         </div>
                         <div class="form-group" style="grid-column:span 2;">
                             <label>選擇儀器輸出檔</label>
-                            <input type="file" id="dxImportFile" accept=".csv,.txt,text/csv,text/plain" onchange="previewDiagnosticFile(event)">
+                            <input type="file" id="dxImportFile" accept=".csv,.txt,.pdf,text/csv,text/plain,application/pdf" onchange="previewDiagnosticFile(event)">
                         </div>
+                    </div>
+
+                    <div id="dxSkylaSavePanel" style="display:none;margin-top:16px;padding:16px;background:#f0fdf4;border:1px solid #bbf7d0;border-radius:8px;">
+                        <h4 style="margin:0 0 10px">Skyla PDF：核對並儲存</h4>
+                        <div class="form-grid">
+                            <div class="form-group span-2">
+                                <label>檢驗對象寵物（請從搜尋建議選取）</label>
+                                <input id="dxPetSearchInput" list="dxPetDatalist" placeholder="輸入寵物名、飼主或晶片號碼" oninput="selectDxPet()">
+                                <datalist id="dxPetDatalist"></datalist>
+                                <input type="hidden" id="dxSelectedPetId">
+                            </div>
+                            <div class="form-group">
+                                <label>原始報告檢驗日期</label>
+                                <input type="date" id="dxExamDate">
+                            </div>
+                        </div>
+                        <p style="color:#475569;font-size:.88rem">請用原始 PDF 核對病患、數值、符號、單位及參考範圍；原始檢驗日期會記在報告備註。</p>
+                        <button type="button" class="btn-success" id="dxSaveSkylaButton" onclick="saveSkylaFromExchange()">確認寵物與報告，儲存血液生化</button>
                     </div>
 
                     <div id="dxFileInfo" style="display:none;margin-top:12px;padding:12px;background:#f8fafc;border-radius:8px;"></div>
@@ -1545,7 +1610,7 @@
                     <div id="dxImportPreviewWrap" style="display:none;margin-top:16px;">
                         <div style="display:flex;justify-content:space-between;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:10px;">
                             <b>解析預覽</b>
-                            <span style="color:#64748b;font-size:.88rem;">目前僅預覽，不寫入病歷</span>
+                            <span style="color:#64748b;font-size:.88rem;">核對後可在本頁儲存 Skyla PDF</span>
                         </div>
                         <div style="overflow:auto;max-height:420px;">
                             <table>
@@ -2148,11 +2213,165 @@
             }
         }
 
+        function staffMessage(value, failed=false) {
+            const node=document.getElementById('staffActionMessage');
+            if (node) { node.textContent=value; node.style.color=failed?'#dc2626':'#059669'; }
+        }
+        async function staffInvoke(body) {
+            const {data,error}=await _supabase.functions.invoke('manage-staff',{body});
+            if (error) {
+                let message=error.message;
+                if (error.context && typeof error.context.clone === 'function') {
+                    try {
+                        const response=await error.context.clone().json();
+                        if (typeof response?.error === 'string') message=response.error;
+                    } catch (_) { /* Keep the original network error. */ }
+                }
+                throw new Error(message);
+            }
+            if (data?.error) throw new Error(data.error);
+            return data;
+        }
+        async function loadStaffMembers() {
+            if (CURRENT_PROFILE?.role !== 'admin') return;
+            const body=document.getElementById('staffMembersBody');
+            body.replaceChildren();
+            try {
+                const data=await staffInvoke({action:'list'});
+                if (!Array.isArray(data?.users)) throw new Error('人員函式沒有回傳清單；請確認 manage-staff 已貼入完整程式。');
+                const users=data.users;
+                if (!users.length) { body.innerHTML='<tr><td colspan="6">尚無人員資料</td></tr>'; return; }
+                for (const member of users) {
+                    const tr=document.createElement('tr');
+                    for (const value of [member.display_name||'',member.email||'',
+                        ({admin:'管理者',doctor:'醫師',staff:'櫃台／一般人員'})[member.role]||member.role||'']) {
+                        const td=document.createElement('td'); td.textContent=value; tr.appendChild(td);
+                    }
+                    const permissionCell=document.createElement('td');
+                    if (member.role==='doctor') {
+                        const toggle=document.createElement('input'); toggle.type='checkbox'; toggle.checked=!!member.can_checkout;
+                        toggle.setAttribute('aria-label', `${member.display_name||'醫師'}結帳權限`);
+                        toggle.addEventListener('change', async () => {
+                            toggle.disabled=true;
+                            try {
+                                await staffInvoke({action:'set-checkout',user_id:member.user_id,can_checkout:toggle.checked});
+                                staffMessage('醫師結帳權限已更新');
+                            } catch(e) { toggle.checked=!toggle.checked; staffMessage(e.message||String(e),true); }
+                            finally { toggle.disabled=false; }
+                        });
+                        permissionCell.appendChild(toggle);
+                    } else permissionCell.textContent=member.role==='admin'?'可結帳':'依櫃台角色可結帳';
+                    tr.appendChild(permissionCell);
+                    const dateCell=document.createElement('td');
+                    dateCell.textContent=member.created_at?new Date(member.created_at).toLocaleString():'';
+                    tr.appendChild(dateCell);
+                    const managementCell=document.createElement('td');
+                    if (member.role!=='admin' && member.user_id!==CURRENT_USER?.id) {
+                        const resetPassword=document.createElement('input');
+                        resetPassword.type='password'; resetPassword.autocomplete='new-password';
+                        resetPassword.minLength=8; resetPassword.maxLength=72;
+                        resetPassword.placeholder='新密碼（8 字元以上）';
+                        resetPassword.setAttribute('aria-label',`設定 ${member.display_name||member.email} 的新密碼`);
+                        resetPassword.style.width='170px';
+                        managementCell.appendChild(resetPassword);
+                        const reset=document.createElement('button');
+                        reset.type='button'; reset.className='btn-secondary'; reset.textContent='重設密碼';
+                        reset.addEventListener('click',async()=>{
+                            const password=resetPassword.value;
+                            if (password.length<8 || password.length>72) { staffMessage('密碼需 8 至 72 字元',true); return; }
+                            if (!confirm(`確定重設 ${member.email} 的登入密碼？`)) return;
+                            reset.disabled=true;
+                            try { await staffInvoke({action:'reset-password',user_id:member.user_id,password}); resetPassword.value=''; staffMessage('密碼已重設，請私下告知員工。'); }
+                            catch(e) { staffMessage(e.message||String(e),true); }
+                            finally { reset.disabled=false; }
+                        });
+                        managementCell.appendChild(reset);
+                        const remove=document.createElement('button');
+                        remove.type='button'; remove.className='btn-secondary'; remove.textContent='移除員工';
+                        remove.style.marginLeft='6px';
+                        remove.addEventListener('click',async()=>{
+                            if (!confirm(`確定移除 ${member.display_name||member.email}（${member.email}）？\n此人員將不能再登入，病歷及收費紀錄會保留。`)) return;
+                            remove.disabled=true;
+                            try { await staffInvoke({action:'remove',user_id:member.user_id}); staffMessage('人員已移除，無法再登入。'); await loadStaffMembers(); }
+                            catch(e) { staffMessage(e.message||String(e),true); remove.disabled=false; }
+                        });
+                        managementCell.appendChild(remove);
+                    }
+                    tr.appendChild(managementCell);
+                    body.appendChild(tr);
+                }
+            } catch(e) { body.innerHTML='<tr><td colspan="6">無法載入人員；請確認伺服端 manage-staff 已部署。</td></tr>'; staffMessage(e.message||String(e),true); }
+        }
+        async function createStaffMember() {
+            if (CURRENT_PROFILE?.role !== 'admin') { staffMessage('只有管理者可新增人員',true); return; }
+            const display_name=document.getElementById('newStaffName').value.trim();
+            const email=document.getElementById('newStaffEmail').value.trim();
+            const password=document.getElementById('newStaffPassword').value;
+            const role=document.getElementById('newStaffRole').value;
+            if (!display_name || !email || !document.getElementById('newStaffEmail').checkValidity() || password.length<8 || password.length>72) {
+                staffMessage('請填入姓名、有效 Email 及 8 至 72 字元的初始密碼',true); return;
+            }
+            if (!confirm(`確定建立 ${display_name}（${email}）的${role==='doctor'?'醫師':'櫃台／一般人員'}帳號？`)) return;
+            const button=document.getElementById('staffInviteButton'); button.disabled=true;
+            try {
+                const can_checkout=role==='doctor' && document.getElementById('newDoctorCheckout').checked;
+                await staffInvoke({action:'create',display_name,email,password,role,can_checkout});
+                document.getElementById('newStaffName').value='';
+                document.getElementById('newStaffEmail').value='';
+                document.getElementById('newStaffPassword').value='';
+                document.getElementById('newDoctorCheckout').checked=false;
+                staffMessage('員工帳號已建立，可使用 Email 與初始密碼登入。');
+                await loadStaffMembers();
+            } catch(e) { staffMessage(e.message||String(e),true); }
+            finally { button.disabled=false; }
+        }
+
         function applyRolePermissions() {
     const clinicNav = document.getElementById('nav-clinic');
     const auditNav = document.getElementById('nav-audit_logs');
+    const staffNav = document.getElementById('nav-staff_management');
 
     const isAdmin = CURRENT_PROFILE?.role === 'admin';
+    let roleBadge=document.getElementById('genblueRoleBadge');
+    if (!roleBadge) {
+        roleBadge=document.createElement('span');
+        roleBadge.id='genblueRoleBadge';
+        roleBadge.style.cssText='display:inline-block;margin-left:12px;padding:5px 9px;background:#e0f2fe;color:#075985;border-radius:7px;font-size:13px;font-weight:700;';
+        document.querySelector('.header-left h3')?.appendChild(roleBadge);
+    }
+    const roleLabel=({admin:'管理者',doctor:'醫師',staff:'櫃台／一般員工'})[CURRENT_PROFILE?.role]||'未設定';
+    roleBadge.textContent=`登入角色：${roleLabel}`;
+    document.body.classList.toggle('role-staff', CURRENT_PROFILE?.role === 'staff');
+    document.body.classList.toggle('role-nonadmin', !isAdmin);
+    const medicalPanel=document.getElementById('medical');
+    if (medicalPanel) {
+        for (const control of medicalPanel.querySelectorAll('input, textarea, select')) {
+            if (!('originalReadonly' in control.dataset)) control.dataset.originalReadonly=control.readOnly?'true':'false';
+            if (!('originalDisabled' in control.dataset)) control.dataset.originalDisabled=control.disabled?'true':'false';
+            if (CURRENT_PROFILE?.role==='staff') {
+                if (control instanceof HTMLSelectElement) control.disabled=true;
+                else control.readOnly=true;
+            } else {
+                control.disabled=control.dataset.originalDisabled==='true';
+                if (!(control instanceof HTMLSelectElement)) control.readOnly=control.dataset.originalReadonly==='true';
+            }
+        }
+    }
+    for (const tabId of ['medical','lab_tests','rapid_tests','vaccines','inpatients','diagnostic_exchange']) {
+        const panel=document.getElementById(tabId);
+        if (!panel) continue;
+        let hint=panel.querySelector('.staff-clinical-hint');
+        if (!hint) {
+            hint=document.createElement('p');
+            hint.className='staff-clinical-hint';
+            hint.style.cssText='padding:10px 14px;border-radius:8px;background:#eff6ff;color:#1d4ed8;font-weight:600;margin:10px 0;';
+            hint.textContent='櫃台帳號可查看臨床資料，新增、修改與刪除請由醫師操作。';
+            panel.prepend(hint);
+        }
+        hint.style.display=CURRENT_PROFILE?.role==='staff'?'':'none';
+    }
+    const canBill = isAdmin || CURRENT_PROFILE?.role === 'staff' ||
+        (CURRENT_PROFILE?.role === 'doctor' && CURRENT_PROFILE?.can_checkout === true);
 
     if (clinicNav) {
         clinicNav.style.display = isAdmin ? '' : 'none';
@@ -2160,6 +2379,13 @@
 
     if (auditNav) {
         auditNav.style.display = isAdmin ? '' : 'none';
+    }
+    if (staffNav) staffNav.style.display = isAdmin ? '' : 'none';
+    for (const id of ['nav-regulatory_reports']) {
+        const nav=document.getElementById(id); if (nav) nav.style.display=isAdmin?'':'none';
+    }
+    for (const id of ['nav-invoices','nav-reports']) {
+        const nav=document.getElementById(id); if (nav) nav.style.display=canBill?'':'none';
     }
 }
 
@@ -2206,7 +2432,7 @@ async function loadCurrentUserProfile() {
 
     const { data: profile, error: profileError } = await _supabase
         .from('user_profiles')
-        .select('tenant_id, display_name, role')
+        .select('tenant_id, display_name, role, can_checkout')
         .eq('user_id', user.id)
         .single();
 
@@ -2630,7 +2856,15 @@ bootstrapAuthentication();
         });
 
         function switchTab(tabId) {
-            if (tabId === 'diagnostic_exchange') setTimeout(loadDiagnosticExchangeCenter, 0);
+            if (['staff_management','audit_logs','clinic'].includes(tabId) && CURRENT_PROFILE?.role !== 'admin') { alert('需要管理者權限'); return; }
+            if (tabId==='regulatory_reports' && CURRENT_PROFILE?.role!=='admin') { alert('需要管理者權限'); return; }
+            if (['invoices','reports'].includes(tabId) &&
+                !(CURRENT_PROFILE?.role==='admin' || CURRENT_PROFILE?.role==='staff' ||
+                  (CURRENT_PROFILE?.role==='doctor' && CURRENT_PROFILE?.can_checkout===true))) {
+                alert('此帳號沒有結帳權限'); return;
+            }
+            if (tabId === 'staff_management') setTimeout(loadStaffMembers, 0);
+            if (tabId === 'diagnostic_exchange') setTimeout(() => { loadDiagnosticExchangeCenter(); populateDxPetChoices(); }, 0);
             if (document.getElementById('audit_logs').classList.contains('active')) {
                 document.getElementById('auditStartDate').value = '';
                 document.getElementById('auditEndDate').value = '';
@@ -6310,7 +6544,10 @@ bootstrapAuthentication();
             }
         }
 
+        let labReportSaveBusy=false;
+        let pendingSkylaTransfer=null;
         async function saveLabReportToDatabase() {
+            if (labReportSaveBusy) return;
             const petId = document.getElementById('selectedLabPetId').value;
             const testType = document.getElementById('labTestType').value;
             const notes = document.getElementById('labReportNotes').value;
@@ -6328,9 +6565,31 @@ bootstrapAuthentication();
                 alert('請先輸入至少一項檢驗結果。'); return;
             }
 
-            const { error } = await _supabase.from('lab_reports').insert([{
-                tenant_id: CURRENT_TENANT_ID, pet_id: petId, test_type: testType, report_data: reportData, notes: notes
-            }]);
+            const selectedPet=allPetsListForDropdown.find(p=>p.id===petId);
+            const imported=pendingSkylaTransfer && testType==='血液生化';
+            if (imported && (pendingSkylaTransfer.petId!==petId || !notes.includes(pendingSkylaTransfer.marker))) {
+                alert('Skyla 匯入資料的寵物或來源備註已改變，請重新帶入並確認。'); return;
+            }
+            if (imported && !confirm(`確認將 Skyla 報告存入 ${selectedPet?.name||'未知寵物'}（${selectedPet?.species||''}）的血液生化紀錄？\n原始檢驗日期：${pendingSkylaTransfer.date}\n請先核對 PDF 與表單。`)) return;
+            labReportSaveBusy=true;
+            let error;
+            try {
+                if (imported) {
+                    const lookup=await _supabase.from('lab_reports').select('notes,report_data')
+                        .eq('tenant_id',CURRENT_TENANT_ID).eq('pet_id',petId).eq('test_type',testType);
+                    if (lookup.error) throw new Error('無法查詢既有報告，未儲存：'+lookup.error.message);
+                    const duplicate=(lookup.data||[]).some(old=>
+                        (old.notes||'').includes(pendingSkylaTransfer.marker) &&
+                        Object.entries(reportData).every(([key,value])=>String(old.report_data?.[key]??'')===String(value))
+                    );
+                    if (duplicate) { alert('同一隻寵物、同一來源與相同檢驗數值已存檔，已取消重複儲存。'); return; }
+                }
+                const response=await _supabase.from('lab_reports').insert([{
+                    tenant_id: CURRENT_TENANT_ID, pet_id: petId, test_type: testType, report_data: reportData, notes: notes
+                }]);
+                error=response.error;
+            } catch (e) { alert(e.message||String(e)); return; }
+            finally { labReportSaveBusy=false; }
 
             if(error) {
                 alert('儲存失敗：' + error.message);
@@ -6342,6 +6601,8 @@ bootstrapAuthentication();
                     input.style.fontWeight = 'normal';
                 });
                 document.getElementById('labReportNotes').value = '';
+                pendingSkylaTransfer=null;
+                if (imported) resetSkylaExchangeAfterSave();
                 await loadLabReportsList();
                 if (formType === 'cbc') {
                     document.getElementById('labTestType').value = '血液生化';
@@ -7190,13 +7451,132 @@ async function processProductCheckoutToArchive(shouldPrintReceipt = true) {
             })[m]);
         }
 
+        let pendingSkylaPdf = null;
+        async function previewSkylaPdf(file) {
+            pendingSkylaPdf = null;
+            document.getElementById('dxSkylaSavePanel').style.display='none';
+            const info = document.getElementById('dxFileInfo');
+            const wrap = document.getElementById('dxImportPreviewWrap');
+            info.style.display='block'; wrap.style.display='none';
+            info.textContent='正在讀取 Skyla PDF…';
+            if (file.size > 10 * 1024 * 1024) { info.textContent='PDF 超過 10 MB，請選擇單份報告。'; return; }
+            if (!window.pdfjsLib) { info.textContent='PDF 讀取元件未載入，請檢查網路連線後重新整理。'; return; }
+            try {
+                pdfjsLib.GlobalWorkerOptions.workerSrc='https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+                const doc = await pdfjsLib.getDocument({data:await file.arrayBuffer()}).promise;
+                const codePattern=/^(?:#?(?:ALB|TP|GLU|CHOL|ALP|ALT|GGT|TBIL|AMY|BUN|CREA|CA|PHOS|GLOB|UREA|C-CA|A\/G|B\/C|NA\/K|NA|K|LIPA)(?:\s*\(FPL\))?)$/i;
+                const rows=[];
+                for (let pageNo=1;pageNo<=Math.min(doc.numPages,5);pageNo++) {
+                    const content=await (await doc.getPage(pageNo)).getTextContent();
+                    const parts=content.items.filter(i=>i.str && i.str.trim()).map(i=>({s:i.str.trim(),x:i.transform[4],y:i.transform[5]}));
+                    const labels=parts.filter(i=>i.x<115 && codePattern.test(i.s));
+                    for (const label of labels) {
+                        const same=parts.filter(i=>Math.abs(i.y-label.y)<4).sort((a,b)=>a.x-b.x);
+                        const cells=(lo,hi)=>same.filter(i=>i.x>=lo && i.x<hi).map(i=>i.s).join(' ').trim();
+                        const raw=cells(170,237);
+                        const value=(raw.match(/(?:N\.?A\.?|[<>≤≥]?\s*[-+]?\d+(?:\.\d+)?)/i)||[])[0]||'';
+                        const code=label.s.toUpperCase();
+                        rows.push({code,value:value.trim(),unit:cells(237,275),reference:cells(275,355),page:pageNo});
+                    }
+                }
+                if (!rows.length) {
+                    info.textContent='這份 PDF 沒有辨識到 Skyla 檢驗數值，可能是掃描圖片或其他報告格式；請提供原始匯出檔。';
+                    return;
+                }
+                pendingSkylaPdf={name:file.name,rows};
+                populateDxPetChoices();
+                document.getElementById('dxSkylaSavePanel').style.display='block';
+                document.getElementById('dxImportKind').value='BIOCHEM';
+                document.getElementById('dxImportPreviewHead').innerHTML='<tr><th>項目</th><th>結果（含原始符號）</th><th>單位</th><th>報告參考範圍</th><th>頁數</th></tr>';
+                document.getElementById('dxImportPreviewBody').innerHTML=rows.map(r=>
+                    '<tr>'+[r.code,r.value||'未讀到',r.unit,r.reference,r.page].map(v=>'<td>'+escapeDxHtml(v)+'</td>').join('')+'</tr>'
+                ).join('');
+                document.getElementById('dxRawFileText').textContent=rows.map(r=>`${r.code}  ${r.value}  ${r.unit}  ${r.reference}`).join('\n');
+                info.innerHTML=`<b>${escapeDxHtml(file.name)}</b>　${rows.length} 個項目　Skyla PDF 預覽<br><span style="color:#b45309">PDF 中文文字可能亂碼；請以紙本核對數值、符號、單位和參考範圍。選擇寵物、填入原始日期並確認後才會儲存。</span>`;
+                wrap.style.display='block';
+            } catch(error) { info.textContent='PDF 讀取失敗：'+(error.message||String(error)); }
+        }
+
+        function resetSkylaExchangeAfterSave() {
+            pendingSkylaPdf=null;
+            document.getElementById('dxImportFile').value='';
+            document.getElementById('dxPetSearchInput').value='';
+            document.getElementById('dxSelectedPetId').value='';
+            document.getElementById('dxExamDate').value='';
+            document.getElementById('dxSkylaSavePanel').style.display='none';
+            document.getElementById('dxFileInfo').style.display='none';
+            document.getElementById('dxFileInfo').textContent='';
+            document.getElementById('dxImportPreviewWrap').style.display='none';
+            document.getElementById('dxImportPreviewHead').replaceChildren();
+            document.getElementById('dxImportPreviewBody').replaceChildren();
+            document.getElementById('dxRawFileText').textContent='';
+        }
+
+        function populateDxPetChoices() {
+            const list=document.getElementById('dxPetDatalist');
+            if (!list) return;
+            list.replaceChildren();
+            for (const pet of allPetsListForDropdown) {
+                const option=document.createElement('option');
+                option.value=`${pet.name} (飼主: ${pet.owner_name} / 晶片: ${pet.microchip||'無'} / 編號: ${pet.owner_code||'-'})`;
+                option.dataset.petId=pet.id;
+                list.appendChild(option);
+            }
+        }
+        function selectDxPet() {
+            const input=document.getElementById('dxPetSearchInput').value;
+            const match=[...document.getElementById('dxPetDatalist').options].find(o=>o.value===input);
+            document.getElementById('dxSelectedPetId').value=match?.dataset.petId||'';
+        }
+        async function saveSkylaFromExchange() {
+            if (!pendingSkylaPdf) { alert('請先選擇 Skyla PDF。'); return; }
+            if (!transferSkylaPreviewToLab()) return;
+            await saveLabReportToDatabase();
+        }
+
+        function transferSkylaPreviewToLab() {
+            if (!pendingSkylaPdf?.rows?.length) { alert('請先預覽 Skyla PDF。'); return; }
+            const petId=document.getElementById('dxSelectedPetId').value;
+            const pet=allPetsListForDropdown.find(p=>p.id===petId);
+            if (!pet) { alert('請在交換中心搜尋並選取正確的寵物。'); return false; }
+            const species=['犬','狗','dog'].includes(String(pet.species).toLowerCase()) ? 'dog' : ['貓','cat'].includes(String(pet.species).toLowerCase()) ? 'cat' : '';
+            if (!species) { alert('選擇的寵物須設定為犬或貓；請先核對資料。'); return false; }
+            const date=document.getElementById('dxExamDate').value;
+            if (!/^\d{4}-\d{2}-\d{2}$/.test(date) || Number.isNaN(Date.parse(date)) || new Date(date).toISOString().slice(0,10)!==date) {
+                alert('請依原始 PDF 輸入有效的檢驗日期，例如 2016-09-28。'); return false;
+            }
+            const map={'ALB':'alb','TP':'tp','GLU':'glu','CHOL':'chol','ALP':'alp','ALT':'alt','GGT':'ggt','TBIL':'tbil','AMY':'amy','BUN':'bun','CREA':'crea','CA':'ca','PHOS':'phos','#GLOB':'glob','#UREA':'urea','#C-CA':'c_ca','#A/G':'ag_ratio','#B/C':'bc_ratio','LIPA':'lipa','LIPA (FPL)':'lipa'};
+            const existing=document.querySelectorAll('#bioLabRows .lab-result-input');
+            if ([...existing].some(i=>i.value.trim()) && !confirm('生化輸入表已有數值，帶入會覆蓋相同項目。確定繼續？')) return false;
+            document.getElementById('selectedLabPetId').value=petId;
+            const labOption=[...document.getElementById('labPetDatalist').options].find(o=>o.dataset.petId===petId);
+            document.getElementById('labPetSearchInput').value=labOption?.value||pet.name;
+            document.getElementById('labTestType').value='血液生化';
+            renderLabSpeciesTemplates(); toggleLabFormFields();
+            const targets=pendingSkylaPdf.rows.map(r=>({r,input:document.getElementById('bio_'+map[r.code])})).filter(x=>x.input && x.r.value);
+            if (!targets.length) { alert('PDF 預覽未找到可對應的生化項目，請傳送解析預覽截圖。'); return false; }
+            if (!confirm(`請核對原始 PDF 的病患身分。\n系統選擇：${pet.name}（${pet.species}）\nPDF：${pendingSkylaPdf.name}\n檢驗日期：${date}\n將帶入 ${targets.length} 項並準備儲存。確定？`)) return false;
+            for (const {r} of targets) {
+                const input=document.getElementById('bio_'+map[r.code]);
+                if (input) { input.value=r.value; input.dispatchEvent(new Event('input',{bubbles:true})); }
+            }
+            const note=document.getElementById('labReportNotes');
+            const provenance=`Skyla VC-P21 PDF：${pendingSkylaPdf.name}；原始檢驗日期：${date}；已由人員核對報告與病患。`;
+            note.value=[note.value.trim().replace(/Skyla VC-P21 PDF：[^；]*；原始檢驗日期：\d{4}-\d{2}-\d{2}；已由人員核對報告與病患。/g,'').trim(),provenance].filter(Boolean).join(' ');
+            pendingSkylaTransfer={petId,date,marker:`Skyla VC-P21 PDF：${pendingSkylaPdf.name}；原始檢驗日期：${date}`};
+            return true;
+        }
+
         async function previewDiagnosticFile(event) {
             const file = event.target.files && event.target.files[0];
             if (!file) return;
 
+            if (/\.pdf$/i.test(file.name)) { await previewSkylaPdf(file); return; }
+            pendingSkylaPdf=null;
+            document.getElementById('dxSkylaSavePanel').style.display='none';
             const allowedExt = /\.(csv|txt)$/i.test(file.name);
             if (!allowedExt) {
-                alert('第17.2步先支援 CSV／TXT。');
+                alert('目前支援 CSV、TXT 與 Skyla 文字型 PDF。');
                 event.target.value='';
                 return;
             }
