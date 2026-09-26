@@ -6,6 +6,7 @@
     <title>吉布動物醫院管理系統 genblue設計版權所有</title>
     <!-- 引入 Supabase JS SDK CDN -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
     <style>
         :root {
             --primary-color: #0284c7;
@@ -19,13 +20,30 @@
         * { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
         body { background-color: var(--bg-color); color: var(--text-main); display: flex; height: 100vh; overflow: hidden; }
         
-        sidebar { width: 250px; background-color: #1e293b; color: #fff; display: flex; flex-direction: column; }
-        .sidebar-brand { padding: 20px; font-size: 1.1rem; font-weight: bold; background-color: #0f172a; border-bottom: 1px solid #334155; }
+        sidebar {
+            width: 250px;
+            min-width: 250px;
+            flex: 0 0 250px;
+            background-color: #1e293b;
+            color: #fff;
+            display: flex;
+            flex-direction: column;
+        }
+        .sidebar-brand {
+            padding: 20px;
+            font-size: 1.02rem;
+            line-height: 1.45;
+            font-weight: bold;
+            background-color: #0f172a;
+            border-bottom: 1px solid #334155;
+            white-space: normal;
+            overflow-wrap: break-word;
+        }
         .nav-links { list-style: none; padding: 10px 0; overflow-y: auto; flex-grow: 1; }
         .nav-links li { padding: 12px 20px; cursor: pointer; transition: background 0.2s; font-size: 0.9rem; }
         .nav-links li:hover, .nav-links li.active { background-color: var(--primary-color); color: #fff; }
 
-        .main-container { flex-grow: 1; display: flex; flex-direction: column; overflow: hidden; }
+        .main-container { flex: 1 1 auto; min-width: 0; display: flex; flex-direction: column; overflow: hidden; }
         header { background-color: var(--card-bg); padding: 15px 30px; border-bottom: 1px solid var(--border-color); display: flex; justify-content: space-between; align-items: center; }
         .header-left { display: flex; align-items: center; gap: 20px; }
         .search-box { padding: 6px 12px; border: 1px solid var(--border-color); border-radius: var(--radius); font-size: 0.9rem; width: 280px; outline: none; }
@@ -232,7 +250,127 @@
         .lab-report-meta { display:grid; grid-template-columns:repeat(auto-fit,minmax(220px,1fr)); gap:0 12px; }
         .lab-report-note { color:#64748b; font-size:.8rem; margin-top:10px; }
         .lab-report-actions { display:flex; justify-content:flex-end; margin-top:14px; }
-    </style>
+    
+        /* 第16.8步：申報資料使用整個卡片寬度，避免欄位擠在左側 */
+        .regulatory-even-grid {
+            width: 100%;
+            display: grid;
+            grid-template-columns: repeat(4, minmax(180px, 1fr));
+            gap: 18px 22px;
+            align-items: end;
+            margin-top: 10px;
+        }
+        .regulatory-even-grid .form-group {
+            min-width: 0;
+            margin: 0;
+        }
+        .regulatory-even-grid label {
+            display: block;
+            min-height: 22px;
+            white-space: normal;
+            overflow-wrap: normal;
+            word-break: keep-all;
+        }
+        .regulatory-even-grid input,
+        .regulatory-even-grid select {
+            width: 100%;
+            min-width: 0;
+            box-sizing: border-box;
+        }
+        .regulatory-even-grid .regulatory-notes {
+            grid-column: span 2;
+        }
+        #newMedicineRegulatorySection {
+            grid-column: 1 / -1 !important;
+            width: 100% !important;
+            min-width: 0;
+        }
+        @media (max-width: 1250px) {
+            .regulatory-even-grid {
+                grid-template-columns: repeat(3, minmax(170px, 1fr));
+            }
+        }
+        @media (max-width: 900px) {
+            .regulatory-even-grid {
+                grid-template-columns: repeat(2, minmax(160px, 1fr));
+            }
+            .regulatory-even-grid .regulatory-notes {
+                grid-column: span 2;
+            }
+        }
+        @media (max-width: 600px) {
+            .regulatory-even-grid {
+                grid-template-columns: 1fr;
+            }
+            .regulatory-even-grid .regulatory-notes {
+                grid-column: span 1;
+            }
+        }
+
+        /* 第16.7步：保護左側導航寬度，避免主內容把 sidebar 壓縮 */
+        .regulatory-even-grid label {
+            white-space: normal;
+            overflow-wrap: anywhere;
+        }
+        .regulatory-even-grid > * {
+            min-width: 0;
+        }
+        .content, .tab-content, .card {
+            min-width: 0;
+        }
+
+        /* 第16.9步：藥品新增區上層獨立版面，不再受通用 form-grid 欄寬影響 */
+        .medicine-entry-grid {
+            display: grid;
+            grid-template-columns: repeat(4, minmax(0, 1fr));
+            gap: 18px 18px;
+            align-items: end;
+            width: 100%;
+        }
+        .medicine-entry-grid > .form-group {
+            min-width: 0;
+        }
+        .medicine-entry-grid input,
+        .medicine-entry-grid select {
+            width: 100%;
+            min-width: 0;
+            box-sizing: border-box;
+        }
+        .medicine-entry-grid .medicine-name {
+            grid-column: span 2;
+        }
+        .medicine-entry-grid .medicine-dose {
+            grid-column: span 2;
+        }
+        .medicine-entry-grid .medicine-strength {
+            grid-column: span 2;
+        }
+        .medicine-entry-grid #newMedicineRegulatorySection,
+        .medicine-entry-grid #medRegulatoryDetails {
+            grid-column: 1 / -1 !important;
+        }
+
+        @media (max-width: 1150px) {
+            .medicine-entry-grid {
+                grid-template-columns: repeat(2, minmax(0, 1fr));
+            }
+            .medicine-entry-grid .medicine-name,
+            .medicine-entry-grid .medicine-dose,
+            .medicine-entry-grid .medicine-strength {
+                grid-column: span 2;
+            }
+        }
+        @media (max-width: 650px) {
+            .medicine-entry-grid {
+                grid-template-columns: 1fr;
+            }
+            .medicine-entry-grid .medicine-name,
+            .medicine-entry-grid .medicine-dose,
+            .medicine-entry-grid .medicine-strength {
+                grid-column: span 1;
+            }
+        }
+</style>
     </head>
 <body>
     <!-- Supabase 登入畫面 -->
@@ -310,24 +448,36 @@
 
     <!-- 側邊欄導航 -->
     <sidebar>
-        <div class="sidebar-brand" id="sidebarBrandTitle">吉布動物醫院管理系統</div>
+        <div class="sidebar-brand" id="sidebarBrandTitle">吉布動物醫院管理系統 genblue設計版權所有</div>
         <ul class="nav-links">
-            <li id="nav-appointments" onclick="switchTab('appointments')" class="active">預約與報到 (Appointments)</li>
-            <li id="nav-owners_pets" onclick="switchTab('owners_pets')">飼主與寵物整合管理 (Owners & Pets)</li>
-            <li id="nav-medical" onclick="switchTab('medical')">醫療診斷病歷與用藥 (Medical)</li>
-            <li id="nav-inpatients" onclick="switchTab('inpatients')">🏥 住院與照護病房 (Inpatients)</li>
-            <li id="nav-search_center" onclick="switchTab('search_center')">🔍 綜合查詢中心 (Search)</li>
-            <li id="nav-vaccines" onclick="switchTab('vaccines')">疫苗施打與種類管理 (Vaccines)</li>
-            <li id="nav-items" onclick="switchTab('items')">一般商品專區(Items)</li>
-            <li id="nav-medicines" onclick="switchTab('medicines')">藥品專區 (Medicines)</li>
-            <li id="nav-product_checkout" onclick="switchTab('product_checkout')">純商品購買結帳</li>
-            <li id="nav-reports" onclick="switchTab('reports')">財務報表 (日/月/年結)</li>
-            <li id="nav-clinic" onclick="switchTab('clinic')">系統設定及醫院資料 (Clinic)</li>
-            <li id="nav-audit_logs" onclick="switchTab('audit_logs')">操作歷程與稽核 (Audit Logs)</li>
-            <li id="nav-invoices" onclick="switchTab('invoices')">收費與付款 (Invoices)</li>
-            <li id="nav-lab_manager" onclick="switchTab('lab_manager')">血球與生化檢驗管理</li>
-            <li id="nav-rapid_tests" onclick="switchTab('rapid_tests')">🦠 快篩與抗原檢驗管理</li>
-            <li id="nav-lab_tests" onclick="switchTab('lab_tests')">檢驗, 影像及附件 (Lab Tests)</li>
+            <li class="nav-section-label" style="pointer-events:none; cursor:default; margin-top:4px; padding:10px 12px 5px; font-size:0.72rem; font-weight:800; letter-spacing:.08em; color:#94a3b8; background:transparent;">日常工作</li>
+            <li id="nav-appointments" onclick="switchTab('appointments')" class="active">🏠 首頁／預約與報到</li>
+            <li id="nav-owners_pets" onclick="switchTab('owners_pets')">🐾 飼主與寵物</li>
+            <li id="nav-medical" onclick="switchTab('medical')">🩺 醫療門診</li>
+            <li id="nav-inpatients" onclick="switchTab('inpatients')">🏥 住院與照護</li>
+            <li id="nav-invoices" onclick="switchTab('invoices')">💳 收費與付款</li>
+            <li id="nav-product_checkout" onclick="switchTab('product_checkout')">🛒 純商品結帳</li>
+
+            <li class="nav-section-label" style="pointer-events:none; cursor:default; margin-top:10px; padding:10px 12px 5px; font-size:0.72rem; font-weight:800; letter-spacing:.08em; color:#94a3b8; background:transparent;">醫療支援</li>
+            <li id="nav-vaccines" onclick="switchTab('vaccines')">💉 疫苗管理</li>
+            <li id="nav-lab_manager" onclick="switchTab('lab_manager')">🧪 血球與生化檢驗</li>
+            <li id="nav-rapid_tests" onclick="switchTab('rapid_tests')">🦠 快篩與抗原檢驗</li>
+            <li id="nav-lab_tests" onclick="switchTab('lab_tests')">📎 檢驗、影像及附件</li>
+
+            <li class="nav-section-label" style="pointer-events:none; cursor:default; margin-top:10px; padding:10px 12px 5px; font-size:0.72rem; font-weight:800; letter-spacing:.08em; color:#94a3b8; background:transparent;">資料查詢</li>
+            <li id="nav-search_center" onclick="switchTab('search_center')">🔍 綜合查詢中心</li>
+
+            <li class="nav-section-label" style="pointer-events:none; cursor:default; margin-top:10px; padding:10px 12px 5px; font-size:0.72rem; font-weight:800; letter-spacing:.08em; color:#94a3b8; background:transparent;">庫存管理</li>
+            <li id="nav-medicines" onclick="switchTab('medicines')">💊 藥品專區</li>
+            <li id="nav-items" onclick="switchTab('items')">📦 一般商品專區</li>
+
+            <li class="nav-section-label" style="pointer-events:none; cursor:default; margin-top:10px; padding:10px 12px 5px; font-size:0.72rem; font-weight:800; letter-spacing:.08em; color:#94a3b8; background:transparent;">營運管理</li>
+            <li id="nav-reports" onclick="switchTab('reports')">📊 財務報表</li>
+            <li id="nav-regulatory_reports" onclick="switchTab('regulatory_reports')">📤 用藥申報與管制藥品</li>
+            <li id="nav-audit_logs" onclick="switchTab('audit_logs')">📋 操作歷程與稽核</li>
+
+            <li class="nav-section-label" style="pointer-events:none; cursor:default; margin-top:10px; padding:10px 12px 5px; font-size:0.72rem; font-weight:800; letter-spacing:.08em; color:#94a3b8; background:transparent;">系統</li>
+            <li id="nav-clinic" onclick="switchTab('clinic')">⚙️ 系統設定及醫院資料</li>
             <li
                id="nav-logout"
                onclick="logoutSupabase()"
@@ -605,10 +755,13 @@
                         <h3>處方用藥與針劑開立（多劑型專業細化）</h3>
                         <div class="form-grid" style="margin-bottom: 10px;">
                             <div class="form-group span-2">
-                                <label for="prescriptionMedicineSearch">搜尋藥品（輸入部分名稱）</label>
-                                <input type="search" id="prescriptionMedicineSearch" placeholder="例如輸入 amox 或 消炎" autocomplete="off" oninput="filterPrescriptionMedicines()" onkeydown="if(event.key==='ArrowDown'){event.preventDefault();document.getElementById('medSelectDropdown').focus()}">
-                                <select id="medSelectDropdown" aria-label="符合搜尋的藥品" onchange="onMedicineSelectedForDoseCalculation()" style="margin-top:8px">
-                                    <option value="">-- 輸入關鍵字後選擇藥品 --</option>
+                                <label for="prescriptionMedicineSearch">搜尋並選擇藥品</label>
+                                <div style="position:relative;">
+                                    <input type="search" id="prescriptionMedicineSearch" placeholder="輸入藥名，例如 amox 或 消炎；找到後直接點選" autocomplete="off" oninput="filterPrescriptionMedicines()" onfocus="filterPrescriptionMedicines()" style="width:100%;">
+                                    <div id="prescriptionMedicineResults" style="display:none; position:absolute; z-index:30; left:0; right:0; top:calc(100% + 4px); max-height:280px; overflow-y:auto; background:#fff; border:1px solid #cbd5e1; border-radius:8px; box-shadow:0 8px 20px rgba(15,23,42,.14);"></div>
+                                </div>
+                                <select id="medSelectDropdown" aria-label="目前選取藥品" onchange="onMedicineSelectedForDoseCalculation()" style="display:none;">
+                                    <option value="">-- 尚未選擇藥品 --</option>
                                 </select>
                             </div>
                             <div class="form-group">
@@ -781,6 +934,7 @@
                     <div style="background: #f1f5f9; padding: 12px 15px; border-radius: var(--radius); margin-bottom: 15px; display: flex; gap: 10px; align-items: center;">
                         <input type="text" id="newItemCustomCategory" placeholder="輸入新的商品分類名稱 (例如: 護理用品)" style="flex: 1;">
                         <button class="btn-secondary" style="padding: 9px 15px;" onclick="addNewItemCategory()">+ 新增商品分類</button>
+                            <button type="button" class="btn-secondary" onclick="openItemCategoryManager()" style="margin-left:8px;">⚙️ 管理分類</button>
                     </div>
 
                     <div class="form-grid">
@@ -789,6 +943,7 @@
                             <label>分類 (僅限商品專區)</label>
                             <select id="itemCategory">
                                 <option value="一般商品">一般商品 (飼料/用品)</option>
+                                <option value="動物用商品">動物用商品</option>
                                 <option value="保健品">保健品</option>
                                 <option value="洗劑">洗劑</option>
                                 <option value="玩具">玩具</option>
@@ -822,8 +977,8 @@
                         <button class="btn-secondary" style="padding: 9px 15px;" onclick="addNewMedicineCategory()">+ 新增藥品分類</button>
                     </div>
 
-                    <div class="form-grid">
-                        <div class="form-group span-2"><label>藥名</label><input type="text" id="medName" placeholder="例如：Amoxicillin / Atropine"></div>
+                    <div class="form-grid medicine-entry-grid">
+                        <div class="form-group medicine-name"><label>藥名</label><input type="text" id="medName" placeholder="例如：Amoxicillin / Atropine"></div>
                         <div class="form-group">
                             <label>給藥途徑 (Route)</label>
                             <select id="medRoute">
@@ -833,8 +988,10 @@
                         </div>
                         <div class="form-group">
                             <label>藥品分類</label>
-                            <select id="medCalcFormula">
+                            <select id="medCalcFormula" onchange="onUpperMedicineCategoryChange()">
                                 <option value="一般藥品">一般藥品</option>
+                                <option value="動物用藥品">動物用藥品</option>
+                                <option value="管制藥品">管制藥品</option>
                                 <option value="抗生素">抗生素</option>
                                 <option value="心臟用藥">心臟用藥</option>
                                 <option value="消化道用藥">消化道用藥</option>
@@ -844,11 +1001,44 @@
                                 <option value="類固醇/消炎針">類固醇/消炎針</option>
                             </select>
                         </div>
-                        <div class="form-group span-2"><label>預設建議劑量 (例如：10 mg/kg 或 0.1 ml/kg)</label><input type="text" id="medRecDose" placeholder="10 mg/kg"></div>
-                        <div class="form-group span-2"><label>每單位規格含量 (例如：250mg/顆 或 2mg/ml)</label><input type="text" id="medUseDose" placeholder="250mg / 顆"></div>
+                        <div class="form-group medicine-dose"><label>預設建議劑量 (例如：10 mg/kg 或 0.1 ml/kg)</label><input type="text" id="medRecDose" placeholder="10 mg/kg"></div>
+                        <div class="form-group medicine-strength"><label>每單位規格含量 (例如：250mg/顆 或 2mg/ml)</label><input type="text" id="medUseDose" placeholder="250mg / 顆"></div>
                         <div class="form-group"><label>售價 (NT$)</label><input type="number" id="medPrice" placeholder="50"></div>
                         <div class="form-group"><label>庫存單位（例：顆、瓶、支）</label><input type="text" id="medUnit" value="錠"></div>
                         <div class="form-group"><label>初始庫存量</label><input type="number" id="medStock" min="0" step="any" placeholder="0"></div>
+
+                        <div id="newMedicineRegulatorySection" class="form-group span-4" hidden style="display:none;margin-top:8px;padding-top:14px;border-top:1px solid #cbd5e1;">
+                            <b style="color:#0369a1;">📋 動物用藥品申報／法規資料</b>
+                            <small style="display:block;color:#64748b;margin-top:4px;">先選擇申報身分；只有「動物用藥品」或「管制藥品」才會展開下方申報資料。</small>
+                        </div>
+                        <div class="form-group" style="display:none;">
+                            <label>申報身分</label>
+                            <select id="medRegulatoryClass">
+                                <option value="未分類" selected>暫不分類</option>
+                                <option value="動物用藥品">動物用藥品</option>
+                                <option value="管制藥品">管制藥品</option>
+                                <option value="其他">其他</option>
+                            </select>
+                        </div>
+                        <div class="form-group" style="display:none;"><label>是否納入申報</label><select id="medReportable"><option value="true">是</option><option value="false" selected>否</option></select></div>
+                        <div id="medRegulatoryDetails" class="span-4" hidden style="display:none;width:100%;grid-column:1 / -1;">
+                            <div class="regulatory-even-grid">
+                                <div class="form-group"><label>動物用藥品許可證字號</label><input type="text" id="medVeterinaryLicenseNo" placeholder="可稍後補登"></div>
+                                <div class="form-group"><label>有效成分</label><input type="text" id="medActiveIngredient" placeholder="例如：Amoxicillin"></div>
+                                <div class="form-group"><label>申報規格／含量</label><input type="text" value="自動使用上方「每單位規格含量」" readonly style="background:#f8fafc;color:#64748b;"></div>
+                                <div class="form-group"><label>劑型</label><input type="text" id="medDosageForm" placeholder="錠劑／注射液"></div>
+                                <div class="form-group"><label>製造廠</label><input type="text" id="medManufacturer"></div>
+                                <div class="form-group"><label>申報最小單位</label><input type="text" id="medSmallestUnit" placeholder="錠／支／mL"></div>
+                                <div class="form-group">
+                                    <label>管制藥品狀態</label>
+                                    <input type="text" id="medControlledDrugStatus" value="否" readonly style="background:#f8fafc;">
+                                    <input type="hidden" id="medControlledDrug" value="false">
+                                </div>
+                                <div class="form-group" id="medControlledLevelGroup" style="display:none;"><label>管制級別</label><select id="medControlledLevel"><option value="">-- 請選擇 --</option><option value="1">第一級</option><option value="2">第二級</option><option value="3">第三級</option><option value="4">第四級</option></select></div>
+                                <div class="form-group" id="medControlledRegNoGroup" style="display:none;"><label>管制藥品登記／證號</label><input type="text" id="medControlledRegistrationNo"></div>
+                                <div class="form-group regulatory-notes"><label>法規備註</label><input type="text" id="medRegulatoryNotes" placeholder="選填"></div>
+                            </div>
+                        </div>
                     </div>
                     <button onclick="saveNewMedicine()">確認新增藥品至專區</button>
                 </div>
@@ -864,12 +1054,14 @@
                                 <th>售價</th>
                                 <th>規格含量</th>
                                 <th>藥品分類</th>
+                                <th>申報身分</th>
+                                <th>管制</th>
                                 <th>庫存量</th>
                                 <th>操作</th>
                             </tr>
                         </thead>
                         <tbody id="medicineTableBody">
-                            <tr><td colspan="8" style="text-align: center; color: #64748b;">尚無藥品資料</td></tr>
+                            <tr><td colspan="10" style="text-align: center; color: #64748b;">尚無藥品資料</td></tr>
                         </tbody>
                     </table>
                 </div>
@@ -923,6 +1115,93 @@
                     <div style="display: flex; gap: 10px;">
                         <button class="btn-success" onclick="processProductCheckoutToArchive(true)" style="flex: 1;">💾 儲存並列印商品收據</button>
                         <button class="btn-secondary" onclick="processProductCheckoutToArchive(false)" style="flex: 1;">📁 僅儲存商品並完成歸檔 (不列印)</button>
+                    </div>
+                </div>
+            </div>
+
+
+            <!-- 12/13. 用藥申報與管制藥品中心 -->
+            <div id="regulatory_reports" class="tab-content">
+                <div class="card">
+                    <h2>📤 用藥申報與管制藥品中心</h2>
+                    <p style="color:#64748b;margin-top:-4px;">
+                        從正式異動帳產生申報資料；動物用藥品來自藥品專區，動物用商品維持在商品專區，管制藥品另行管理收支結存。
+                    </p>
+
+                    <div class="form-grid" style="margin-bottom:12px;">
+                        <div class="form-group"><label>起始日期</label><input type="date" id="regStartDate"></div>
+                        <div class="form-group"><label>結束日期</label><input type="date" id="regEndDate"></div>
+                        <div class="form-group">
+                            <label>資料類型</label>
+                            <select id="regTypeFilter">
+                                <option value="all">全部異動</option>
+                                <option value="veterinary_medicine">動物用藥品</option>
+                                <option value="veterinary_product">動物用商品</option>
+                                <option value="controlled">管制藥品</option>
+                            </select>
+                        </div>
+                        <div class="form-group" style="align-self:end;">
+                            <button onclick="loadRegulatoryCenter()">🔍 查詢</button>
+                        </div>
+                    </div>
+
+                    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px;">
+                        <button class="btn-secondary" onclick="copyRegulatoryTableForExcel()">📋 複製明細到 Excel</button>
+                        <button class="btn-success" onclick="exportRegulatoryExcel()">📊 匯出 Excel (.xlsx)</button>
+                        <button class="btn-secondary" onclick="loadRegulatoryReportHistory()">📁 重新整理申報歷史</button>
+                    </div>
+                    <div id="regExportHint" style="font-size:.82rem;color:#64748b;margin-bottom:12px;">
+                        Excel 會依目前查詢期間與篩選結果匯出；正式申報前可再建立申報快照。
+                    </div>
+
+                    <div style="display:grid;grid-template-columns:repeat(5,minmax(130px,1fr));gap:10px;margin-bottom:16px;">
+                        <div style="background:#f8fafc;padding:12px;border-radius:8px;border:1px solid #e2e8f0;"><small>異動筆數</small><div id="regStatCount" style="font-size:1.35rem;font-weight:800;">0</div></div>
+                        <div style="background:#f8fafc;padding:12px;border-radius:8px;border:1px solid #e2e8f0;"><small>動物用藥品</small><div id="regStatMedicine" style="font-size:1.35rem;font-weight:800;">0</div></div>
+                        <div style="background:#f8fafc;padding:12px;border-radius:8px;border:1px solid #e2e8f0;"><small>動物用商品</small><div id="regStatProduct" style="font-size:1.35rem;font-weight:800;">0</div></div>
+                        <div style="background:#f8fafc;padding:12px;border-radius:8px;border:1px solid #e2e8f0;"><small>管制藥異動</small><div id="regStatControlled" style="font-size:1.35rem;font-weight:800;">0</div></div>
+                        <div style="background:#f8fafc;padding:12px;border-radius:8px;border:1px solid #e2e8f0;"><small>缺批號筆數</small><div id="regStatMissingLot" style="font-size:1.35rem;font-weight:800;">0</div></div>
+                    </div>
+
+                    <h3>申報／用藥異動明細</h3>
+                    <div style="overflow:auto;">
+                        <table id="regulatoryTransactionTable">
+                            <thead><tr>
+                                <th>日期時間</th><th>品項</th><th>法規分類</th><th>許可證字號</th>
+                                <th>批號</th><th>收入</th><th>支出</th><th>單位</th>
+                                <th>飼主／寵物</th><th>獸醫師</th><th>原因</th>
+                            </tr></thead>
+                            <tbody id="regulatoryTransactionBody">
+                                <tr><td colspan="11" style="text-align:center;color:#64748b;">尚未載入資料</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <h3>🔐 管制藥品收支結存</h3>
+                    <p style="color:#64748b;">顯示同一期間的管制藥逐筆收支；正式交易不以刪除方式更正。</p>
+                    <div style="overflow:auto;">
+                        <table>
+                            <thead><tr>
+                                <th>日期</th><th>品項</th><th>級別</th><th>批號</th>
+                                <th>收入</th><th>支出</th><th>結存</th><th>單位</th><th>原因／對象</th>
+                            </tr></thead>
+                            <tbody id="controlledLedgerBody">
+                                <tr><td colspan="9" style="text-align:center;color:#64748b;">尚未載入資料</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <h3>📁 申報檔案與歷史紀錄</h3>
+                    <div style="overflow:auto;">
+                        <table>
+                            <thead><tr><th>期間</th><th>申報類型</th><th>狀態</th><th>檔名</th><th>筆數</th><th>產生時間</th></tr></thead>
+                            <tbody id="regulatoryReportHistoryBody">
+                                <tr><td colspan="6" style="text-align:center;color:#64748b;">尚無申報快照</td></tr>
+                            </tbody>
+                        </table>
                     </div>
                 </div>
             </div>
@@ -1292,10 +1571,11 @@
                             </select>
                         </div>
                         <div class="form-group"><label>看診醫師</label><select id="appointmentDoctor"><option value="張醫師">張醫師</option><option value="值班醫師">值班醫師</option></select></div>
-                        <div class="form-group span-2"><label>初始狀態</label><select id="appointmentStatusSelect"><option selected>候診中</option><option>診間看診中</option></select></div>
+                        <div class="form-group span-2"><label>初始狀態</label><select id="appointmentStatusSelect"><option value="已預約" selected>已預約（未報到）</option><option value="候診中">候診中</option><option value="診間看診中">診間看診中</option></select></div>
                     </div>
                     <div style="display: flex; gap: 12px; margin-top: 15px;">
-                        <button onclick="saveAppointment()">新增預約與報到</button>
+                        <button id="saveAppointmentBtn" onclick="saveAppointment()">建立預約</button>
+                        <button id="cancelEditAppointmentBtn" class="btn-secondary" style="display:none;" onclick="cancelEditAppointment()">取消修改</button>
                     </div>
                 </div>
                 
@@ -1307,14 +1587,34 @@
                             <button class="btn-secondary" style="padding: 4px 10px; font-size: 0.8rem;" onclick="filterAppointmentsStatus('上午診')">🌅 上午診</button>
                             <button class="btn-secondary" style="padding: 4px 10px; font-size: 0.8rem;" onclick="filterAppointmentsStatus('下午診')">☀️ 下午診</button>
                             <button class="btn-secondary" style="padding: 4px 10px; font-size: 0.8rem;" onclick="filterAppointmentsStatus('夜診')">🌙 夜診</button>
+                            <button class="btn-secondary" style="padding: 4px 10px; font-size: 0.8rem;" onclick="filterAppointmentsStatus('已預約')">全部預約</button>
+                            <button class="btn-secondary" style="padding: 4px 10px; font-size: 0.8rem;" onclick="filterAppointmentsStatus('今日預約')">📋 今日預約</button>
+                            <button class="btn-secondary" style="padding: 4px 10px; font-size: 0.8rem;" onclick="filterAppointmentsStatus('未來預約')">📅 未來預約</button>
                             <button class="btn-secondary" style="padding: 4px 10px; font-size: 0.8rem;" onclick="filterAppointmentsStatus('候診中')">候診中</button>
                             <button class="btn-secondary" style="padding: 4px 10px; font-size: 0.8rem;" onclick="filterAppointmentsStatus('診間看診中')">看診中</button>
                         </div>
                     </div>
                     <table id="appointmentTable">
-                        <thead><tr><th>晶片號碼</th><th>寵物名字</th><th>飼主</th><th>時段 / 醫師</th><th>報到時間</th><th>目前狀態</th><th>快捷操作與歸檔</th></tr></thead>
+                        <thead><tr><th>晶片號碼</th><th>寵物名字</th><th>飼主</th><th>時段 / 醫師</th><th>預約時間 / 報到時間</th><th>目前狀態</th><th>快捷操作與歸檔</th></tr></thead>
                         <tbody id="appointmentTableBody">
                             <tr><td colspan="7" style="text-align: center; color: #64748b;">尚無報到病患，請透過上方全域搜尋帶入病患...</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <div class="card">
+                    <div style="display:flex; justify-content:space-between; align-items:center; gap:10px; flex-wrap:wrap; margin-bottom:10px;">
+                        <h3>預約歷史紀錄</h3>
+                        <div style="display:flex; gap:8px; flex-wrap:wrap;">
+                            <button class="btn-secondary" style="padding:4px 10px; font-size:0.8rem;" onclick="loadAppointmentHistory('all')">全部紀錄</button>
+                            <button class="btn-secondary" style="padding:4px 10px; font-size:0.8rem;" onclick="loadAppointmentHistory('已取消')">已取消</button>
+                            <button class="btn-secondary" style="padding:4px 10px; font-size:0.8rem;" onclick="loadAppointmentHistory('已完成')">已完成</button>
+                        </div>
+                    </div>
+                    <table>
+                        <thead><tr><th>預約日期</th><th>寵物</th><th>飼主</th><th>診別 / 醫師</th><th>狀態</th><th>取消原因</th></tr></thead>
+                        <tbody id="appointmentHistoryBody">
+                            <tr><td colspan="6" style="text-align:center; color:#64748b;">載入預約歷史紀錄中...</td></tr>
                         </tbody>
                     </table>
                 </div>
@@ -1335,7 +1635,68 @@
     </div>
 
     <!-- 商品完整修改彈出視窗 -->
-    <div id="editItemModal" class="modal-overlay">
+    
+    <!-- 第16步：批號／效期／進貨批次 Modal -->
+    <div id="regulatedLotModal" class="modal-overlay" style="display:none;">
+        <div class="modal-content" style="max-width:780px;">
+            <h3>📦 批號／效期進貨</h3>
+            <input type="hidden" id="lotItemKind">
+            <input type="hidden" id="lotItemId">
+            <div id="lotItemTitle" style="font-weight:800;color:#0369a1;margin-bottom:12px;"></div>
+            <div class="form-grid">
+                <div class="form-group"><label>進貨數量 *</label><input type="number" id="lotQuantity" min="0.000001" step="any"></div>
+                <div class="form-group"><label>批號 *</label><input type="text" id="lotNo" placeholder="Lot No."></div>
+                <div class="form-group"><label>有效期限</label><input type="date" id="lotExpiryDate"></div>
+                <div class="form-group"><label>進貨日期</label><input type="date" id="lotReceivedDate"></div>
+                <div class="form-group span-2"><label>供應商</label><input type="text" id="lotSupplierName"></div>
+                <div class="form-group span-2"><label>進貨單／發票／單據號碼</label><input type="text" id="lotPurchaseDocumentNo"></div>
+                <div class="form-group span-4"><label>備註</label><input type="text" id="lotNotes"></div>
+            </div>
+            <div style="display:flex;justify-content:flex-end;gap:10px;margin-top:14px;">
+                <button class="btn-secondary" onclick="closeRegulatedLotModal()">取消</button>
+                <button onclick="saveRegulatedLotReceipt()">確認批次入庫</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="regulatedLotListModal" class="modal-overlay" style="display:none;">
+        <div class="modal-content" style="max-width:920px;">
+            <h3>📦 批號／效期庫存明細</h3>
+            <div id="lotListItemTitle" style="font-weight:800;color:#0369a1;margin-bottom:10px;"></div>
+            <div style="overflow:auto;max-height:480px;">
+                <table>
+                    <thead><tr><th>批號</th><th>效期</th><th>進貨日</th><th>供應商</th><th>累計進貨</th><th>批次結存</th><th>單位</th><th>單據</th></tr></thead>
+                    <tbody id="regulatedLotListBody"></tbody>
+                </table>
+            </div>
+            <div style="display:flex;justify-content:flex-end;margin-top:14px;">
+                <button class="btn-secondary" onclick="closeRegulatedLotList()">關閉</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 商品分類管理 Modal -->
+    <div id="itemCategoryManagerModal" class="modal-overlay" style="display:none;">
+        <div class="modal-content" style="max-width:720px;">
+            <h3>⚙️ 商品分類管理</h3>
+            <p style="color:#64748b;margin-top:0;">可新增、重新命名或刪除分類。刪除使用中的分類前，必須先把商品轉移到其他分類。</p>
+            <div style="display:flex;gap:8px;margin-bottom:14px;">
+                <input id="newManagedItemCategory" type="text" placeholder="輸入新分類名稱" style="flex:1;">
+                <button onclick="createManagedItemCategory()">＋新增</button>
+            </div>
+            <div style="overflow:auto;max-height:420px;">
+                <table>
+                    <thead><tr><th>分類名稱</th><th>商品數</th><th>操作</th></tr></thead>
+                    <tbody id="itemCategoryManagerBody"></tbody>
+                </table>
+            </div>
+            <div style="display:flex;justify-content:flex-end;margin-top:14px;">
+                <button class="btn-secondary" onclick="closeItemCategoryManager()">關閉</button>
+            </div>
+        </div>
+    </div>
+
+<div id="editItemModal" class="modal-overlay">
         <div class="modal-content">
             <h3>編輯一般商品完整資料</h3>
             <input type="hidden" id="editItemId">
@@ -1373,9 +1734,27 @@
             <div class="form-group" style="margin-bottom: 10px;"><label>每單位規格含量 (例如：250mg/顆)</label><input type="text" id="editMedUseDose"></div>
             <div class="form-group" style="margin-bottom: 10px;">
                 <label>藥品分類</label>
-                <select id="editMedCalcFormula"></select>
+                <select id="editMedCalcFormula" onchange="onEditUpperMedicineCategoryChange()"></select>
             </div>
             <div class="form-group" style="margin-bottom: 10px;"><label>庫存單位（例如：顆、支、瓶、mL）</label><input type="text" id="editMedUnit" required></div>
+            <div id="editMedicineRegulatorySection" hidden style="display:none;border-top:1px solid #cbd5e1;margin:14px 0;padding-top:12px;">
+                <b style="color:#0369a1;">📋 動物用藥品申報／法規資料</b>
+
+            <div class="form-group" style="display:none;margin-bottom:10px;"><label>申報身分</label><select id="editMedRegulatoryClass"><option value="動物用藥品">動物用藥品</option><option value="管制藥品">管制藥品</option><option value="其他">其他</option><option value="未分類">暫不分類</option></select></div>
+            <div class="form-group" style="display:none;margin-bottom:10px;"><label>是否納入申報</label><select id="editMedReportable"><option value="true">是</option><option value="false">否</option></select></div>
+            <div id="editMedRegulatoryDetails" hidden style="display:none;border-left:3px solid #0ea5e9;padding-left:12px;margin:8px 0 12px;">
+            <div class="form-group" style="margin-bottom:10px;"><label>動物用藥品許可證字號</label><input type="text" id="editMedVeterinaryLicenseNo"></div>
+            <div class="form-group" style="margin-bottom:10px;"><label>有效成分</label><input type="text" id="editMedActiveIngredient"></div>
+            <div class="form-group" style="margin-bottom:10px;"><label>申報規格／含量</label><input type="text" id="editMedStrengthDisplay" value="自動使用上方「每單位規格含量」" readonly style="background:#f8fafc;color:#64748b;"></div>
+            <div class="form-group" style="margin-bottom:10px;"><label>劑型</label><input type="text" id="editMedDosageForm"></div>
+            <div class="form-group" style="margin-bottom:10px;"><label>製造廠</label><input type="text" id="editMedManufacturer"></div>
+            <div class="form-group" style="margin-bottom:10px;"><label>申報最小單位</label><input type="text" id="editMedSmallestUnit"></div>
+            <div class="form-group" style="margin-bottom:10px;"><label>管制藥品狀態</label><input type="text" id="editMedControlledDrugStatus" value="否" readonly style="background:#f8fafc;"><input type="hidden" id="editMedControlledDrug" value="false"></div>
+            <div class="form-group" id="editMedControlledLevelGroup" style="display:none;margin-bottom:10px;"><label>管制級別</label><select id="editMedControlledLevel"><option value="">-- 請選擇 --</option><option value="1">第一級</option><option value="2">第二級</option><option value="3">第三級</option><option value="4">第四級</option></select></div>
+            <div class="form-group" id="editMedControlledRegNoGroup" style="display:none;margin-bottom:10px;"><label>管制藥品登記／證號</label><input type="text" id="editMedControlledRegistrationNo"></div>
+            <div class="form-group" style="margin-bottom:10px;"><label>法規備註</label><input type="text" id="editMedRegulatoryNotes"></div>
+            </div>
+            </div>
             <div class="form-group" style="margin-bottom: 15px;"><label>庫存量（請使用清單中的入庫／盤點調整）</label><input type="number" id="editMedStock" readonly></div>
             <div style="display: flex; justify-content: flex-end; gap: 10px;">
                 <button class="btn-secondary" onclick="closeEditMedicineModal()">取消</button>
@@ -1505,6 +1884,8 @@
         let globalOwnersPetsData = []; 
         let activeAppointmentsList = []; 
         let currentAppointmentFilter = 'all';
+        let editingAppointmentPetId = null;
+        let currentAppointmentId = null;
         let allPetsListForDropdown = [];
         let allOwnersListForDropdown = [];
         let allLabReportsCache = []; 
@@ -2134,6 +2515,11 @@ bootstrapAuthentication();
             if(tabId === 'reports') {
                 fetchFinancialReport();
             }
+            if(tabId === 'regulatory_reports') {
+                initRegulatoryCenterDates();
+                loadRegulatoryCenter();
+                loadRegulatoryReportHistory();
+            }
             if(tabId === 'search_center') {
                 loadSearchCenterData();
             }
@@ -2418,7 +2804,7 @@ bootstrapAuthentication();
             document.getElementById('clinicDirectorSet').value = clinicSettings.director;
             document.getElementById('clinicPhoneSet').value = clinicSettings.phone;
             document.getElementById('clinicAddressSet').value = clinicSettings.address;
-            document.getElementById('sidebarBrandTitle').innerText = clinicSettings.name + " AI 系統";
+            document.getElementById('sidebarBrandTitle').innerText = clinicSettings.name + "管理系統 genblue設計版權所有";
         }
 
         async function saveClinicSettings() {
@@ -2448,7 +2834,7 @@ bootstrapAuthentication();
             clinicSettings.phone = phone;
             clinicSettings.address = address;
 
-            document.getElementById('sidebarBrandTitle').innerText = clinicSettings.name + " AI 系統";
+            document.getElementById('sidebarBrandTitle').innerText = clinicSettings.name + "管理系統 genblue設計版權所有";
             alert('醫院設定已成功同步寫入 Supabase 資料庫！');
         }
 
@@ -2786,27 +3172,324 @@ bootstrapAuthentication();
             alert(`${row ? row.name : '品項'}：最近異動\n` + (lines.length ? lines.join('\n') : '尚無異動紀錄；既有庫存量是啟用前的起始量。'));
         }
 
+        function isRegulatedInventoryRow(kind, row) {
+            if (!row) return false;
+            return kind === 'medicine'
+                ? !!(row.reportable || row.controlled_drug)
+                : !!(row.reportable || row.regulatory_class === '動物用商品');
+        }
+
+        function openRegulatedLotReceipt(kind, id) {
+            const row = kind === 'item' ? loadedItemsMap[id] : loadedMedicinesMap[id];
+            if (!row) return;
+            document.getElementById('lotItemKind').value = kind;
+            document.getElementById('lotItemId').value = id;
+            document.getElementById('lotItemTitle').textContent =
+                `${row.name}｜目前庫存 ${row.stock_qty || 0} ${kind === 'medicine' ? (row.unit || '錠') : (row.smallest_unit || '件')}`;
+            document.getElementById('lotQuantity').value = '';
+            document.getElementById('lotNo').value = '';
+            document.getElementById('lotExpiryDate').value = '';
+            document.getElementById('lotReceivedDate').value = new Date().toISOString().slice(0,10);
+            document.getElementById('lotSupplierName').value = '';
+            document.getElementById('lotPurchaseDocumentNo').value = '';
+            document.getElementById('lotNotes').value = '';
+            document.getElementById('regulatedLotModal').style.display = 'flex';
+        }
+
+        function closeRegulatedLotModal() {
+            document.getElementById('regulatedLotModal').style.display = 'none';
+        }
+
+        async function saveRegulatedLotReceipt() {
+            const kind = document.getElementById('lotItemKind').value;
+            const id = document.getElementById('lotItemId').value;
+            const quantity = Number(document.getElementById('lotQuantity').value);
+            const lotNo = document.getElementById('lotNo').value.trim();
+            const expiry = document.getElementById('lotExpiryDate').value || null;
+            const receivedDate = document.getElementById('lotReceivedDate').value;
+            const supplier = document.getElementById('lotSupplierName').value.trim();
+            const docNo = document.getElementById('lotPurchaseDocumentNo').value.trim();
+            const notes = document.getElementById('lotNotes').value.trim();
+
+            if (!Number.isFinite(quantity) || quantity <= 0) { alert('進貨數量必須大於 0。'); return; }
+            if (!lotNo) { alert('請填寫批號。'); return; }
+
+            const receivedAt = receivedDate ? `${receivedDate}T12:00:00` : new Date().toISOString();
+            const { error } = await _supabase.rpc('receive_regulated_lot', {
+                p_kind: kind,
+                p_id: id,
+                p_quantity: quantity,
+                p_lot_no: lotNo,
+                p_expiry_date: expiry,
+                p_supplier_name: supplier || null,
+                p_purchase_document_no: docNo || null,
+                p_received_at: receivedAt,
+                p_notes: notes || null
+            });
+            if (error) { alert('批次入庫失敗：' + error.message + '\n請先確認第16步 SQL 已執行成功。'); return; }
+
+            closeRegulatedLotModal();
+            alert('批次入庫完成，總庫存已同步增加。');
+            if (kind === 'item') await loadItems(); else await loadMedicines();
+        }
+
+        async function showRegulatedLots(kind, id) {
+            const row = kind === 'item' ? loadedItemsMap[id] : loadedMedicinesMap[id];
+            if (!row) return;
+            const { data, error } = await _supabase.from('regulated_lots')
+                .select('lot_no,expiry_date,received_at,supplier_name,qty_received,qty_on_hand,smallest_unit,purchase_document_no')
+                .eq('tenant_id', CURRENT_TENANT_ID)
+                .eq('item_kind', kind)
+                .eq('item_id', id)
+                .order('expiry_date', { ascending:true, nullsFirst:false })
+                .order('received_at', { ascending:false });
+            if (error) { alert('讀取批次資料失敗：' + error.message); return; }
+
+            document.getElementById('lotListItemTitle').textContent = row.name;
+            const body = document.getElementById('regulatedLotListBody');
+            if (!data || !data.length) {
+                body.innerHTML = '<tr><td colspan="8" style="text-align:center;color:#64748b;">尚無批次資料</td></tr>';
+            } else {
+                body.innerHTML = data.map(x => {
+                    const expiryText = x.expiry_date || '-';
+                    const expired = x.expiry_date && x.expiry_date < new Date().toISOString().slice(0,10);
+                    return `<tr>
+                        <td><b>${escapeRegText(x.lot_no || '-')}</b></td>
+                        <td style="${expired ? 'color:#dc2626;font-weight:bold;' : ''}">${escapeRegText(expiryText)}${expired ? '（已過期）' : ''}</td>
+                        <td>${x.received_at ? new Date(x.received_at).toLocaleDateString() : '-'}</td>
+                        <td>${escapeRegText(x.supplier_name || '-')}</td>
+                        <td>${x.qty_received ?? 0}</td>
+                        <td><b>${x.qty_on_hand ?? 0}</b></td>
+                        <td>${escapeRegText(x.smallest_unit || '-')}</td>
+                        <td>${escapeRegText(x.purchase_document_no || '-')}</td>
+                    </tr>`;
+                }).join('');
+            }
+            document.getElementById('regulatedLotListModal').style.display = 'flex';
+        }
+
+        function closeRegulatedLotList() {
+            document.getElementById('regulatedLotListModal').style.display = 'none';
+        }
+
         async function adjustStock(kind, id) {
             const row = kind === 'item' ? loadedItemsMap[id] : loadedMedicinesMap[id];
             if (!row) return;
-            const unit = kind === 'item' ? '件' : (row.unit || '錠');
-            const raw = prompt(`${row.name}：目前 ${row.stock_qty || 0} ${unit}\n輸入異動數量（入庫正數、盤虧負數）：`);
+
+            // 需申報／管制品項的正向進貨改走批號流程，避免總庫存有增加但沒有批號來源。
+            if (isRegulatedInventoryRow(kind, row)) {
+                const choice = prompt(`${row.name} 為申報／管制品項。\n輸入「入庫」進行批號進貨；若要盤虧/盤點調整，輸入「調整」。`, '入庫');
+                if (choice === null) return;
+                if (choice.trim() === '入庫') { openRegulatedLotReceipt(kind, id); return; }
+                if (choice.trim() !== '調整') { alert('請輸入「入庫」或「調整」。'); return; }
+            }
+
+            const unit = kind === 'item' ? (row.smallest_unit || '件') : (row.unit || '錠');
+            const raw = prompt(`${row.name}：目前 ${row.stock_qty || 0} ${unit}\n輸入異動數量（正數增加、負數盤虧）：`);
             if (raw === null) return;
             if (!/^[+-]?(?:\d+)(?:\.\d+)?$/.test(raw.trim()) || Number(raw) === 0 || !Number.isFinite(Number(raw))) {
                 alert('請輸入非零數量'); return;
             }
-            const reason = prompt('請填寫原因（例如：進貨單號、盤點調整）：');
+            if (isRegulatedInventoryRow(kind, row) && Number(raw) > 0) {
+                alert('申報／管制品項的正向入庫必須使用「批號入庫」。');
+                openRegulatedLotReceipt(kind, id);
+                return;
+            }
+            const reason = prompt('請填寫原因（例如：盤點調整、盤虧）：');
             if (reason === null) return;
             if (!reason.trim()) { alert('請填寫異動原因'); return; }
             const { error } = await _supabase.rpc('adjust_inventory', {
                 p_kind: kind, p_id: id, p_change: Number(raw), p_reason: reason.trim()
             });
-            if (error) { alert('庫存異動失敗：' + error.message + '\n請確認已執行庫存設定 SQL。'); return; }
+            if (error) { alert('庫存異動失敗：' + error.message); return; }
             alert('庫存異動已儲存');
             if (kind === 'item') await loadItems(); else await loadMedicines();
         }
 
+
+        // ===== 第 14 步：商品分類資料庫管理 =====
+        let itemCategoriesCache = [];
+
+        async function loadItemCategories() {
+            if (!CURRENT_TENANT_ID) return;
+            const { data, error } = await _supabase.from('item_categories')
+                .select('*')
+                .eq('tenant_id', CURRENT_TENANT_ID)
+                .order('sort_order', { ascending:true })
+                .order('name', { ascending:true });
+            if (error) {
+                console.warn('載入商品分類失敗：', error.message);
+                return;
+            }
+            itemCategoriesCache = data || [];
+            syncItemCategorySelects();
+        }
+
+        function syncItemCategorySelects() {
+            const selects = [
+                document.getElementById('itemCategory'),
+                document.getElementById('editItemCategorySelect')
+            ].filter(Boolean);
+            selects.forEach(sel => {
+                const current = normalizeItemCategory(sel.value);
+                sel.innerHTML = '';
+                itemCategoriesCache.forEach(c => {
+                    const opt = document.createElement('option');
+                    opt.value = c.name;
+                    opt.textContent = c.name;
+                    sel.appendChild(opt);
+                });
+                if (itemCategoriesCache.some(c => c.name === current)) sel.value = current;
+                else if (itemCategoriesCache.some(c => c.name === '一般商品')) sel.value = '一般商品';
+            });
+        }
+
+        async function openItemCategoryManager() {
+            await loadItemCategories();
+            await renderItemCategoryManager();
+            document.getElementById('itemCategoryManagerModal').style.display = 'flex';
+        }
+
+        function closeItemCategoryManager() {
+            document.getElementById('itemCategoryManagerModal').style.display = 'none';
+        }
+
+        async function renderItemCategoryManager() {
+            const body = document.getElementById('itemCategoryManagerBody');
+            if (!body) return;
+            const { data: items, error } = await _supabase.from('items')
+                .select('category')
+                .eq('tenant_id', CURRENT_TENANT_ID);
+            if (error) { body.innerHTML = `<tr><td colspan="3">載入失敗：${escapeRegText(error.message)}</td></tr>`; return; }
+            const counts = {};
+            (items || []).forEach(i => {
+                const c = normalizeItemCategory(i.category);
+                counts[c] = (counts[c] || 0) + 1;
+            });
+            body.innerHTML = itemCategoriesCache.map(c => `
+                <tr>
+                    <td><b>${escapeRegText(c.name)}</b>${c.name === '動物用商品' ? '<br><small style="color:#0369a1;">申報正式分類</small>' : ''}</td>
+                    <td>${counts[c.name] || 0}</td>
+                    <td>
+                        <button class="btn-secondary" onclick="renameManagedItemCategory('${c.id}')">重新命名</button>
+                        <button class="btn-danger" onclick="deleteManagedItemCategory('${c.id}')">刪除</button>
+                    </td>
+                </tr>`).join('');
+        }
+
+        async function createManagedItemCategory() {
+            const input = document.getElementById('newManagedItemCategory');
+            const name = (input?.value || '').trim();
+            if (!name) { alert('請輸入分類名稱'); return; }
+            if (name === '動物用藥品') {
+                alert('商品專區請使用「動物用商品」；「動物用藥品」保留給藥品專區。');
+                return;
+            }
+            const { error } = await _supabase.from('item_categories').insert([{
+                tenant_id: CURRENT_TENANT_ID, name
+            }]);
+            if (error) { alert('新增分類失敗：' + error.message); return; }
+            input.value = '';
+            await loadItemCategories();
+            await renderItemCategoryManager();
+        }
+
+        async function renameManagedItemCategory(categoryId) {
+            const cat = itemCategoriesCache.find(c => c.id === categoryId);
+            if (!cat) return;
+            const newName = (prompt(`將「${cat.name}」重新命名為：`, cat.name) || '').trim();
+            if (!newName || newName === cat.name) return;
+            if (newName === '動物用藥品') {
+                alert('商品專區請使用「動物用商品」。');
+                return;
+            }
+            if (cat.name === '動物用商品') {
+                alert('「動物用商品」是申報正式分類，不能重新命名；可新增其他分類。');
+                return;
+            }
+            const { error: catError } = await _supabase.from('item_categories')
+                .update({ name:newName, updated_at:new Date().toISOString() })
+                .eq('id', categoryId).eq('tenant_id', CURRENT_TENANT_ID);
+            if (catError) { alert('重新命名失敗：' + catError.message); return; }
+
+            const { error: itemError } = await _supabase.from('items')
+                .update({ category:newName })
+                .eq('tenant_id', CURRENT_TENANT_ID)
+                .eq('category', cat.name);
+            if (itemError) { alert('分類名稱已更新，但商品同步失敗：' + itemError.message); }
+            await loadItemCategories();
+            await loadItems();
+            await renderItemCategoryManager();
+        }
+
+        async function deleteManagedItemCategory(categoryId) {
+            const cat = itemCategoriesCache.find(c => c.id === categoryId);
+            if (!cat) return;
+            if (cat.name === '一般商品' || cat.name === '動物用商品') {
+                alert(`「${cat.name}」為系統必要分類，不能刪除。`);
+                return;
+            }
+
+            const { count, error: countError } = await _supabase.from('items')
+                .select('id', { count:'exact', head:true })
+                .eq('tenant_id', CURRENT_TENANT_ID)
+                .eq('category', cat.name);
+            if (countError) { alert('檢查分類使用狀況失敗：' + countError.message); return; }
+
+            if ((count || 0) > 0) {
+                const targets = itemCategoriesCache.filter(c => c.id !== categoryId);
+                const choices = targets.map(c => c.name).join('、');
+                const target = (prompt(`「${cat.name}」目前有 ${count} 個商品。\n刪除前請輸入要轉移到的分類名稱：\n${choices}`, '一般商品') || '').trim();
+                if (!target) return;
+                if (!targets.some(c => c.name === target)) {
+                    alert('請輸入現有的目標分類名稱。');
+                    return;
+                }
+                const targetIsVeterinary = target === '動物用商品';
+                const { error: moveError } = await _supabase.from('items').update({
+                    category: target,
+                    regulatory_class: targetIsVeterinary ? '動物用商品' : '一般商品',
+                    reportable: targetIsVeterinary,
+                    regulatory_updated_at: new Date().toISOString()
+                }).eq('tenant_id', CURRENT_TENANT_ID).eq('category', cat.name);
+                if (moveError) { alert('商品轉移失敗：' + moveError.message); return; }
+            }
+
+            if (!confirm(`確定刪除分類「${cat.name}」？`)) return;
+            const { error } = await _supabase.from('item_categories')
+                .delete().eq('id', categoryId).eq('tenant_id', CURRENT_TENANT_ID);
+            if (error) { alert('刪除分類失敗：' + error.message); return; }
+
+            await loadItemCategories();
+            await loadItems();
+            await renderItemCategoryManager();
+        }
+
+        // 商品專區舊稱相容：過去商品資料使用「動物用藥品」，
+        // 現在正式更名為「動物用商品」；藥品專區不受影響。
+        function normalizeItemCategory(category) {
+            return category === '動物用藥品' ? '動物用商品' : (category || '一般商品');
+        }
+
+        let legacyVeterinaryProductCategoryMigrated = false;
+        async function migrateLegacyVeterinaryProductCategory() {
+            if (legacyVeterinaryProductCategoryMigrated) return;
+            legacyVeterinaryProductCategoryMigrated = true;
+            const { error } = await _supabase.from('items')
+                .update({
+                    category: '動物用商品',
+                    regulatory_class: '動物用商品',
+                    reportable: true,
+                    regulatory_updated_at: new Date().toISOString()
+                })
+                .eq('tenant_id', CURRENT_TENANT_ID)
+                .eq('category', '動物用藥品');
+            if (error) console.warn('舊商品分類更名未完成：', error.message);
+        }
+
         async function loadItems() {
+            await migrateLegacyVeterinaryProductCategory();
+            await loadItemCategories();
             const { data, error } = await _supabase.from('items').select('*').eq('tenant_id', CURRENT_TENANT_ID);
             if (error) return;
 
@@ -2823,6 +3506,7 @@ bootstrapAuthentication();
             }
 
             data.forEach(item => {
+                item.category = normalizeItemCategory(item.category);
                 loadedItemsMap[item.id] = item;
 
                 if(tbody) {
@@ -2838,6 +3522,7 @@ bootstrapAuthentication();
                             <button class="btn-secondary" style="padding: 4px 8px; font-size: 0.8rem;" onclick="openEditItemModal('${item.id}')">完整修改</button>
                             <button class="btn-secondary" onclick="adjustStock('item','${item.id}')">入庫／盤點</button>
                             <button class="btn-secondary" onclick="showStockHistory('item','${item.id}')">異動紀錄</button>
+                            ${(item.reportable || item.regulatory_class === '動物用商品') ? `<button class="btn-secondary" onclick="openRegulatedLotReceipt('item','${item.id}')">批號入庫</button><button class="btn-secondary" onclick="showRegulatedLots('item','${item.id}')">批次明細</button>` : ''}
                             <button class="btn-danger" style="padding: 4px 8px; font-size: 0.8rem;" onclick="deleteItem('${item.id}')">刪除</button>
                         </td>
                     `;
@@ -2861,7 +3546,13 @@ bootstrapAuthentication();
             
             if(!name || !sell_price) { alert('請填寫商品名稱與售價！'); return; }
 
-            const { error } = await _supabase.from('items').insert([{ tenant_id: CURRENT_TENANT_ID, name, category, cost_price, sell_price, stock_qty, safety_stock }]);
+            const normalizedCategory = normalizeItemCategory(category);
+            const { error } = await _supabase.from('items').insert([{
+                tenant_id: CURRENT_TENANT_ID, name, category: normalizedCategory, cost_price, sell_price, stock_qty, safety_stock,
+                regulatory_class: normalizedCategory === '動物用商品' ? '動物用商品' : '一般商品',
+                reportable: normalizedCategory === '動物用商品',
+                regulatory_updated_at: new Date().toISOString()
+            }]);
             
             if (error) { 
                 alert('新增失敗：' + error.message); 
@@ -2882,7 +3573,9 @@ bootstrapAuthentication();
 
             document.getElementById('editItemId').value = item.id;
             document.getElementById('editItemName').value = item.name || '';
-            document.getElementById('editItemCategorySelect').value = item.category || '一般商品';
+            const editCat = document.getElementById('editItemCategorySelect');
+            syncItemCategorySelects();
+            if (editCat) editCat.value = normalizeItemCategory(item.category);
             document.getElementById('editItemCostPrice').value = item.cost_price || 0;
             document.getElementById('editItemSellPrice').value = item.sell_price || 0;
             document.getElementById('editItemStockQty').value = item.stock_qty || 0;
@@ -2907,9 +3600,17 @@ bootstrapAuthentication();
 
             if (!name) { alert('商品名稱不能為空！'); return; }
 
+            const normalizedCategory = normalizeItemCategory(category);
             const { error } = await _supabase.from('items').update({
-                name, category, cost_price, sell_price, safety_stock
-            }).eq('id', itemId);
+                name,
+                category: normalizedCategory,
+                cost_price,
+                sell_price,
+                safety_stock,
+                regulatory_class: normalizedCategory === '動物用商品' ? '動物用商品' : '一般商品',
+                reportable: normalizedCategory === '動物用商品',
+                regulatory_updated_at: new Date().toISOString()
+            }).eq('id', itemId).eq('tenant_id', CURRENT_TENANT_ID);
 
             if (error) {
                 alert('修改失敗：' + error.message);
@@ -2929,24 +3630,76 @@ bootstrapAuthentication();
         function filterPrescriptionMedicines() {
             const input = document.getElementById('prescriptionMedicineSearch');
             const dropdown = document.getElementById('medSelectDropdown');
-            if (!input || !dropdown) return;
+            const results = document.getElementById('prescriptionMedicineResults');
+            if (!input || !dropdown || !results) return;
+
             const keyword = input.value.trim().toLocaleLowerCase();
-            dropdown.replaceChildren();
-            const placeholder = new Option(keyword ? '-- 請選擇符合的藥品 --' : '-- 輸入關鍵字後選擇藥品 --', '');
-            dropdown.add(placeholder);
-            if (!keyword) { onMedicineSelectedForDoseCalculation(); return; }
-            const matches = Object.values(loadedMedicinesMap).filter(med =>
-                (med.name || '').toLocaleLowerCase().includes(keyword));
-            matches.slice(0, 50).forEach(med => {
-                const option = new Option(`[${med.route || '口服'}] ${med.name} (建議: ${med.recommended_dose || '無'})`, med.id);
+            dropdown.replaceChildren(new Option('-- 尚未選擇藥品 --', ''));
+            results.innerHTML = '';
+
+            if (!keyword) {
+                results.style.display = 'none';
+                onMedicineSelectedForDoseCalculation();
+                return;
+            }
+
+            const matches = Object.values(loadedMedicinesMap)
+                .filter(med => (med.name || '').toLocaleLowerCase().includes(keyword))
+                .sort((a, b) => (a.name || '').localeCompare(b.name || '', 'zh-Hant'));
+
+            matches.slice(0, 30).forEach(med => {
+                const option = new Option(med.name, med.id);
                 option.dataset.name = med.name;
                 option.dataset.route = med.route || '口服';
                 option.dataset.recdose = med.recommended_dose || '';
                 option.dataset.usedose = med.usage_dose || '';
                 dropdown.add(option);
+
+                const row = document.createElement('button');
+                row.type = 'button';
+                row.style.cssText = 'display:block;width:100%;text-align:left;padding:10px 12px;border:0;border-bottom:1px solid #e2e8f0;background:#fff;cursor:pointer;';
+                row.onmouseenter = () => row.style.background = '#f0f9ff';
+                row.onmouseleave = () => row.style.background = '#fff';
+                row.onclick = () => selectPrescriptionMedicine(med.id);
+                row.innerHTML = `
+                    <div style="font-size:1rem;font-weight:700;color:#0f172a;">💊 ${med.name || '未命名藥品'}</div>
+                    <div style="font-size:.78rem;color:#64748b;margin-top:4px;">
+                        ${med.route || '口服'}　規格：${med.usage_dose || '-'}　建議：${med.recommended_dose || '-'}　庫存：${med.stock_qty ?? 0} ${med.unit || ''}
+                    </div>`;
+                results.appendChild(row);
             });
-            if (!matches.length) placeholder.textContent = '-- 找不到符合的藥品 --';
-            else if (matches.length > 50) placeholder.textContent = `-- 找到 ${matches.length} 筆，請再輸入更多文字 --`;
+
+            if (!matches.length) {
+                results.innerHTML = '<div style="padding:12px;color:#64748b;">找不到符合的藥品</div>';
+            } else if (matches.length > 30) {
+                const more = document.createElement('div');
+                more.style.cssText = 'padding:8px 12px;color:#64748b;font-size:.8rem;background:#f8fafc;';
+                more.textContent = `共有 ${matches.length} 筆結果，目前顯示前 30 筆；可再多輸入幾個字縮小範圍。`;
+                results.appendChild(more);
+            }
+            results.style.display = 'block';
+            onMedicineSelectedForDoseCalculation();
+        }
+
+        function selectPrescriptionMedicine(medicineId) {
+            const med = loadedMedicinesMap[medicineId];
+            const input = document.getElementById('prescriptionMedicineSearch');
+            const dropdown = document.getElementById('medSelectDropdown');
+            const results = document.getElementById('prescriptionMedicineResults');
+            if (!med || !input || !dropdown) return;
+
+            let option = Array.from(dropdown.options).find(o => o.value === medicineId);
+            if (!option) {
+                option = new Option(med.name, med.id);
+                option.dataset.name = med.name;
+                option.dataset.route = med.route || '口服';
+                option.dataset.recdose = med.recommended_dose || '';
+                option.dataset.usedose = med.usage_dose || '';
+                dropdown.add(option);
+            }
+            dropdown.value = medicineId;
+            input.value = med.name;
+            if (results) results.style.display = 'none';
             onMedicineSelectedForDoseCalculation();
         }
 
@@ -2961,7 +3714,7 @@ bootstrapAuthentication();
             loadedMedicinesMap = {};
 
             if (error || !data || data.length === 0) {
-                if(tbody) tbody.innerHTML = `<tr><td colspan="8" style="text-align: center; color: #64748b;">尚無藥品資料</td></tr>`;
+                if(tbody) tbody.innerHTML = `<tr><td colspan="10" style="text-align: center; color: #64748b;">尚無藥品資料</td></tr>`;
                 return;
             }
 
@@ -2979,11 +3732,14 @@ bootstrapAuthentication();
                         <td>NT$ ${med.price || 0}</td>
                         <td>${med.usage_dose || '-'}</td>
                         <td><span style="background: #f1f5f9; padding: 2px 6px; border-radius: 4px;">${med.calculated_dose || '一般藥品'}</span></td>
+                        <td><span style="background:#e0f2fe;color:#0369a1;padding:2px 6px;border-radius:4px;font-weight:bold;">${med.controlled_drug ? '管制藥品' : (med.regulatory_class || '未分類')}</span>${med.reportable ? '<br><small style="color:#059669;">需申報</small>' : ''}</td>
+                        <td>${med.controlled_drug ? `<span style="color:#dc2626;font-weight:bold;">管制${med.controlled_level ? ' 第'+med.controlled_level+'級' : ''}</span>` : '-'}</td>
                         <td>${med.stock_qty || 0} ${med.unit || '錠'}</td>
                         <td>
                             <button class="btn-secondary" style="padding: 4px 8px; font-size: 0.8rem;" onclick="openEditMedicineModal('${med.id}')">完整修改</button>
                             <button class="btn-secondary" onclick="adjustStock('medicine','${med.id}')">入庫／盤點</button>
                             <button class="btn-secondary" onclick="showStockHistory('medicine','${med.id}')">異動紀錄</button>
+                            ${(med.reportable || med.controlled_drug) ? `<button class="btn-secondary" onclick="openRegulatedLotReceipt('medicine','${med.id}')">批號入庫</button><button class="btn-secondary" onclick="showRegulatedLots('medicine','${med.id}')">批次明細</button>` : ''}
                             <button class="btn-danger" style="padding: 4px 8px; font-size: 0.8rem;" onclick="deleteMedicine('${med.id}')">刪除</button>
                         </td>
                     `;
@@ -2991,8 +3747,120 @@ bootstrapAuthentication();
                 }
 
             });
-            filterPrescriptionMedicines();
+            const prescriptionSearch = document.getElementById('prescriptionMedicineSearch');
+            if (prescriptionSearch) prescriptionSearch.value = '';
+            const prescriptionResults = document.getElementById('prescriptionMedicineResults');
+            if (prescriptionResults) {
+                prescriptionResults.innerHTML = '';
+                prescriptionResults.style.display = 'none';
+            }
+            onMedicineSelectedForDoseCalculation();
         }
+
+        // 第16.4步：上層「藥品分類」是申報資料唯一開關
+        function upperCategoryToRegulatoryClass(category) {
+            if (category === '動物用藥品' || category === '動物用藥') return '動物用藥品';
+            if (category === '管制藥品') return '管制藥品';
+            return '未分類';
+        }
+
+        function onUpperMedicineCategoryChange() {
+            const category = document.getElementById('medCalcFormula')?.value || '一般藥品';
+            const regulatoryClass = upperCategoryToRegulatoryClass(category);
+            document.getElementById('medRegulatoryClass').value = regulatoryClass;
+
+            const show = category === '動物用藥品' || category === '動物用藥' || category === '管制藥品';
+            const section = document.getElementById('newMedicineRegulatorySection');
+            if (section) {
+                section.hidden = !show;
+                section.style.display = show ? 'block' : 'none';
+                section.style.gridColumn = show ? '1 / -1' : '';
+                section.style.width = show ? '100%' : '';
+            }
+            applyNewMedicineRegulatoryUI();
+        }
+
+        function onEditUpperMedicineCategoryChange() {
+            const category = document.getElementById('editMedCalcFormula')?.value || '一般藥品';
+            const regulatoryClass = upperCategoryToRegulatoryClass(category);
+            document.getElementById('editMedRegulatoryClass').value = regulatoryClass;
+
+            const show = category === '動物用藥品' || category === '動物用藥' || category === '管制藥品';
+            const section = document.getElementById('editMedicineRegulatorySection');
+            if (section) {
+                section.hidden = !show;
+                section.style.display = show ? 'block' : 'none';
+            }
+            applyEditMedicineRegulatoryUI();
+        }
+
+        function applyNewMedicineRegulatoryUI() {
+            const cls = document.getElementById('medRegulatoryClass')?.value || '未分類';
+            const controlled = cls === '管制藥品';
+            const reportable = cls === '動物用藥品' || controlled;
+            const showDetails = reportable;
+
+            const details = document.getElementById('medRegulatoryDetails');
+            if (details) {
+                details.hidden = !showDetails;
+                details.style.display = showDetails ? 'block' : 'none';
+                details.style.gridColumn = showDetails ? '1 / -1' : '';
+                details.style.width = showDetails ? '100%' : '';
+            }
+
+            document.getElementById('medControlledDrug').value = controlled ? 'true' : 'false';
+            document.getElementById('medControlledDrugStatus').value = controlled ? '是' : '否';
+            document.getElementById('medReportable').value = reportable ? 'true' : 'false';
+
+            const g1 = document.getElementById('medControlledLevelGroup');
+            const g2 = document.getElementById('medControlledRegNoGroup');
+            if (g1) g1.style.display = controlled ? '' : 'none';
+            if (g2) g2.style.display = controlled ? '' : 'none';
+
+            if (!controlled) {
+                document.getElementById('medControlledLevel').value = '';
+                document.getElementById('medControlledRegistrationNo').value = '';
+            }
+        }
+
+        function onNewMedicineRegulatoryClassChange() {
+            applyNewMedicineRegulatoryUI();
+        }
+
+        function applyEditMedicineRegulatoryUI() {
+            const cls = document.getElementById('editMedRegulatoryClass')?.value || '未分類';
+            const controlled = cls === '管制藥品';
+            const reportable = cls === '動物用藥品' || controlled;
+            const showDetails = reportable;
+
+            const details = document.getElementById('editMedRegulatoryDetails');
+            if (details) {
+                details.hidden = !showDetails;
+                details.style.display = showDetails ? 'block' : 'none';
+            }
+
+            document.getElementById('editMedControlledDrug').value = controlled ? 'true' : 'false';
+            document.getElementById('editMedControlledDrugStatus').value = controlled ? '是' : '否';
+            document.getElementById('editMedReportable').value = reportable ? 'true' : 'false';
+
+            const g1 = document.getElementById('editMedControlledLevelGroup');
+            const g2 = document.getElementById('editMedControlledRegNoGroup');
+            if (g1) g1.style.display = controlled ? '' : 'none';
+            if (g2) g2.style.display = controlled ? '' : 'none';
+
+            if (!controlled) {
+                document.getElementById('editMedControlledLevel').value = '';
+                document.getElementById('editMedControlledRegistrationNo').value = '';
+            }
+        }
+
+        function onEditMedicineRegulatoryClassChange() {
+            applyEditMedicineRegulatoryUI();
+        }
+
+        // 舊函式名稱保留，避免其他既有流程呼叫失效。
+        function toggleNewControlledDrugFields() { applyNewMedicineRegulatoryUI(); }
+        function toggleEditControlledDrugFields() { applyEditMedicineRegulatoryUI(); }
 
         async function saveNewMedicine() {
             const name = document.getElementById('medName').value;
@@ -3004,11 +3872,47 @@ bootstrapAuthentication();
             const stock_qty = Number(document.getElementById('medStock').value || 0);
             if (!Number.isFinite(stock_qty) || stock_qty < 0) { alert('初始庫存量不可為負數'); return; }
             const unit = document.getElementById('medUnit').value.trim() || '錠';
+            const regulatory_class = document.getElementById('medRegulatoryClass').value;
+            const reportable = regulatory_class === '動物用藥品' || regulatory_class === '管制藥品';
+            const veterinary_license_no = document.getElementById('medVeterinaryLicenseNo').value.trim();
+            const active_ingredient = document.getElementById('medActiveIngredient').value.trim();
+            const strength = usage_dose.trim();
+            const dosage_form = document.getElementById('medDosageForm').value.trim();
+            const manufacturer = document.getElementById('medManufacturer').value.trim();
+            const smallest_unit = document.getElementById('medSmallestUnit').value.trim() || unit;
+            const controlled_drug = regulatory_class === '管制藥品';
+            const controlled_level_raw = document.getElementById('medControlledLevel').value;
+            const controlled_level = controlled_drug && controlled_level_raw ? Number(controlled_level_raw) : null;
+            const controlled_registration_no = controlled_drug ? document.getElementById('medControlledRegistrationNo').value.trim() : '';
+            let regulatory_notes = document.getElementById('medRegulatoryNotes').value.trim();
+            let final_veterinary_license_no = veterinary_license_no;
+            let final_active_ingredient = active_ingredient;
+            let final_dosage_form = dosage_form;
+            let final_manufacturer = manufacturer;
+            let final_smallest_unit = smallest_unit;
+            if (!reportable) {
+                final_veterinary_license_no = '';
+                final_active_ingredient = '';
+                final_dosage_form = '';
+                final_manufacturer = '';
+                final_smallest_unit = unit;
+                regulatory_notes = '';
+            }
 
             if(!name) { alert('請填寫藥名！'); return; }
+            if (controlled_drug && !controlled_level) { alert('管制藥品請選擇管制級別。'); return; }
 
             const { error } = await _supabase.from('medicines').insert([{
-                tenant_id: CURRENT_TENANT_ID, name, route, recommended_dose, price, usage_dose, calculated_dose, stock_qty, unit
+                tenant_id: CURRENT_TENANT_ID, name, route, recommended_dose, price, usage_dose, calculated_dose, stock_qty, unit,
+                regulatory_class, reportable, report_scheme: controlled_drug ? 'controlled_drug' : (reportable ? 'veterinary_medicine' : 'none'),
+                veterinary_license_no: final_veterinary_license_no,
+                active_ingredient: final_active_ingredient,
+                strength: reportable ? strength : '',
+                dosage_form: final_dosage_form,
+                manufacturer: final_manufacturer,
+                smallest_unit: final_smallest_unit,
+                controlled_drug, controlled_level, controlled_registration_no, regulatory_notes,
+                regulatory_updated_at: new Date().toISOString()
             }]);
 
             if (error) {
@@ -3021,6 +3925,18 @@ bootstrapAuthentication();
                 document.getElementById('medUseDose').value = '';
                 document.getElementById('medStock').value = '';
                 document.getElementById('medUnit').value = '錠';
+                document.getElementById('medRegulatoryClass').value = upperCategoryToRegulatoryClass(document.getElementById('medCalcFormula').value);
+                document.getElementById('medReportable').value = 'true';
+                document.getElementById('medVeterinaryLicenseNo').value = '';
+                document.getElementById('medActiveIngredient').value = '';
+                document.getElementById('medDosageForm').value = '';
+                document.getElementById('medManufacturer').value = '';
+                document.getElementById('medSmallestUnit').value = '';
+                document.getElementById('medControlledDrug').value = 'false';
+                document.getElementById('medControlledLevel').value = '';
+                document.getElementById('medControlledRegistrationNo').value = '';
+                document.getElementById('medRegulatoryNotes').value = '';
+                onUpperMedicineCategoryChange();
                 loadMedicines();
             }
         }
@@ -3035,10 +3951,26 @@ bootstrapAuthentication();
             document.getElementById('editMedRecDose').value = med.recommended_dose || '';
             document.getElementById('editMedPrice').value = med.price || 0;
             document.getElementById('editMedUseDose').value = med.usage_dose || '';
-            document.getElementById('editMedCalcFormula').value = med.calculated_dose || '一般藥品';
+            let editUpperCategory = med.calculated_dose || '一般藥品';
+            if (med.controlled_drug) editUpperCategory = '管制藥品';
+            else if (med.regulatory_class === '動物用藥品') editUpperCategory = '動物用藥品';
+            document.getElementById('editMedCalcFormula').value = editUpperCategory;
             document.getElementById('editMedStock').value = med.stock_qty || 0;
             document.getElementById('editMedUnit').value = med.unit || '錠';
             document.getElementById('editMedStock').readOnly = true;
+            document.getElementById('editMedRegulatoryClass').value =
+                med.controlled_drug ? '管制藥品' : (med.regulatory_class || '未分類');
+            document.getElementById('editMedReportable').value = med.reportable ? 'true' : 'false';
+            document.getElementById('editMedVeterinaryLicenseNo').value = med.veterinary_license_no || '';
+            document.getElementById('editMedActiveIngredient').value = med.active_ingredient || '';
+            document.getElementById('editMedDosageForm').value = med.dosage_form || '';
+            document.getElementById('editMedManufacturer').value = med.manufacturer || '';
+            document.getElementById('editMedSmallestUnit').value = med.smallest_unit || med.unit || '';
+            document.getElementById('editMedControlledDrug').value = med.controlled_drug ? 'true' : 'false';
+            document.getElementById('editMedControlledLevel').value = med.controlled_level || '';
+            document.getElementById('editMedControlledRegistrationNo').value = med.controlled_registration_no || '';
+            document.getElementById('editMedRegulatoryNotes').value = med.regulatory_notes || '';
+            onEditUpperMedicineCategoryChange();
 
             document.getElementById('editMedicineModal').style.display = 'flex';
         }
@@ -3056,12 +3988,48 @@ bootstrapAuthentication();
             const usage_dose = document.getElementById('editMedUseDose').value;
             const calculated_dose = document.getElementById('editMedCalcFormula').value;
             const unit = document.getElementById('editMedUnit').value.trim();
+            const regulatory_class = document.getElementById('editMedRegulatoryClass').value;
+            const reportable = regulatory_class === '動物用藥品' || regulatory_class === '管制藥品';
+            const veterinary_license_no = document.getElementById('editMedVeterinaryLicenseNo').value.trim();
+            const active_ingredient = document.getElementById('editMedActiveIngredient').value.trim();
+            const strength = usage_dose.trim();
+            const dosage_form = document.getElementById('editMedDosageForm').value.trim();
+            const manufacturer = document.getElementById('editMedManufacturer').value.trim();
+            const smallest_unit = document.getElementById('editMedSmallestUnit').value.trim() || unit;
+            const controlled_drug = regulatory_class === '管制藥品';
+            const controlled_level_raw = document.getElementById('editMedControlledLevel').value;
+            const controlled_level = controlled_drug && controlled_level_raw ? Number(controlled_level_raw) : null;
+            const controlled_registration_no = controlled_drug ? document.getElementById('editMedControlledRegistrationNo').value.trim() : '';
+            let regulatory_notes = document.getElementById('editMedRegulatoryNotes').value.trim();
+            let final_veterinary_license_no = veterinary_license_no;
+            let final_active_ingredient = active_ingredient;
+            let final_dosage_form = dosage_form;
+            let final_manufacturer = manufacturer;
+            let final_smallest_unit = smallest_unit;
+            if (!reportable) {
+                final_veterinary_license_no = '';
+                final_active_ingredient = '';
+                final_dosage_form = '';
+                final_manufacturer = '';
+                final_smallest_unit = unit;
+                regulatory_notes = '';
+            }
 
             if (!name || !unit) { alert('請填寫藥名與庫存單位！'); return; }
+            if (controlled_drug && !controlled_level) { alert('管制藥品請選擇管制級別。'); return; }
 
             const { error } = await _supabase.from('medicines').update({
-                name, route, recommended_dose, price, usage_dose, calculated_dose, unit
-            }).eq('id', medId);
+                name, route, recommended_dose, price, usage_dose, calculated_dose, unit,
+                regulatory_class, reportable, report_scheme: controlled_drug ? 'controlled_drug' : (reportable ? 'veterinary_medicine' : 'none'),
+                veterinary_license_no: final_veterinary_license_no,
+                active_ingredient: final_active_ingredient,
+                strength: reportable ? strength : '',
+                dosage_form: final_dosage_form,
+                manufacturer: final_manufacturer,
+                smallest_unit: final_smallest_unit,
+                controlled_drug, controlled_level, controlled_registration_no, regulatory_notes,
+                regulatory_updated_at: new Date().toISOString()
+            }).eq('id', medId).eq('tenant_id', CURRENT_TENANT_ID);
 
             if (error) {
                 alert('修改失敗：' + error.message);
@@ -4056,6 +5024,11 @@ bootstrapAuthentication();
         }
 
         function directCheckoutFromAppointment(petId, ownerId) {
+            const sourceAppointment = activeAppointmentsList.find(p => p.id === petId && p.appointment_id);
+            currentAppointmentId = sourceAppointment?.appointment_id || null;
+            currentPetId = petId || currentPetId;
+            if (sourceAppointment?.name) currentPetName = sourceAppointment.name;
+
             activeAppointmentsList = activeAppointmentsList.filter(p => p.id !== petId);
             renderAppointmentTable(activeAppointmentsList);
 
@@ -4702,28 +5675,220 @@ bootstrapAuthentication();
             } finally { medicalSaveBusy = false; }
         }
 
+        function appointmentLocalInputValue(dateValue) {
+            if (!dateValue) return '';
+            const d = new Date(dateValue);
+            if (Number.isNaN(d.getTime())) return '';
+            const pad = n => String(n).padStart(2, '0');
+            return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+        }
+
+        function appointmentKey(p) {
+            return p.appointment_id || `walkin:${p.id}`;
+        }
+
         async function saveAppointment() {
             const petSelectVal = document.getElementById('appointmentPetSelect').value;
             if(!petSelectVal) { alert('請選擇寵物！'); return; }
+            if (!CURRENT_TENANT_ID) { alert('尚未取得醫院登入資訊，請重新登入。'); return; }
+
             const petObj = JSON.parse(petSelectVal);
-            petObj.status = document.getElementById('appointmentStatusSelect').value;
-            petObj.session = document.getElementById('appointmentSession').value;
-            petObj.doctor = document.getElementById('appointmentDoctor').value;
-            petObj.time = new Date().toLocaleTimeString();
-            
-            let existing = activeAppointmentsList.find(p => p.id === petObj.id);
-            if (!existing) {
-                activeAppointmentsList.push(petObj);
-            } else {
-                existing.status = petObj.status;
-                existing.session = petObj.session;
-                existing.doctor = petObj.doctor;
+            const appointmentTimeValue = document.getElementById('appointmentTime').value;
+            if (!appointmentTimeValue) { alert('請選擇預約日期與時間！'); return; }
+
+            const scheduledDate = new Date(appointmentTimeValue);
+            if (Number.isNaN(scheduledDate.getTime())) { alert('預約日期時間格式不正確。'); return; }
+
+            const session = document.getElementById('appointmentSession').value;
+            const doctor = document.getElementById('appointmentDoctor').value;
+            const status = document.getElementById('appointmentStatusSelect').value || '已預約';
+            const isEditing = !!editingAppointmentPetId;
+
+            if (isEditing) {
+                const target = activeAppointmentsList.find(p => appointmentKey(p) === editingAppointmentPetId);
+                if (!target || !target.appointment_id) { alert('找不到要修改的正式預約資料。'); return; }
+
+                const { data, error } = await _supabase.from('appointments')
+                    .update({ scheduled_at: scheduledDate.toISOString(), session, doctor, status })
+                    .eq('id', target.appointment_id)
+                    .eq('tenant_id', CURRENT_TENANT_ID)
+                    .select('id, scheduled_at, session, doctor, status, checked_in_at')
+                    .single();
+
+                if (error) { alert('預約修改失敗：' + error.message); return; }
+                target.appointment_time = data.scheduled_at;
+                target.session = data.session;
+                target.doctor = data.doctor;
+                target.status = data.status;
+                target.check_in_time = data.checked_in_at ? new Date(data.checked_in_at).toLocaleTimeString([], { hour:'2-digit', minute:'2-digit' }) : '';
+                renderAppointmentTable(activeAppointmentsList);
+                alert('預約資料已修改完成！');
+                cancelEditAppointment();
+                return;
             }
+
+            const insertRow = {
+                tenant_id: CURRENT_TENANT_ID,
+                pet_id: petObj.id,
+                owner_id: petObj.owner_id || null,
+                scheduled_at: scheduledDate.toISOString(),
+                session,
+                doctor,
+                status
+            };
+            const { data, error } = await _supabase.from('appointments')
+                .insert([insertRow])
+                .select('id, scheduled_at, session, doctor, status, checked_in_at')
+                .single();
+            if (error) { alert('建立預約失敗：' + error.message); return; }
+
+            petObj.appointment_id = data.id;
+            petObj.status = data.status;
+            petObj.session = data.session;
+            petObj.doctor = data.doctor;
+            petObj.appointment_time = data.scheduled_at;
+            petObj.check_in_time = '';
+            petObj.time = new Date(data.scheduled_at).toLocaleTimeString([], { hour:'2-digit', minute:'2-digit' });
+            activeAppointmentsList.push(petObj);
             renderAppointmentTable(activeAppointmentsList);
-            alert('已成功加入預約報到列表！');
+            alert('預約已儲存到 Supabase！');
         }
 
-        async function loadAppointments() { renderAppointmentTable(activeAppointmentsList); }
+        function editAppointment(key) {
+            const appointment = activeAppointmentsList.find(p => appointmentKey(p) === key);
+            if (!appointment) { alert('找不到此預約資料。'); return; }
+            if (appointment.status !== '已預約') { alert('只有尚未報到的預約可以修改。'); return; }
+            if (!appointment.appointment_id) { alert('此筆不是正式預約，無法使用修改預約功能。'); return; }
+
+            editingAppointmentPetId = key;
+            const petSelect = document.getElementById('appointmentPetSelect');
+            const matchingOption = Array.from(petSelect.options).find(opt => {
+                if (!opt.value) return false;
+                try { return JSON.parse(opt.value).id === appointment.id; } catch (e) { return false; }
+            });
+            if (matchingOption) petSelect.value = matchingOption.value;
+            petSelect.disabled = true;
+
+            document.getElementById('appointmentTime').value = appointmentLocalInputValue(appointment.appointment_time);
+            document.getElementById('appointmentSession').value = appointment.session || '上午診';
+            document.getElementById('appointmentDoctor').value = appointment.doctor || '張醫師';
+            document.getElementById('appointmentStatusSelect').value = '已預約';
+            document.getElementById('appointmentStatusSelect').disabled = true;
+            document.getElementById('saveAppointmentBtn').textContent = '儲存修改';
+            document.getElementById('cancelEditAppointmentBtn').style.display = 'inline-block';
+            document.getElementById('appointmentTime').focus();
+            document.getElementById('appointments').scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }
+
+        function cancelEditAppointment() {
+            editingAppointmentPetId = null;
+            document.getElementById('appointmentPetSelect').disabled = false;
+            document.getElementById('appointmentStatusSelect').disabled = false;
+            document.getElementById('appointmentStatusSelect').value = '已預約';
+            document.getElementById('saveAppointmentBtn').textContent = '建立預約';
+            document.getElementById('cancelEditAppointmentBtn').style.display = 'none';
+        }
+
+        async function checkInAppointment(key) {
+            const appointment = activeAppointmentsList.find(p => appointmentKey(p) === key);
+            if (!appointment) { alert('找不到此預約資料。'); return; }
+            if (appointment.status !== '已預約') { alert('此病患目前不是「已預約（未報到）」狀態。'); return; }
+
+            const now = new Date();
+            if (appointment.appointment_time && new Date(appointment.appointment_time).getTime() > now.getTime()) {
+                if (!confirm('此病患尚未到原預約時間，確定要提前報到嗎？')) return;
+            }
+
+            if (appointment.appointment_id) {
+                const { error } = await _supabase.from('appointments')
+                    .update({ status: '候診中', checked_in_at: now.toISOString() })
+                    .eq('id', appointment.appointment_id)
+                    .eq('tenant_id', CURRENT_TENANT_ID);
+                if (error) { alert('報到失敗：' + error.message); return; }
+            }
+
+            appointment.status = '候診中';
+            appointment.check_in_time = now.toLocaleTimeString([], { hour:'2-digit', minute:'2-digit' });
+            renderAppointmentTable(activeAppointmentsList);
+            alert(`${appointment.name} 已完成報到，現在進入候診中。`);
+        }
+
+        async function loadAppointments() {
+            if (!CURRENT_TENANT_ID) return;
+            const { data, error } = await _supabase.from('appointments')
+                .select('id, tenant_id, pet_id, owner_id, scheduled_at, session, doctor, status, checked_in_at, pets(id,name,microchip,birthday,species,gender,weight,breed,owner_id,owners(name))')
+                .eq('tenant_id', CURRENT_TENANT_ID)
+                .in('status', ['已預約','候診中','診間看診中'])
+                .order('scheduled_at', { ascending: true });
+            if (error) { console.error('讀取預約失敗：', error); return; }
+
+            const localWalkins = activeAppointmentsList.filter(p => !p.appointment_id);
+            const dbAppointments = (data || []).map(a => {
+                const pet = a.pets || {};
+                return {
+                    ...pet,
+                    id: a.pet_id,
+                    owner_id: a.owner_id || pet.owner_id || '',
+                    owner_name: pet.owners?.name || '關聯飼主',
+                    appointment_id: a.id,
+                    appointment_time: a.scheduled_at,
+                    session: a.session || '上午診',
+                    doctor: a.doctor || '張醫師',
+                    status: a.status,
+                    check_in_time: a.checked_in_at ? new Date(a.checked_in_at).toLocaleTimeString([], { hour:'2-digit', minute:'2-digit' }) : '',
+                    time: new Date(a.scheduled_at).toLocaleTimeString([], { hour:'2-digit', minute:'2-digit' })
+                };
+            });
+            activeAppointmentsList = [...localWalkins, ...dbAppointments];
+            renderAppointmentTable(activeAppointmentsList);
+            await loadAppointmentHistory('all');
+        }
+
+        async function loadAppointmentHistory(statusFilter = 'all') {
+            const tbody = document.getElementById('appointmentHistoryBody');
+            if (!tbody || !CURRENT_TENANT_ID) return;
+            tbody.innerHTML = `<tr><td colspan="6" style="text-align:center; color:#64748b;">載入中...</td></tr>`;
+
+            let query = _supabase.from('appointments')
+                .select('id, scheduled_at, session, doctor, status, cancelled_at, cancel_reason, pets(name, owners(name))')
+                .eq('tenant_id', CURRENT_TENANT_ID)
+                .in('status', ['已取消','已完成'])
+                .order('scheduled_at', { ascending: false })
+                .limit(200);
+
+            if (statusFilter !== 'all') query = query.eq('status', statusFilter);
+
+            const { data, error } = await query;
+            if (error) {
+                console.error('讀取預約歷史紀錄失敗：', error);
+                tbody.innerHTML = `<tr><td colspan="6" style="text-align:center; color:#b91c1c;">讀取歷史紀錄失敗：${error.message}</td></tr>`;
+                return;
+            }
+
+            tbody.innerHTML = '';
+            if (!data || data.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="6" style="text-align:center; color:#64748b;">目前沒有符合條件的歷史預約紀錄</td></tr>`;
+                return;
+            }
+
+            data.forEach(a => {
+                const petName = a.pets?.name || '未知寵物';
+                const ownerName = a.pets?.owners?.name || '關聯飼主';
+                const scheduled = a.scheduled_at
+                    ? new Date(a.scheduled_at).toLocaleString([], { year:'numeric', month:'2-digit', day:'2-digit', hour:'2-digit', minute:'2-digit' })
+                    : '-';
+                const statusColor = a.status === '已取消' ? '#b91c1c' : '#059669';
+                const tr = document.createElement('tr');
+                tr.innerHTML = `
+                    <td>${scheduled}</td>
+                    <td><b>${petName}</b></td>
+                    <td>${ownerName}</td>
+                    <td>${a.session || '-'}<br><small style="color:#0369a1;">${a.doctor || '-'}</small></td>
+                    <td><span style="font-weight:bold; color:${statusColor};">${a.status || '-'}</span></td>
+                    <td>${a.status === '已取消' ? (a.cancel_reason || '未填寫') : '-'}</td>`;
+                tbody.appendChild(tr);
+            });
+        }
 
         function filterAppointmentsStatus(status) {
             currentAppointmentFilter = status;
@@ -4734,11 +5899,26 @@ bootstrapAuthentication();
             const tbody = document.getElementById('appointmentTableBody');
             if(!tbody) return;
             tbody.innerHTML = '';
-            
+
+            const getLocalDateKey = (dateValue) => {
+                if (!dateValue) return '';
+                const d = new Date(dateValue);
+                if (Number.isNaN(d.getTime())) return '';
+                const y = d.getFullYear();
+                const m = String(d.getMonth() + 1).padStart(2, '0');
+                const day = String(d.getDate()).padStart(2, '0');
+                return `${y}-${m}-${day}`;
+            };
+            const todayKey = getLocalDateKey(new Date());
+
             let filteredList = petsData;
             if (currentAppointmentFilter !== 'all') {
-                if (currentAppointmentFilter === '上午診' || currentAppointmentFilter === '下午診' || currentAppointmentFilter === '夜診') {
+                if (['上午診','下午診','夜診'].includes(currentAppointmentFilter)) {
                     filteredList = petsData.filter(p => (p.session || '上午診') === currentAppointmentFilter);
+                } else if (currentAppointmentFilter === '今日預約') {
+                    filteredList = petsData.filter(p => p.status === '已預約' && getLocalDateKey(p.appointment_time) === todayKey);
+                } else if (currentAppointmentFilter === '未來預約') {
+                    filteredList = petsData.filter(p => p.status === '已預約' && getLocalDateKey(p.appointment_time) > todayKey);
                 } else {
                     filteredList = petsData.filter(p => p.status === currentAppointmentFilter);
                 }
@@ -4751,11 +5931,28 @@ bootstrapAuthentication();
 
             filteredList.forEach(pet => {
                 const ownerName = pet.owner_name || '關聯飼主';
-                const timeStr = pet.time || new Date().toLocaleTimeString();
+                const appointmentTimeStr = pet.appointment_time
+                    ? new Date(pet.appointment_time).toLocaleString([], { month:'2-digit', day:'2-digit', hour:'2-digit', minute:'2-digit' })
+                    : (pet.time || new Date().toLocaleTimeString([], { hour:'2-digit', minute:'2-digit' }));
+                const checkInTimeStr = pet.check_in_time || '';
                 const statusStr = pet.status || '候診中';
+                const appointmentDateKey = getLocalDateKey(pet.appointment_time);
+                const displayStatusStr = statusStr === '已預約'
+                    ? (appointmentDateKey === todayKey ? '今日預約' : (appointmentDateKey > todayKey ? '未來預約' : '已預約'))
+                    : statusStr;
                 const sessionStr = pet.session || '上午診';
                 const doctorStr = pet.doctor || '張醫師';
-                const statusBadgeColor = statusStr === '診間看診中' ? '#0284c7' : '#d97706';
+                const statusBadgeColor = statusStr === '診間看診中' ? '#0284c7' : (statusStr === '已預約' ? '#d97706' : '#059669');
+                const key = appointmentKey(pet);
+                const actionButtons = statusStr === '已預約'
+                    ? `<button class="btn-secondary" style="padding: 4px 8px; font-size: 0.8rem;" onclick="editAppointment('${key}')">修改預約</button>
+                       <button class="btn-success" style="padding: 4px 8px; font-size: 0.8rem;" onclick="checkInAppointment('${key}')">報到</button>
+                       ${pet.appointment_id
+                           ? `<button class="btn-danger" style="padding: 4px 8px; font-size: 0.8rem;" onclick="cancelAppointment('${key}')">取消預約</button>`
+                           : `<button class="btn-danger" style="padding: 4px 8px; font-size: 0.8rem;" onclick="removeAppointment('${key}')">移除</button>`}`
+                    : `<button class="btn-secondary" style="padding: 4px 8px; font-size: 0.8rem;" onclick="startConsultationFromAppointment('${key}', '${pet.id}', '${pet.microchip || ''}', '${pet.name}', '${pet.owner_id || ''}', ${pet.weight || 0}, '${ownerName}', '${pet.birthday || ''}', '${pet.gender || ''}', '${pet.species || '貓'}', '${pet.breed || ''}')">看診</button>
+                       <button class="btn-success" style="padding: 4px 8px; font-size: 0.8rem;" onclick="directCheckoutFromAppointment('${pet.id}', '${pet.owner_id || ''}')">💳 歸檔結帳</button>
+                       ${pet.appointment_id ? '' : `<button class="btn-danger" style="padding: 4px 8px; font-size: 0.8rem;" onclick="removeAppointment('${key}')">移除</button>`}`;
 
                 const tr = document.createElement('tr');
                 tr.innerHTML = `
@@ -4763,21 +5960,70 @@ bootstrapAuthentication();
                     <td><b>${pet.name}</b> (${pet.weight || 0} kg)</td>
                     <td>${ownerName}</td>
                     <td><span style="background: #f1f5f9; padding: 2px 6px; border-radius: 4px; font-weight: bold;">${sessionStr}</span><br><small style="color:#0369a1;">${doctorStr}</small></td>
-                    <td>${timeStr}</td>
-                    <td><span style="color: ${statusBadgeColor}; background: #e0f2fe; padding: 4px 8px; border-radius: 4px; font-weight: bold;">${statusStr}</span></td>
-                    <td style="display: flex; gap: 6px; flex-wrap: wrap;">
-                        <button class="btn-secondary" style="padding: 4px 8px; font-size: 0.8rem;" onclick="startConsultationById('${pet.id}', '${pet.microchip || ''}', '${pet.name}', '${pet.owner_id || ''}', ${pet.weight || 0}, '${ownerName}', '${pet.birthday || ''}', '${pet.gender || ''}', '${pet.species || '貓'}', '${pet.breed || ''}')">看診</button>
-                        <button class="btn-success" style="padding: 4px 8px; font-size: 0.8rem;" onclick="directCheckoutFromAppointment('${pet.id}', '${pet.owner_id || ''}')">💳 歸檔結帳</button>
-                        <button class="btn-danger" style="padding: 4px 8px; font-size: 0.8rem;" onclick="removeAppointment('${pet.id}')">移除</button>
-                    </td>
-                `;
+                    <td><b>${appointmentTimeStr}</b>${checkInTimeStr ? `<br><small style="color:#059669;">報到：${checkInTimeStr}</small>` : `<br><small style="color:#94a3b8;">尚未報到</small>`}</td>
+                    <td><span style="color: ${statusBadgeColor}; background: #e0f2fe; padding: 4px 8px; border-radius: 4px; font-weight: bold;">${displayStatusStr}</span></td>
+                    <td style="display: flex; gap: 6px; flex-wrap: wrap;">${actionButtons}</td>`;
                 tbody.appendChild(tr);
             });
         }
 
-        function removeAppointment(petId) {
-            if (!confirm('確定要將此病患從即時報到列表中移除嗎？')) return;
-            activeAppointmentsList = activeAppointmentsList.filter(p => p.id !== petId);
+        async function startConsultationFromAppointment(key, petId, chipId, petNameStr, ownerId, weight, ownerName, birthday, gender, species, breed) {
+            const appointment = activeAppointmentsList.find(p => appointmentKey(p) === key);
+            currentAppointmentId = appointment?.appointment_id || null;
+            if (currentAppointmentId) {
+                const { error } = await _supabase.from('appointments')
+                    .update({ status: '診間看診中' })
+                    .eq('id', currentAppointmentId)
+                    .eq('tenant_id', CURRENT_TENANT_ID);
+                if (error) { alert('更新看診狀態失敗：' + error.message); return; }
+            }
+            await startConsultationById(petId, chipId, petNameStr, ownerId, weight, ownerName, birthday, gender, species, breed);
+        }
+
+        async function cancelAppointment(key) {
+            const target = activeAppointmentsList.find(p => appointmentKey(p) === key);
+            if (!target || !target.appointment_id) { alert('找不到此正式預約資料。'); return; }
+            if (target.status !== '已預約') {
+                alert('只有尚未報到的預約可以取消；已報到病患請依候診／看診流程處理。');
+                return;
+            }
+
+            const reasonInput = prompt(`請輸入「${target.name || '此病患'}」取消預約的原因：`);
+            if (reasonInput === null) return;
+            const reason = reasonInput.trim();
+            if (reason.length < 2) {
+                alert('請填寫至少兩個字的取消原因。');
+                return;
+            }
+            if (!confirm(`確定取消「${target.name || '此病患'}」這筆預約嗎？\n\n取消原因：${reason}\n\n取消後會從即時預約列表隱藏，但紀錄仍保留在 Supabase。`)) return;
+
+            const now = new Date();
+            const { error } = await _supabase.from('appointments')
+                .update({
+                    status: '已取消',
+                    cancelled_at: now.toISOString(),
+                    cancel_reason: reason
+                })
+                .eq('id', target.appointment_id)
+                .eq('tenant_id', CURRENT_TENANT_ID);
+
+            if (error) { alert('取消預約失敗：' + error.message); return; }
+
+            activeAppointmentsList = activeAppointmentsList.filter(p => appointmentKey(p) !== key);
+            renderAppointmentTable(activeAppointmentsList);
+            await loadAppointmentHistory('all');
+            alert('預約已取消。紀錄已保留在 Supabase。');
+        }
+
+        async function removeAppointment(key) {
+            const target = activeAppointmentsList.find(p => appointmentKey(p) === key);
+            if (!target) return;
+            if (target.appointment_id) {
+                alert('正式預約不直接刪除。尚未報到請使用「取消預約」保留紀錄。');
+                return;
+            }
+            if (!confirm('確定要將此現場報到病患從即時列表中移除嗎？')) return;
+            activeAppointmentsList = activeAppointmentsList.filter(p => appointmentKey(p) !== key);
             renderAppointmentTable(activeAppointmentsList);
         }
 
@@ -5280,6 +6526,31 @@ bootstrapAuthentication();
             } finally { inventoryCheckoutBusy = false; }
         }
 
+        async function completeCurrentAppointmentAfterCheckout() {
+            if (!currentAppointmentId) return true;
+
+            const appointmentIdToComplete = currentAppointmentId;
+            const { error } = await _supabase.from('appointments')
+                .update({
+                    status: '已完成',
+                    completed_at: new Date().toISOString()
+                })
+                .eq('id', appointmentIdToComplete)
+                .eq('tenant_id', CURRENT_TENANT_ID);
+
+            if (error) {
+                console.error('結帳成功，但預約完診狀態更新失敗：', error);
+                alert('結帳已成功，帳單與庫存已完成；但預約狀態未能自動改為「已完成」：' + error.message);
+                return false;
+            }
+
+            currentAppointmentId = null;
+            activeAppointmentsList = activeAppointmentsList.filter(p => p.appointment_id !== appointmentIdToComplete);
+            renderAppointmentTable(activeAppointmentsList);
+            await loadAppointmentHistory('all');
+            return true;
+        }
+
         async function processInvoiceCheckoutToArchive(shouldPrintReceipt = true) {
             if (inventoryCheckoutBusy) return;
             const ownerSelect = document.getElementById('invoiceOwnerSelect');
@@ -5319,8 +6590,16 @@ bootstrapAuthentication();
                 checkout_type: `門診收費 (${paymentMethod})`, subtotal, discount, total_amount: total };
             const receiptLines = lines.map(x => ({ item_name: `${x.item_name} [付款: ${paymentMethod}]`,
                 quantity: x.quantity, subtotal: x.quantity*x.unit_price }));
-            if (shouldPrintReceipt) openReceiptModal(invoice, ownerName, currentPetName || '無指定寵物', receiptLines);
-            else alert('結帳成功，帳單與庫存已同步儲存');
+
+            await completeCurrentAppointmentAfterCheckout();
+
+            if (shouldPrintReceipt) {
+                openReceiptModal(invoice, ownerName, currentPetName || '無指定寵物', receiptLines);
+            } else {
+                alert('結帳成功，帳單與庫存已同步儲存');
+                switchTab('appointments');
+                await loadAppointments();
+            }
             document.getElementById('invoiceItemsList').innerHTML = '';
             calculateInvoiceTotal();
         }
@@ -5466,6 +6745,229 @@ async function processProductCheckoutToArchive(shouldPrintReceipt = true) {
                 update();
             });
         })();
-    </script>
+
+        // ===== 第 13 步：用藥申報與管制藥品中心 =====
+        let regulatoryTransactionsCache = [];
+        let controlledLedgerCache = [];
+
+        function escapeRegText(value) {
+            return String(value ?? '').replace(/[&<>"']/g, c => ({
+                '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'
+            })[c]);
+        }
+
+        function initRegulatoryCenterDates() {
+            const start = document.getElementById('regStartDate');
+            const end = document.getElementById('regEndDate');
+            if (!start || !end || (start.value && end.value)) return;
+            const now = new Date();
+            const first = new Date(now.getFullYear(), now.getMonth(), 1);
+            const localDate = d => {
+                const y = d.getFullYear(), m = String(d.getMonth()+1).padStart(2,'0'), day = String(d.getDate()).padStart(2,'0');
+                return `${y}-${m}-${day}`;
+            };
+            start.value = localDate(first);
+            end.value = localDate(now);
+        }
+
+        function regulatoryDateBounds() {
+            const start = document.getElementById('regStartDate')?.value;
+            const end = document.getElementById('regEndDate')?.value;
+            if (!start || !end) return null;
+            return {
+                startIso: new Date(start + 'T00:00:00').toISOString(),
+                endIso: new Date(end + 'T23:59:59.999').toISOString()
+            };
+        }
+
+        async function loadRegulatoryCenter() {
+            initRegulatoryCenterDates();
+            const bounds = regulatoryDateBounds();
+            if (!bounds) return;
+            const filter = document.getElementById('regTypeFilter')?.value || 'all';
+
+            let q = _supabase.from('v_regulatory_transactions')
+                .select('*')
+                .eq('tenant_id', CURRENT_TENANT_ID)
+                .gte('occurred_at', bounds.startIso)
+                .lte('occurred_at', bounds.endIso)
+                .order('occurred_at', { ascending:false });
+            if (filter === 'veterinary_medicine') q = q.eq('regulatory_class', '動物用藥品');
+            if (filter === 'veterinary_product') q = q.eq('regulatory_class', '動物用商品');
+            if (filter === 'controlled') q = q.eq('controlled_drug', true);
+
+            const { data, error } = await q;
+            if (error) {
+                alert('載入用藥申報資料失敗：' + error.message);
+                return;
+            }
+            regulatoryTransactionsCache = data || [];
+            renderRegulatoryTransactions();
+
+            const { data: ledger, error: ledgerError } = await _supabase
+                .from('v_controlled_drug_ledger')
+                .select('*')
+                .eq('tenant_id', CURRENT_TENANT_ID)
+                .gte('occurred_at', bounds.startIso)
+                .lte('occurred_at', bounds.endIso)
+                .order('occurred_at', { ascending:false });
+            if (!ledgerError) {
+                controlledLedgerCache = ledger || [];
+                renderControlledLedger();
+            }
+        }
+
+        function renderRegulatoryTransactions() {
+            const body = document.getElementById('regulatoryTransactionBody');
+            if (!body) return;
+            const rows = regulatoryTransactionsCache;
+            document.getElementById('regStatCount').textContent = rows.length;
+            document.getElementById('regStatMedicine').textContent = rows.filter(x => x.regulatory_class === '動物用藥品').length;
+            document.getElementById('regStatProduct').textContent = rows.filter(x => x.regulatory_class === '動物用商品').length;
+            document.getElementById('regStatControlled').textContent = rows.filter(x => x.controlled_drug).length;
+            document.getElementById('regStatMissingLot').textContent = rows.filter(x => !x.lot_no).length;
+            if (!rows.length) {
+                body.innerHTML = '<tr><td colspan="11" style="text-align:center;color:#64748b;">此期間尚無正式用藥異動資料</td></tr>';
+                return;
+            }
+            body.innerHTML = rows.map(x => {
+                const income = x.direction === 'IN' ? x.quantity : '';
+                const expense = x.direction === 'OUT' ? x.quantity : '';
+                const patient = [x.owner_name, x.pet_name].filter(Boolean).join('／') || '-';
+                return `<tr>
+                    <td>${escapeRegText(new Date(x.occurred_at).toLocaleString())}</td>
+                    <td><b>${escapeRegText(x.item_name)}</b>${x.controlled_drug ? '<br><small style="color:#b91c1c;font-weight:700;">管制藥品</small>' : ''}</td>
+                    <td>${escapeRegText(x.regulatory_class || '-')}</td>
+                    <td>${escapeRegText(x.veterinary_license_no || '-')}</td>
+                    <td>${escapeRegText(x.lot_no || '⚠ 未填')}</td>
+                    <td>${escapeRegText(income)}</td><td>${escapeRegText(expense)}</td>
+                    <td>${escapeRegText(x.smallest_unit || '-')}</td>
+                    <td>${escapeRegText(patient)}</td>
+                    <td>${escapeRegText(x.veterinarian_name || '-')}</td>
+                    <td>${escapeRegText(x.reason_text || x.reason_code || '-')}</td>
+                </tr>`;
+            }).join('');
+        }
+
+        function renderControlledLedger() {
+            const body = document.getElementById('controlledLedgerBody');
+            if (!body) return;
+            if (!controlledLedgerCache.length) {
+                body.innerHTML = '<tr><td colspan="9" style="text-align:center;color:#64748b;">此期間尚無管制藥品異動</td></tr>';
+                return;
+            }
+            body.innerHTML = controlledLedgerCache.map(x => `<tr>
+                <td>${escapeRegText(x.ledger_date || '')}</td>
+                <td><b>${escapeRegText(x.item_name)}</b></td>
+                <td>${x.controlled_level ? '第 ' + escapeRegText(x.controlled_level) + ' 級' : '-'}</td>
+                <td>${escapeRegText(x.lot_no || '-')}</td>
+                <td>${escapeRegText(x.income_qty || 0)}</td>
+                <td>${escapeRegText(x.expense_qty || 0)}</td>
+                <td><b>${escapeRegText(x.balance_after ?? '-')}</b></td>
+                <td>${escapeRegText(x.smallest_unit || '-')}</td>
+                <td>${escapeRegText(x.reason_code || x.counterparty_name || '-')}</td>
+            </tr>`).join('');
+        }
+
+        async function loadRegulatoryReportHistory() {
+            const body = document.getElementById('regulatoryReportHistoryBody');
+            if (!body || !CURRENT_TENANT_ID) return;
+            const { data, error } = await _supabase.from('regulatory_report_batches')
+                .select('*').eq('tenant_id', CURRENT_TENANT_ID)
+                .order('created_at', { ascending:false }).limit(100);
+            if (error || !data?.length) {
+                body.innerHTML = '<tr><td colspan="6" style="text-align:center;color:#64748b;">尚無申報快照</td></tr>';
+                return;
+            }
+            body.innerHTML = data.map(x => `<tr>
+                <td>${escapeRegText(x.period_start)} ～ ${escapeRegText(x.period_end)}</td>
+                <td>${escapeRegText(x.report_type)}</td>
+                <td>${escapeRegText(x.status)}</td>
+                <td>${escapeRegText(x.file_name || '-')}</td>
+                <td>${escapeRegText(x.row_count || 0)}</td>
+                <td>${escapeRegText(x.generated_at ? new Date(x.generated_at).toLocaleString() : '-')}</td>
+            </tr>`).join('');
+        }
+
+        function regulatoryExportRows() {
+            return regulatoryTransactionsCache.map(x => ({
+                '日期時間': new Date(x.occurred_at).toLocaleString(),
+                '品項': x.item_name || '',
+                '法規分類': x.regulatory_class || '',
+                '許可證字號': x.veterinary_license_no || '',
+                '有效成分': x.active_ingredient || '',
+                '規格': x.strength || '',
+                '劑型': x.dosage_form || '',
+                '批號': x.lot_no || '',
+                '效期': x.expiry_date || '',
+                '收入量': x.direction === 'IN' ? x.quantity : '',
+                '支出量': x.direction === 'OUT' ? x.quantity : '',
+                '最小單位': x.smallest_unit || '',
+                '結存': x.balance_after ?? '',
+                '飼主': x.owner_name || '',
+                '寵物': x.pet_name || '',
+                '動物種類': x.pet_species || '',
+                '獸醫師': x.veterinarian_name || '',
+                '管制藥品': x.controlled_drug ? '是' : '否',
+                '管制級別': x.controlled_level || '',
+                '原因': x.reason_text || x.reason_code || '',
+                '單據號碼': x.document_no || ''
+            }));
+        }
+
+        async function copyRegulatoryTableForExcel() {
+            const rows = regulatoryExportRows();
+            if (!rows.length) { alert('目前沒有可複製的申報資料'); return; }
+            const headers = Object.keys(rows[0]);
+            const tsv = [headers.join('\t'), ...rows.map(r => headers.map(h => String(r[h] ?? '').replace(/\t|\r?\n/g,' ')).join('\t'))].join('\n');
+            try {
+                await navigator.clipboard.writeText(tsv);
+                alert('已複製，可直接貼到 Excel。');
+            } catch (e) {
+                alert('瀏覽器無法直接寫入剪貼簿，請使用「匯出 Excel」或允許剪貼簿權限。');
+            }
+        }
+
+        function exportRegulatoryExcel() {
+            const rows = regulatoryExportRows();
+            if (!rows.length) { alert('目前沒有可匯出的申報資料'); return; }
+            if (typeof XLSX === 'undefined') {
+                alert('Excel 元件尚未載入，請確認網路連線後重新整理。');
+                return;
+            }
+            const wb = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(rows), '全部申報明細');
+
+            const medicineRows = rows.filter(r => r['法規分類'] === '動物用藥品');
+            XLSX.utils.book_append_sheet(
+                wb,
+                XLSX.utils.json_to_sheet(medicineRows.length ? medicineRows : [{'說明':'本期間無動物用藥品異動'}]),
+                '動物用藥品'
+            );
+
+            const productRows = rows.filter(r => r['法規分類'] === '動物用商品');
+            XLSX.utils.book_append_sheet(
+                wb,
+                XLSX.utils.json_to_sheet(productRows.length ? productRows : [{'說明':'本期間無動物用商品異動'}]),
+                '動物用商品'
+            );
+
+            const controlledRows = rows.filter(r => r['管制藥品'] === '是');
+            XLSX.utils.book_append_sheet(
+                wb,
+                XLSX.utils.json_to_sheet(controlledRows.length ? controlledRows : [{'說明':'本期間無管制藥品異動'}]),
+                '管制藥品收支結存'
+            );
+            const start = document.getElementById('regStartDate')?.value || '';
+            const end = document.getElementById('regEndDate')?.value || '';
+            XLSX.writeFile(wb, `genblueAH_用藥申報_${start}_${end}.xlsx`);
+        }
+
+    
+        // 第16.2步：初始化申報欄位顯示狀態
+        setTimeout(() => {
+            try { onUpperMedicineCategoryChange(); } catch (e) {}
+        }, 0);
+</script>
 </body>
 </html>
