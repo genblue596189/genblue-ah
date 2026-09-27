@@ -381,17 +381,24 @@
         .diagnostic-flow b,.diagnostic-flow span{display:block}
         .diagnostic-flow span{font-size:.82rem;color:#64748b;margin-top:5px}
         @media(max-width:900px){.diagnostic-stat-grid{grid-template-columns:repeat(2,1fr)}.diagnostic-flow{display:flex;flex-direction:column}.diagnostic-flow>div{width:100%}}
-    body.role-staff button[onclick^="saveMedicalRecord"],
-    body.role-staff button[onclick^="addDetailedPrescriptionItem"],
-    body.role-staff button[onclick^="admitCurrentPetToHospital"],
-    body.role-staff button[onclick^="saveRapidTestToDatabase"],
-    body.role-staff button[onclick^="recordPetVaccine"],
-    body.role-staff button[onclick^="saveSkylaFromExchange"],
-    body.role-staff button[onclick^="deleteRapidReport"],
-    body.role-staff button[onclick^="deleteLabReport"],
-    body.role-staff button[onclick^="deletePetVaccine"],
-    body.role-staff button[onclick^="updateInpatientNote"],
-    body.role-staff button[onclick^="dischargeInpatientToCheckout"] {
+    body.role-no-clinical button[onclick^="saveMedicalRecord"],
+    body.role-no-clinical button[onclick^="addDetailedPrescriptionItem"],
+    body.role-no-clinical button[onclick^="admitCurrentPetToHospital"],
+    body.role-no-clinical button[onclick^="saveRapidTestToDatabase"],
+    body.role-no-clinical button[onclick^="recordPetVaccine"],
+    body.role-no-clinical button[onclick^="saveSkylaFromExchange"],
+    body.role-no-clinical button[onclick^="deleteRapidReport"],
+    body.role-no-clinical button[onclick^="deleteLabReport"],
+    body.role-no-clinical button[onclick^="deletePetVaccine"],
+    body.role-no-clinical button[onclick^="updateInpatientNote"],
+    body.role-no-clinical button[onclick^="dischargeInpatientToCheckout"] {
+        display: none !important;
+    }
+    body.role-no-operational button[onclick^="saveIntegratedOwnerAndPet"],
+    body.role-no-appointment button[onclick^="checkInAppointment"],
+    body.role-no-appointment button[onclick^="editAppointment"],
+    body.role-no-appointment button[onclick^="cancelAppointment"],
+    body.role-no-appointment button[onclick^="removeAppointment"] {
         display: none !important;
     }
     body.role-nonadmin button[onclick^="adjustStock"],
@@ -405,6 +412,23 @@
     body.role-nonadmin button[onclick^="saveNewRapidType"] {
         display: none !important;
     }
+    .staff-list { display:grid;gap:14px;margin-top:16px; }
+    .staff-card { border:1px solid #dbe4ee;border-radius:12px;padding:18px 20px;background:#fff; }
+    .staff-card-head { display:flex;justify-content:space-between;align-items:flex-start;gap:16px;flex-wrap:wrap; }
+    .staff-card-identity { min-width:0;flex:1 1 280px; }
+    .staff-card-identity strong { font-size:18px; }
+    .staff-card-email { display:block;color:#475569;overflow-wrap:anywhere;margin-top:4px; }
+    .staff-card-meta { color:#64748b;font-size:13px;line-height:1.6; }
+    .staff-role-tag { display:inline-block;margin-left:10px;padding:3px 8px;border-radius:6px;background:#e0f2fe;color:#075985;font-size:13px;font-weight:600; }
+    .staff-permission-grid { display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px 14px;margin:16px 0 12px; }
+    .staff-permission-grid label { display:flex;align-items:center;justify-content:flex-start;gap:10px;min-width:0;width:100%;box-sizing:border-box;margin:0;padding:12px 14px;border:1px solid #dbe4ee;border-radius:8px;background:#f8fafc;font-size:15px;line-height:1.45;white-space:normal;word-break:keep-all;cursor:pointer; }
+    .staff-permission-grid input[type="checkbox"] { box-sizing:border-box;display:block;width:18px !important;min-width:18px;max-width:18px;height:18px;padding:0;margin:0;flex:0 0 18px;accent-color:#0284c7;cursor:pointer; }
+    .staff-permission-actions { display:flex;align-items:center;gap:12px;flex-wrap:wrap; }
+    .staff-permission-status { font-weight:600;font-size:14px;line-height:1.5; }
+    .staff-card-actions { display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-top:14px;padding-top:14px;border-top:1px solid #e2e8f0; }
+    .staff-card-actions input[type=password] { width:220px;max-width:100%; }
+    .staff-card-actions button { white-space:nowrap; }
+    @media(max-width:650px) { .staff-permission-grid { grid-template-columns:1fr; } .staff-card { padding:16px; } }
 </style>
     </head>
 <body>
@@ -515,6 +539,7 @@
             <li class="nav-section-label" style="pointer-events:none; cursor:default; margin-top:10px; padding:10px 12px 5px; font-size:0.72rem; font-weight:800; letter-spacing:.08em; color:#94a3b8; background:transparent;">系統</li>
             <li id="nav-clinic" onclick="switchTab('clinic')">⚙️ 系統設定及醫院資料</li>
             <li id="nav-staff_management" onclick="switchTab('staff_management')">👥 人員與權限</li>
+            <li id="nav-my_password" onclick="switchTab('my_password')">🔑 修改我的密碼</li>
             <li
                id="nav-logout"
                onclick="logoutSupabase()"
@@ -529,7 +554,7 @@
     <div class="main-container">
         <header>
             <div class="header-left">
-                <h3>首頁管理介面 <small style="color:#64748b;font-size:12px">版本 18.6.1 測試版</small></h3>
+                <h3>首頁管理介面 <small style="color:#64748b;font-size:12px">版本 18.7.3 測試版</small></h3>
                 <input type="text" id="globalSearchInput" class="search-box" placeholder="全域搜尋 寵物 / 晶片 / 飼主 / 電話 / 客戶編號..." onkeydown="handleGlobalSearch(event)">
             </div>
             <div class="tenant-badge" id="currentTenantBadge">醫院代碼 (tenant_id):</div>
@@ -1336,6 +1361,19 @@
                 </div>
             </div>
 
+            <div id="my_password" class="tab-content">
+                <div class="card" style="max-width:520px">
+                    <h2>🔑 修改我的密碼</h2>
+                    <p style="color:#64748b">每位人員登入後都可以自行設定新密碼。修改成功後，請用新密碼重新登入。</p>
+                    <form id="myPasswordForm" onsubmit="changeMyPassword(event)">
+                        <div class="form-group"><label for="myNewPassword">新密碼（至少 8 字元）</label><input id="myNewPassword" type="password" minlength="8" maxlength="72" autocomplete="new-password" required></div>
+                        <div class="form-group"><label for="myConfirmPassword">再次輸入新密碼</label><input id="myConfirmPassword" type="password" minlength="8" maxlength="72" autocomplete="new-password" required></div>
+                        <button id="myPasswordButton" type="submit">儲存新密碼</button>
+                        <p id="myPasswordMessage" role="status" style="min-height:20px"></p>
+                    </form>
+                </div>
+            </div>
+
             <!-- 9. 操作歷程與稽核 -->
             <div id="staff_management" class="tab-content">
                 <div class="card">
@@ -1354,7 +1392,8 @@
                 <div class="card">
                     <h3>現有人員</h3>
                     <button type="button" class="btn-secondary" onclick="loadStaffMembers()">重新整理</button>
-                    <div style="overflow:auto;margin-top:12px"><table><thead><tr><th>姓名</th><th>Email</th><th>角色</th><th>醫師可結帳</th><th>建立時間</th><th>管理</th></tr></thead><tbody id="staffMembersBody"><tr><td colspan="6">載入中...</td></tr></tbody></table></div>
+                    <p style="color:#64748b">可逐人設定掛號、病歷編輯、櫃台資料（飼主／寵物）及結帳；儲存後重新登入即可更新畫面。管理者權限無法在此授予。</p>
+                    <div id="staffMembersBody" class="staff-list"><p>載入中...</p></div>
                 </div>
             </div>
 
@@ -2065,6 +2104,7 @@
         let CURRENT_TENANT_ID = null;
         let CURRENT_USER = null;
         let CURRENT_PROFILE = null;
+        let CURRENT_TRIAL_END = null;
 
         let currentPetId = "";
         let currentPetMicrochip = "";
@@ -2132,7 +2172,8 @@
 
     if (tenantBadge) {
         tenantBadge.textContent =
-            `醫院代碼 (tenant_id): ${CURRENT_TENANT_ID || ''}`;
+            `醫院代碼 (tenant_id): ${CURRENT_TENANT_ID || ''}`+
+            (CURRENT_TRIAL_END ? `｜試用至 ${new Date(CURRENT_TRIAL_END).toLocaleDateString('zh-TW')}` : '');
     }
         
     const todayStr = new Date().toISOString().split('T')[0];
@@ -2240,39 +2281,69 @@
                 const data=await staffInvoke({action:'list'});
                 if (!Array.isArray(data?.users)) throw new Error('人員函式沒有回傳清單；請確認 manage-staff 已貼入完整程式。');
                 const users=data.users;
-                if (!users.length) { body.innerHTML='<tr><td colspan="6">尚無人員資料</td></tr>'; return; }
+                if (!users.length) { body.textContent='尚無人員資料'; return; }
                 for (const member of users) {
-                    const tr=document.createElement('tr');
-                    for (const value of [member.display_name||'',member.email||'',
-                        ({admin:'管理者',doctor:'醫師',staff:'櫃台／一般人員'})[member.role]||member.role||'']) {
-                        const td=document.createElement('td'); td.textContent=value; tr.appendChild(td);
-                    }
-                    const permissionCell=document.createElement('td');
-                    if (member.role==='doctor') {
-                        const toggle=document.createElement('input'); toggle.type='checkbox'; toggle.checked=!!member.can_checkout;
-                        toggle.setAttribute('aria-label', `${member.display_name||'醫師'}結帳權限`);
-                        toggle.addEventListener('change', async () => {
-                            toggle.disabled=true;
+                    const card=document.createElement('section');card.className='staff-card';
+                    const head=document.createElement('div');head.className='staff-card-head';
+                    const identity=document.createElement('div');identity.className='staff-card-identity';
+                    const name=document.createElement('strong');name.textContent=member.display_name||'未命名人員';
+                    const role=document.createElement('span');role.className='staff-role-tag';
+                    role.textContent=({admin:'管理者',doctor:'醫師',staff:'櫃台／一般人員'})[member.role]||member.role||'';
+                    const email=document.createElement('span');email.className='staff-card-email';email.textContent=member.email||'';
+                    identity.append(name,role,email);
+                    const meta=document.createElement('div');meta.className='staff-card-meta';
+                    meta.textContent='建立時間：'+(member.created_at?new Date(member.created_at).toLocaleString('zh-TW'):'—');
+                    head.append(identity,meta);card.appendChild(head);
+                    const permissionCell=document.createElement('div');
+                    if (member.role==='admin') permissionCell.textContent='管理者：全部權限';
+                    else {
+                        permissionCell.className='staff-permission-grid';
+                        const defaults={
+                            permission_appointment:true,
+                            permission_clinical:member.role==='doctor',
+                            permission_operational:member.role==='staff',
+                            permission_checkout:member.role==='staff'||(member.role==='doctor'&&!!member.can_checkout)
+                        };
+                        const labels={permission_appointment:'掛號',permission_clinical:'病歷編輯',
+                            permission_operational:'飼主／寵物資料',permission_checkout:'結帳與報表'};
+                        const controls={};
+                        const status=document.createElement('span');status.className='staff-permission-status';
+                        status.setAttribute('role','status');status.setAttribute('aria-live','polite');
+                        const setStatus=(message,color)=>{status.textContent=message;status.style.color=color;};
+                        for (const [key,label] of Object.entries(labels)) {
+                            const wrap=document.createElement('label');
+                            const check=document.createElement('input'); check.type='checkbox';
+                            check.checked=typeof member[key]==='boolean'?member[key]:defaults[key];
+                            check.addEventListener('change',()=>setStatus('⚠ 尚未儲存','#b45309'));
+                            controls[key]=check; wrap.append(check,document.createTextNode(label));
+                            permissionCell.appendChild(wrap);
+                        }
+                        card.appendChild(permissionCell);
+                        const save=document.createElement('button');save.type='button';save.className='btn-secondary';
+                        save.textContent='儲存權限';
+                        save.addEventListener('click',async()=>{
+                            const changes={action:'set-permissions',user_id:member.user_id};
+                            for (const key of Object.keys(labels)) changes[key]=controls[key].checked;
+                            save.disabled=true;save.textContent='儲存中…';
+                            for(const check of Object.values(controls)) check.disabled=true;
+                            setStatus('正在儲存…','#475569');
                             try {
-                                await staffInvoke({action:'set-checkout',user_id:member.user_id,can_checkout:toggle.checked});
-                                staffMessage('醫師結帳權限已更新');
-                            } catch(e) { toggle.checked=!toggle.checked; staffMessage(e.message||String(e),true); }
-                            finally { toggle.disabled=false; }
+                                await staffInvoke(changes);
+                                setStatus('✓ 已儲存，請該員工重新登入','#047857');
+                            } catch(e) { setStatus('儲存失敗：'+(e.message||String(e)),'#dc2626'); }
+                            finally { save.disabled=false;save.textContent='儲存權限';for(const check of Object.values(controls)) check.disabled=false; }
                         });
-                        permissionCell.appendChild(toggle);
-                    } else permissionCell.textContent=member.role==='admin'?'可結帳':'依櫃台角色可結帳';
-                    tr.appendChild(permissionCell);
-                    const dateCell=document.createElement('td');
-                    dateCell.textContent=member.created_at?new Date(member.created_at).toLocaleString():'';
-                    tr.appendChild(dateCell);
-                    const managementCell=document.createElement('td');
+                        const permissionActions=document.createElement('div');permissionActions.className='staff-permission-actions';
+                        permissionActions.append(save,status);card.appendChild(permissionActions);
+                    }
+                    if (member.role==='admin') card.appendChild(permissionCell);
+                    const managementCell=document.createElement('div');managementCell.className='staff-card-actions';
                     if (member.role!=='admin' && member.user_id!==CURRENT_USER?.id) {
                         const resetPassword=document.createElement('input');
                         resetPassword.type='password'; resetPassword.autocomplete='new-password';
                         resetPassword.minLength=8; resetPassword.maxLength=72;
                         resetPassword.placeholder='新密碼（8 字元以上）';
                         resetPassword.setAttribute('aria-label',`設定 ${member.display_name||member.email} 的新密碼`);
-                        resetPassword.style.width='170px';
                         managementCell.appendChild(resetPassword);
                         const reset=document.createElement('button');
                         reset.type='button'; reset.className='btn-secondary'; reset.textContent='重設密碼';
@@ -2288,7 +2359,6 @@
                         managementCell.appendChild(reset);
                         const remove=document.createElement('button');
                         remove.type='button'; remove.className='btn-secondary'; remove.textContent='移除員工';
-                        remove.style.marginLeft='6px';
                         remove.addEventListener('click',async()=>{
                             if (!confirm(`確定移除 ${member.display_name||member.email}（${member.email}）？\n此人員將不能再登入，病歷及收費紀錄會保留。`)) return;
                             remove.disabled=true;
@@ -2297,10 +2367,10 @@
                         });
                         managementCell.appendChild(remove);
                     }
-                    tr.appendChild(managementCell);
-                    body.appendChild(tr);
+                    if (managementCell.childNodes.length) card.appendChild(managementCell);
+                    body.appendChild(card);
                 }
-            } catch(e) { body.innerHTML='<tr><td colspan="6">無法載入人員；請確認伺服端 manage-staff 已部署。</td></tr>'; staffMessage(e.message||String(e),true); }
+            } catch(e) { body.textContent='無法載入人員；請確認伺服端 manage-staff 已部署。'; staffMessage(e.message||String(e),true); }
         }
         async function createStaffMember() {
             if (CURRENT_PROFILE?.role !== 'admin') { staffMessage('只有管理者可新增人員',true); return; }
@@ -2326,6 +2396,35 @@
             finally { button.disabled=false; }
         }
 
+        async function changeMyPassword(event) {
+            event.preventDefault();
+            const newField=document.getElementById('myNewPassword');
+            const confirmField=document.getElementById('myConfirmPassword');
+            const button=document.getElementById('myPasswordButton');
+            const message=document.getElementById('myPasswordMessage');
+            const password=newField.value;
+            if (password.length<8 || password.length>72 || password!==confirmField.value) {
+                message.textContent='請輸入 8 至 72 字元的密碼，並確認兩次輸入一致。';
+                message.style.color='#dc2626'; return;
+            }
+            button.disabled=true;
+            message.textContent='正在修改密碼…';
+            message.style.color='#475569';
+            let updated=false;
+            try {
+                const {error}=await _supabase.auth.updateUser({password});
+                if (error) throw error;
+                updated=true;
+                newField.value=''; confirmField.value='';
+                message.textContent='密碼已修改，正在返回登入畫面。';
+                message.style.color='#059669';
+                await logoutSupabase();
+            } catch(e) {
+                message.textContent=(updated?'密碼已修改，但無法自動登出；請手動登出。':'修改密碼失敗：')+(e.message||String(e));
+                message.style.color='#dc2626';
+            } finally { button.disabled=false; }
+        }
+
         function applyRolePermissions() {
     const clinicNav = document.getElementById('nav-clinic');
     const auditNav = document.getElementById('nav-audit_logs');
@@ -2341,14 +2440,21 @@
     }
     const roleLabel=({admin:'管理者',doctor:'醫師',staff:'櫃台／一般員工'})[CURRENT_PROFILE?.role]||'未設定';
     roleBadge.textContent=`登入角色：${roleLabel}`;
-    document.body.classList.toggle('role-staff', CURRENT_PROFILE?.role === 'staff');
+    const canClinical=isAdmin || (CURRENT_PROFILE?.permission_clinical ?? (CURRENT_PROFILE?.role==='doctor'));
+    const canBill=isAdmin || (CURRENT_PROFILE?.permission_checkout ??
+        (CURRENT_PROFILE?.role==='staff' || (CURRENT_PROFILE?.role==='doctor' && CURRENT_PROFILE?.can_checkout===true)));
+    document.body.classList.toggle('role-no-clinical', !canClinical);
+    document.body.classList.toggle('role-no-operational', !(isAdmin ||
+        (CURRENT_PROFILE?.permission_operational ?? (CURRENT_PROFILE?.role==='staff'))));
+    document.body.classList.toggle('role-no-appointment', !(isAdmin ||
+        (CURRENT_PROFILE?.permission_appointment ?? (CURRENT_PROFILE?.role==='staff'||CURRENT_PROFILE?.role==='doctor'))));
     document.body.classList.toggle('role-nonadmin', !isAdmin);
     const medicalPanel=document.getElementById('medical');
     if (medicalPanel) {
         for (const control of medicalPanel.querySelectorAll('input, textarea, select')) {
             if (!('originalReadonly' in control.dataset)) control.dataset.originalReadonly=control.readOnly?'true':'false';
             if (!('originalDisabled' in control.dataset)) control.dataset.originalDisabled=control.disabled?'true':'false';
-            if (CURRENT_PROFILE?.role==='staff') {
+            if (!canClinical) {
                 if (control instanceof HTMLSelectElement) control.disabled=true;
                 else control.readOnly=true;
             } else {
@@ -2365,13 +2471,11 @@
             hint=document.createElement('p');
             hint.className='staff-clinical-hint';
             hint.style.cssText='padding:10px 14px;border-radius:8px;background:#eff6ff;color:#1d4ed8;font-weight:600;margin:10px 0;';
-            hint.textContent='櫃台帳號可查看臨床資料，新增、修改與刪除請由醫師操作。';
+            hint.textContent='目前帳號可查看臨床資料，但沒有病歷編輯權限。';
             panel.prepend(hint);
         }
-        hint.style.display=CURRENT_PROFILE?.role==='staff'?'':'none';
+        hint.style.display=!canClinical?'':'none';
     }
-    const canBill = isAdmin || CURRENT_PROFILE?.role === 'staff' ||
-        (CURRENT_PROFILE?.role === 'doctor' && CURRENT_PROFILE?.can_checkout === true);
 
     if (clinicNav) {
         clinicNav.style.display = isAdmin ? '' : 'none';
@@ -2432,7 +2536,7 @@ async function loadCurrentUserProfile() {
 
     const { data: profile, error: profileError } = await _supabase
         .from('user_profiles')
-        .select('tenant_id, display_name, role, can_checkout')
+        .select('tenant_id, display_name, role, can_checkout, permission_clinical, permission_appointment, permission_operational, permission_checkout')
         .eq('user_id', user.id)
         .single();
 
@@ -2443,6 +2547,13 @@ async function loadCurrentUserProfile() {
     if (!profile || !profile.tenant_id) {
         throw new Error('找不到您的診所使用者設定（user_profiles）。');
     }
+
+    const {data: trialEnd,error: trialError}=await _supabase.rpc('my_trial_expires_at');
+    if (trialError) throw new Error('無法確認醫院試用狀態：'+trialError.message);
+    if (trialEnd && new Date(trialEnd).getTime()<=Date.now())
+        throw new Error('醫院的 7 天試用期已結束，請聯絡平台管理者。');
+
+    CURRENT_TRIAL_END=trialEnd || null;
 
     CURRENT_USER = user;
     CURRENT_PROFILE = profile;
@@ -2859,8 +2970,8 @@ bootstrapAuthentication();
             if (['staff_management','audit_logs','clinic'].includes(tabId) && CURRENT_PROFILE?.role !== 'admin') { alert('需要管理者權限'); return; }
             if (tabId==='regulatory_reports' && CURRENT_PROFILE?.role!=='admin') { alert('需要管理者權限'); return; }
             if (['invoices','reports'].includes(tabId) &&
-                !(CURRENT_PROFILE?.role==='admin' || CURRENT_PROFILE?.role==='staff' ||
-                  (CURRENT_PROFILE?.role==='doctor' && CURRENT_PROFILE?.can_checkout===true))) {
+                !(CURRENT_PROFILE?.role==='admin' || (CURRENT_PROFILE?.permission_checkout ??
+                    (CURRENT_PROFILE?.role==='staff' || (CURRENT_PROFILE?.role==='doctor' && CURRENT_PROFILE?.can_checkout===true))))) {
                 alert('此帳號沒有結帳權限'); return;
             }
             if (tabId === 'staff_management') setTimeout(loadStaffMembers, 0);
@@ -3165,6 +3276,11 @@ bootstrapAuthentication();
                 clinicSettings.director = data.director || "張劍明";
                 clinicSettings.phone = data.phone || "02-8888-9999";
                 clinicSettings.address = data.address || "台北市地址";
+            } else if (!data) {
+                clinicSettings.name = '動物醫院';
+                clinicSettings.director = '';
+                clinicSettings.phone = '';
+                clinicSettings.address = '';
             }
 
             document.getElementById('clinicNameSet').value = clinicSettings.name;
