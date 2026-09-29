@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>吉布動物醫院管理系統 genblue設計版權所有</title>
+    <title>吉布動物醫院管理系統 genblue設計版權所有｜雙編號測試</title>
     <!-- 引入 Supabase JS SDK CDN -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
@@ -555,7 +555,7 @@
         <header>
             <div class="header-left">
                 <h3>首頁管理介面 <small style="color:#64748b;font-size:12px">版本 18.7.3 測試版</small></h3>
-                <input type="text" id="globalSearchInput" class="search-box" placeholder="全域搜尋 寵物 / 晶片 / 飼主 / 電話 / 客戶編號..." onkeydown="handleGlobalSearch(event)">
+                <input type="text" id="globalSearchInput" class="search-box" placeholder="全域搜尋 寵物 / 晶片 / 飼主 / 電話 / 新舊編號..." onkeydown="handleGlobalSearch(event)">
             </div>
             <div class="tenant-badge" id="currentTenantBadge">醫院代碼 (tenant_id):</div>
         </header>
@@ -682,7 +682,8 @@
                     
                     <h3 style="font-size: 0.95rem; color: var(--primary-dark); margin-bottom: 12px; border-left: 3px solid var(--primary-color); padding-left: 8px;">1. 飼主基本資料</h3>
                     <div class="form-grid">
-                        <div class="form-group"><label>客戶編號 (自行 Keyin)</label><input type="text" id="intOwnerCode" placeholder="例如：C001"></div>
+                        <div class="form-group"><label>新系統編號（儲存後自動產生）</label><input type="text" value="儲存後自動產生" readonly></div>
+                        <div class="form-group"><label>舊紙本病歷號（可自行輸入，同號可供家人共用）</label><input type="text" id="intOwnerCode" placeholder="無舊號可留空"></div>
                         <div class="form-group"><label>飼主姓名 (必填)</label><input type="text" id="intOwnerName" placeholder="王小明"></div>
                         <div class="form-group"><label>手機號碼 (必填)</label><input type="text" id="intOwnerMobile" placeholder="0912-345-678"></div>
                         <div class="form-group"><label>聯絡市話</label><input type="text" id="intOwnerPhone" placeholder="02-23456789"></div>
@@ -733,6 +734,8 @@
                                 <option value="公 (未結紮)">公 (未結紮)</option>
                                 <option value="母 (已結紮)">母 (已結紮)</option>
                                 <option value="母 (未結紮)">母 (未結紮)</option>
+                                <option value="公 (結紮未註明)">公 (結紮未註明)</option>
+                                <option value="母 (結紮未註明)">母 (結紮未註明)</option>
                             </select>
                         </div>
                         <div class="form-group"><label>目前體重 (kg)</label><input type="number" step="0.1" id="intPetWeight" placeholder="4.5"></div>
@@ -748,13 +751,14 @@
 
                 <div class="card">
                     <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
-                        <h3>飼主與名下寵物總覽</h3>
+                        <h3>飼主與名下寵物總覽 <small id="ownerPetLoadStatus" style="font-size:12px;color:#64748b;">載入中…</small></h3>
                         <input type="text" id="ownerPetTableSearch" class="search-box" placeholder="🔍 搜尋表格中的編號、飼主或寵物..." oninput="filterIntegratedTable()" style="width: 320px;">
                     </div>
+                    <div style="overflow-x:auto;">
                     <table>
                         <thead>
                             <tr>
-                                <th>客戶編號 / 飼主姓名</th>
+                                <th>新系統編號 / 舊紙本病歷號 / 飼主姓名</th>
                                 <th>聯絡電話 / 地址</th>
                                 <th>備註說明</th>
                                 <th>名下寵物、年紀、品種與體重</th>
@@ -765,6 +769,7 @@
                             <tr><td colspan="5" style="text-align: center; color: #64748b;">載入中...</td></tr>
                         </tbody>
                     </table>
+                    </div>
                 </div>
             </div>
 
@@ -2250,6 +2255,7 @@
                         }
                     });
                     document.getElementById('selectedRapidPetId').value = foundId;
+                    updateRapidItemsForPet();
                 });
             }
         }
@@ -3429,15 +3435,24 @@ bootstrapAuthentication();
             const rapidTestItemSelect = document.getElementById('rapidTestItem');
             if(rapidTestItemSelect) rapidTestItemSelect.innerHTML = '<option value="">-- 請選擇快篩項目 --</option>';
 
-            data.forEach(rt => {
-                loadedRapidTypesMap[rt.name] = rt;
-                if(rapidTestItemSelect) {
-                    const opt = document.createElement('option');
-                    opt.value = rt.name;
-                    opt.textContent = `${rt.name} (${rt.target}用)`;
-                    rapidTestItemSelect.appendChild(opt);
+            data.forEach(rt => { loadedRapidTypesMap[rt.name] = rt; });
+            updateRapidItemsForPet();
+        }
+
+        function updateRapidItemsForPet() {
+            const select = document.getElementById('rapidTestItem');
+            if (!select) return;
+            const petId = document.getElementById('selectedRapidPetId')?.value;
+            const pet = allPetsListForDropdown.find(item => item.id === petId);
+            const previous = select.value;
+            select.replaceChildren(new Option('-- 請選擇快篩項目 --', ''));
+            Object.values(loadedRapidTypesMap).forEach(rt => {
+                if (pet && (rt.target === pet.species || rt.target === '通用')) {
+                    select.add(new Option(`${rt.name} (${rt.target}用)`, rt.name));
                 }
             });
+            select.value = [...select.options].some(opt => opt.value === previous) ? previous : '';
+            onRapidItemSelected();
         }
 
         async function saveNewRapidType() {
@@ -4531,19 +4546,44 @@ bootstrapAuthentication();
 
         async function loadOwnersAndPetsIntegrated() {
     // 直接透過 Supabase 的外鍵關聯一次把 owners 與對應的 pets 全部抓回來
-    const { data: ownersData, error: ownersError } = await _supabase
-        .from('owners')
-        .select(`
-            *,
-            pets (*)
-        `)
-        .eq('tenant_id', CURRENT_TENANT_ID);
-
-    if (ownersError) {
-        console.error('載入飼主與寵物資料失敗：', ownersError);
-        return;
+    const ownersData = [];
+    const loadStatus = document.getElementById('ownerPetLoadStatus');
+    if (loadStatus) loadStatus.textContent = '載入中…';
+    let pageSize = 400;
+    let lastOwnerId = null;
+    let loadIncomplete = false;
+    while (true) {
+        let ownerPage = null;
+        let pageError = null;
+        for (let attempt = 0; attempt < 3; attempt++) {
+            let request = _supabase
+                .from('owners')
+                .select(`*, pets (*)`)
+                .eq('tenant_id', CURRENT_TENANT_ID)
+                .order('id', { ascending: true });
+            if (lastOwnerId) request = request.gt('id', lastOwnerId);
+            const { data, error } = await request.limit(pageSize);
+            if (!error) {
+                ownerPage = data || [];
+                pageError = null;
+                break;
+            }
+            pageError = error;
+            pageSize = Math.max(100, Math.floor(pageSize / 2));
+            if (loadStatus) loadStatus.textContent = `已讀 ${ownersData.length} 位，重試中…`;
+        }
+        if (pageError) {
+            loadIncomplete = true;
+            console.error('載入飼主與寵物資料失敗：', pageError);
+            break;
+        }
+        ownersData.push(...ownerPage);
+        if (ownerPage.length) lastOwnerId = ownerPage[ownerPage.length - 1].id;
+        if (loadStatus) loadStatus.textContent = `已載入 ${ownersData.length} 位飼主…`;
+        if (ownerPage.length < pageSize) break;
     }
 
+    if (loadStatus) loadStatus.textContent = loadIncomplete ? `部分載入 ${ownersData.length} 位；仍可依新編號直接查詢` : `已載入 ${ownersData.length} 位飼主`;
     // 整理成全域資料結構供前端表格與下拉選單使用
     globalOwnersPetsData = ownersData.map(owner => {
         return {
@@ -4551,6 +4591,7 @@ bootstrapAuthentication();
                 id: owner.id,
                 tenant_id: owner.tenant_id,
                 owner_code: owner.owner_code,
+                system_code: owner.system_code,
                 name: owner.name,
                 mobile: owner.mobile,
                 phone: owner.phone,
@@ -4570,7 +4611,7 @@ bootstrapAuthentication();
         checkoutDatalist.innerHTML = '';
         allOwnersListForDropdown.forEach(owner => {
             const opt = document.createElement('option');
-            const codeStr = owner.owner_code ? `[編號:${owner.owner_code}] ` : '';
+            const codeStr = `[新:${owner.system_code || '待產生'}] ` + (owner.owner_code ? `[舊:${owner.owner_code}] ` : '');
             opt.value = `${codeStr}${owner.name} (${owner.mobile || '無手機'})`;
             opt.dataset.ownerId = owner.id;
             checkoutDatalist.appendChild(opt);
@@ -4584,7 +4625,7 @@ bootstrapAuthentication();
         if(invoiceOwnerSelect) {
             const opt = document.createElement('option');
             opt.value = owner.id;
-            const codeStr = owner.owner_code ? `[編號:${owner.owner_code}] ` : '';
+            const codeStr = `[新:${owner.system_code || '待產生'}] ` + (owner.owner_code ? `[舊:${owner.owner_code}] ` : '');
             opt.textContent = `${codeStr}${owner.name} (${owner.mobile || ''})`;
             invoiceOwnerSelect.appendChild(opt);
         }
@@ -4606,7 +4647,8 @@ bootstrapAuthentication();
                     breed: pet.breed || '',
                     owner_id: owner.id,
                     owner_name: owner.name,
-                    owner_code: owner.owner_code || ''
+                    owner_code: owner.owner_code || '',
+                    system_code: owner.system_code || ''
                 });
             });
         }
@@ -4615,12 +4657,13 @@ bootstrapAuthentication();
     filterVaccinePetDropdown();
     filterLabPetDropdown();
     filterRapidPetDropdown();
+    updateRapidItemsForPet();
 
     const appointmentSelect = document.getElementById('appointmentPetSelect');
     if(appointmentSelect) appointmentSelect.innerHTML = '<option value="">-- 請選擇或搜尋現有寵物 --</option>';
     
     allPetsListForDropdown.forEach(pet => {
-        const codeStr = pet.owner_code ? `[編號:${pet.owner_code}] ` : '';
+        const codeStr = `[新:${pet.system_code || '待產生'}] ` + (pet.owner_code ? `[舊:${pet.owner_code}] ` : '');
         if(appointmentSelect) {
             const opt = document.createElement('option');
             opt.value = JSON.stringify({
@@ -4635,7 +4678,7 @@ bootstrapAuthentication();
                 species: pet.species || '貓',
                 breed: pet.breed || ''
             });
-            opt.textContent = `${pet.name} ${pet.weight ? '(' + pet.weight + 'kg)' : ''} - 飼主: ${codeStr}${pet.owner_name}`;
+            opt.textContent = `${pet.name} ${pet.weight ? '(' + formatPetWeight(pet.weight) + 'kg)' : ''} - 飼主: ${codeStr}${pet.owner_name}`;
             appointmentSelect.appendChild(opt);
         }
     });
@@ -4662,7 +4705,7 @@ bootstrapAuthentication();
                     matchedGroup.pets.forEach(pet => {
                         const opt = document.createElement('option');
                         opt.value = pet.id;
-                        opt.textContent = `🐶 ${pet.name} (${pet.species || '寵物'} / ${pet.weight ? pet.weight + 'kg' : '未量體重'})`;
+                        opt.textContent = `🐶 ${pet.name} (${pet.species || '寵物'} / ${pet.weight ? formatPetWeight(pet.weight) + 'kg' : '未量體重'})`;
                         petSelect.appendChild(opt);
                     });
                 }
@@ -4680,7 +4723,7 @@ bootstrapAuthentication();
         return;
     }
 
-    dataList.forEach(item => {
+    dataList.slice(0, 100).forEach(item => {
         const owner = item.owner;
         const ownerPets = item.pets;
 
@@ -4698,7 +4741,7 @@ bootstrapAuthentication();
                 petsHtml += `
                     <div class="nested-pet-tag">
                         <span style="cursor: pointer;" title="點擊直接看診" onclick="startConsultationById('${pet.id}', '${pet.microchip || ''}', '${pet.name}', '${owner.id}', ${pet.weight || 0}, '${owner.name}', '${pet.birthday || ''}', '${pet.gender || ''}', '${pet.species || '貓'}', '${pet.breed || ''}')">
-                            🐾 <b>${pet.name}</b> ${speciesBadge} ${breedStr} (${ageStr} | ${pet.weight !== null ? pet.weight + 'kg' : '未量體重'}) ${pet.microchip ? '[' + pet.microchip + ']' : ''}
+                            🐾 <b>${pet.name}</b> ${speciesBadge} ${breedStr} (${ageStr} | ${pet.weight !== null ? formatPetWeight(pet.weight) + 'kg' : '未量體重'}) ${pet.microchip ? '[' + pet.microchip + ']' : ''}
                         </span>
                         <div class="pet-actions">
                             <button class="pet-btn pet-btn-info" title="檢視寵物詳細資料與精確年齡" onclick="openPetDetailModal('${petDataEncoded}', '${ownerNameEncoded}')">詳</button>
@@ -4714,11 +4757,11 @@ bootstrapAuthentication();
         }
         petsHtml += '</div>';
 
-        const ownerCodeBadge = owner.owner_code ? `<span style="background: #0284c7; color: white; padding: 2px 6px; border-radius: 4px; font-size: 0.8rem; font-weight: bold; margin-right: 6px;">${owner.owner_code}</span>` : '<span style="color: #94a3b8; font-size: 0.8rem;">(未填編號)</span>';
+        const ownerCodeBadge = `<span style="background:#175b76;color:#fff;padding:2px 6px;border-radius:4px;margin-right:6px;">新 ${owner.system_code || '待產生'}</span>` + (owner.owner_code ? `<span style="background:#e1eff5;color:#175b76;padding:2px 6px;border-radius:4px;margin-right:6px;">舊 ${owner.owner_code}</span>` : '');
 
         const tr = document.createElement('tr');
         tr.innerHTML = `
-            <td>${ownerCodeBadge}<b>${owner.name}</b></td>
+            <td style="min-width:190px;"><div style="white-space:nowrap;">${ownerCodeBadge}</div><div style="margin-top:5px;"><b>${owner.name}</b></div></td>
             <td>手機: ${owner.mobile || ''} / 市話: ${owner.phone || '-'}<br><small style="color:#64748b;">${owner.address || '-'}</small></td>
             <td><span style="color: #475569; font-size: 0.85rem;">${owner.notes || '-'}</span></td>
             <td>${petsHtml}</td>
@@ -4730,6 +4773,14 @@ bootstrapAuthentication();
         `;
         tbody.appendChild(tr);
     });
+    if (dataList.length > 100) {
+        const note = document.createElement('tr');
+        const cell = document.createElement('td');
+        cell.colSpan = 5;
+        cell.textContent = `符合 ${dataList.length} 組，先顯示前 100 組；請縮小搜尋範圍。`;
+        note.appendChild(cell);
+        tbody.appendChild(note);
+    }
 }
 
         function openPetDetailModal(petDataEncoded, ownerNameEncoded) {
@@ -4742,11 +4793,12 @@ bootstrapAuthentication();
                     <div><b>🐾 寵物名字：</b><br>${pet.name || '-'}</div>
                     <div><b>👤 所屬飼主：</b><br>${ownerName || '-'}</div>
                     <div><b>🏷️ 晶片號碼：</b><br>${pet.microchip || '未植入晶片'}</div>
+                    <div><b>舊系統寵物資料號：</b><br>${pet.legacy_source_no || '無'}</div>
                     <div><b>🏷️ 寵物種類 / 品種：</b><br>${pet.species || '未知'} / ${pet.breed || '未填寫'}</div>
                     <div><b>🎂 出生日期：</b><br>${pet.birthday || '未填寫'}</div>
                     <div><b>⏳ 精確計算年齡：</b><br><span style="color: #0369a1; font-weight: bold; font-size: 1.05rem;">${exactAge}</span></div>
                     <div><b>⚧ 性別狀態：</b><br>${pet.gender || '未填寫'}</div>
-                    <div><b>⚖️ 目前體重：</b><br>${pet.weight !== null && pet.weight !== undefined ? pet.weight + ' kg' : '未量體重'}</div>
+                    <div><b>⚖️ 目前體重：</b><br>${pet.weight !== null && pet.weight !== undefined ? formatPetWeight(pet.weight) + ' kg' : '未量體重'}</div>
                 </div>
             `;
 
@@ -4755,20 +4807,49 @@ bootstrapAuthentication();
             document.getElementById('genericDetailModal').style.display = 'flex';
         }
 
-        function filterIntegratedTable() {
+        function formatPetWeight(value) {
+            if (value === null || value === undefined || value === '') return '';
+            const number = Number(value);
+            return Number.isFinite(number)
+                ? new Intl.NumberFormat('zh-TW', { maximumFractionDigits: 3 }).format(number)
+                : String(value);
+        }
+
+        let integratedSearchRequest = 0;
+        async function filterIntegratedTable() {
             const keyword = document.getElementById('ownerPetTableSearch').value.trim().toLowerCase();
+            const requestNumber = ++integratedSearchRequest;
             if(!keyword) { renderIntegratedTable(globalOwnersPetsData); return; }
 
             const filtered = globalOwnersPetsData.filter(item => {
                 const ownerName = (item.owner.name || '').toLowerCase();
                 const ownerCode = (item.owner.owner_code || '').toLowerCase();
+                const systemCode = (item.owner.system_code || '').toLowerCase();
                 const ownerMobile = (item.owner.mobile || '').toLowerCase();
                 const ownerPhone = (item.owner.phone || '').toLowerCase();
                 const ownerNotes = (item.owner.notes || '').toLowerCase();
-                const matchOwner = ownerName.includes(keyword) || ownerCode.includes(keyword) || ownerMobile.includes(keyword) || ownerPhone.includes(keyword) || ownerNotes.includes(keyword);
+                const matchOwner = ownerName.includes(keyword) || ownerCode.includes(keyword) || systemCode.includes(keyword) || ownerMobile.includes(keyword) || ownerPhone.includes(keyword) || ownerNotes.includes(keyword);
                 const matchPet = item.pets.some(p => (p.name || '').toLowerCase().includes(keyword) || (p.microchip || '').toLowerCase().includes(keyword) || (p.breed || '').toLowerCase().includes(keyword) || (p.species || '').toLowerCase().includes(keyword));
                 return matchOwner || matchPet;
             });
+            if (filtered.length === 0 && /^[a-z]\d{4}$/.test(keyword)) {
+                const { data, error } = await _supabase.from('owners')
+                    .select('*, pets (*)')
+                    .eq('tenant_id', CURRENT_TENANT_ID)
+                    .eq('system_code', keyword.toUpperCase())
+                    .limit(1);
+                if (requestNumber !== integratedSearchRequest) return;
+                if (error) {
+                    console.error('按新編號查詢失敗：', error);
+                    renderIntegratedTable([]);
+                    return;
+                }
+                if (data && data.length) {
+                    const owner = data[0];
+                    renderIntegratedTable([{ owner, pets: owner.pets || [] }]);
+                    return;
+                }
+            }
             renderIntegratedTable(filtered);
         }
 
@@ -4807,6 +4888,7 @@ bootstrapAuthentication();
                 return; 
             }
             const newOwnerId = ownerData[0].id;
+            const newSystemCode = ownerData[0].system_code || '';
 
             const { data: petData, error: petError } = await _supabase.from('pets').insert([{
                 tenant_id: CURRENT_TENANT_ID, owner_id: newOwnerId, name: petName, microchip: microchip || null, birthday: birthday || null, species, breed, gender, weight
@@ -4864,7 +4946,7 @@ bootstrapAuthentication();
                 alert('已成功建立資料，即將直接進入醫療門診！');
                 startConsultationById(newPetObj.id, newPetObj.microchip, newPetObj.name, newPetObj.owner_id, newPetObj.weight, newPetObj.owner_name, newPetObj.birthday, newPetObj.gender, newPetObj.species, newPetObj.breed);
             } else {
-                alert('已成功建立飼主與關聯寵物！');
+                alert(`已建立飼主與寵物。新系統編號：${newSystemCode || '請重新整理查看'}`);
             }
         }
 
@@ -4899,7 +4981,7 @@ bootstrapAuthentication();
         }
 
         async function editOwner(ownerId, currentCode, currentName, currentMobile, currentPhone, currentAddress, currentNotes) {
-            const newCode = prompt('修改客戶編號：', currentCode);
+            const newCode = prompt('修改舊紙本病歷號（新系統編號由系統管理）：', currentCode);
             if (newCode === null) return;
             const newName = prompt('修改飼主姓名：', currentName);
             if (newName === null) return;
@@ -5100,13 +5182,13 @@ bootstrapAuthentication();
                 const query = document.getElementById('globalSearchInput').value.trim();
                 if (!query) return;
 
-                let { data: petsData } = await _supabase.from('pets').select('*, owners(id, name, phone, mobile, owner_code)').eq('tenant_id', CURRENT_TENANT_ID).or(`name.ilike.%${query}%,microchip.ilike.%${query}%`);
+                let { data: petsData } = await _supabase.from('pets').select('*, owners(id, name, phone, mobile, owner_code, system_code)').eq('tenant_id', CURRENT_TENANT_ID).or(`name.ilike.%${query}%,microchip.ilike.%${query}%`);
                 let matchedPets = petsData || [];
                 if (matchedPets.length === 0) {
-                    const { data: ownersData } = await _supabase.from('owners').select('id').eq('tenant_id', CURRENT_TENANT_ID).or(`name.ilike.%${query}%,phone.ilike.%${query}%,mobile.ilike.%${query}%,owner_code.ilike.%${query}%`);
+                    const { data: ownersData } = await _supabase.from('owners').select('id').eq('tenant_id', CURRENT_TENANT_ID).or(`name.ilike.%${query}%,phone.ilike.%${query}%,mobile.ilike.%${query}%,owner_code.ilike.%${query}%,system_code.ilike.%${query}%`);
                     if (ownersData && ownersData.length > 0) {
                         const ownerIds = ownersData.map(o => o.id);
-                        const { data: petsByOwner } = await _supabase.from('pets').select('*, owners(id, name, phone, mobile, owner_code)').in('owner_id', ownerIds);
+                        const { data: petsByOwner } = await _supabase.from('pets').select('*, owners(id, name, phone, mobile, owner_code, system_code)').in('owner_id', ownerIds);
                         if (petsByOwner) matchedPets = petsByOwner;
                     }
                 }
@@ -5657,6 +5739,7 @@ bootstrapAuthentication();
                     hiddenRapidPetId.value = currentPetId;
                 }
             }
+            updateRapidItemsForPet();
         }
 
         function clearRapidFormInputs() {
@@ -5673,6 +5756,7 @@ bootstrapAuthentication();
             if (rapidTestBatch) rapidTestBatch.value = '';
             if (rapidTestNotes) rapidTestNotes.value = '';
             if (rapidSubResultsList) rapidSubResultsList.innerHTML = '<span style="color: #64748b;">請先選擇快篩項目...</span>';
+            updateRapidItemsForPet();
         }
 
         function backToMedicalFromRapid() {
@@ -5911,7 +5995,7 @@ bootstrapAuthentication();
             document.getElementById('rxDoctorName').innerText = clinicSettings.director;
 
             document.getElementById('rxPetName').innerText = currentPetName || '指定病患';
-            document.getElementById('rxPetWeight').innerText = currentPetWeight || '未知';
+            document.getElementById('rxPetWeight').innerText = currentPetWeight ? formatPetWeight(currentPetWeight) : '未知';
             document.getElementById('rxPetChip').innerText = currentPetMicrochip || '無晶片';
             document.getElementById('rxDate').innerText = dateStr.split(' ')[0];
             document.getElementById('rxChiefComplaint').value = chiefComplaint || '無特別主訴';
@@ -5975,7 +6059,7 @@ bootstrapAuthentication();
             document.getElementById('rxClinicMeta').innerText = `電話: ${clinicSettings.phone} | 地址: ${clinicSettings.address}`;
             document.getElementById('rxDoctorName').innerText = clinicSettings.director;
             document.getElementById('rxPetName').innerText = currentPetName || '未指定';
-            document.getElementById('rxPetWeight').innerText = currentPetWeight || '0';
+            document.getElementById('rxPetWeight').innerText = formatPetWeight(currentPetWeight || 0);
             document.getElementById('rxPetChip').innerText = currentPetMicrochip || '無晶片';
             document.getElementById('rxDate').innerText = new Date().toLocaleDateString();
             document.getElementById('rxChiefComplaint').value = document.getElementById('medicalDiagnosis').value || '無特別主訴';
@@ -6440,7 +6524,7 @@ bootstrapAuthentication();
                 const tr = document.createElement('tr');
                 tr.innerHTML = `
                     <td>${pet.microchip || '(無)'}</td>
-                    <td><b>${pet.name}</b> (${pet.weight || 0} kg)</td>
+                    <td><b>${pet.name}</b> (${formatPetWeight(pet.weight || 0)} kg)</td>
                     <td>${ownerName}</td>
                     <td><span style="background: #f1f5f9; padding: 2px 6px; border-radius: 4px; font-weight: bold;">${sessionStr}</span><br><small style="color:#0369a1;">${doctorStr}</small></td>
                     <td><b>${appointmentTimeStr}</b>${checkInTimeStr ? `<br><small style="color:#059669;">報到：${checkInTimeStr}</small>` : `<br><small style="color:#94a3b8;">尚未報到</small>`}</td>
@@ -6903,6 +6987,13 @@ bootstrapAuthentication();
             const notes = document.getElementById('rapidTestNotes').value;
 
             if(!petId || !testItem) { alert('請完整選擇快篩對象與快篩項目！'); return; }
+            const selectedPet = allPetsListForDropdown.find(item => item.id === petId);
+            const selectedType = loadedRapidTypesMap[testItem];
+            if (!selectedPet || !selectedType || (selectedType.target !== '通用' && selectedType.target !== selectedPet.species)) {
+                alert('快篩項目與寵物物種不符，請重新選擇。');
+                updateRapidItemsForPet();
+                return;
+            }
 
             const subSelects = document.querySelectorAll('.rapid-sub-result-select');
             let resultsObj = {};
