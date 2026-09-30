@@ -436,6 +436,7 @@
         .legacy-archive-section { margin: 12px 0; padding: 12px; background: #fff; border: 1px solid #e2e8f0; border-radius: 8px; }
         .legacy-archive-section h4 { margin: 0 0 8px; }
         .legacy-archive-text { white-space: pre-wrap; overflow-wrap: anywhere; max-height: 440px; overflow-y: auto; line-height: 1.7; font-family: inherit; margin: 0; color: #334155; }
+            #clinicBackupProgress[hidden] { display:none !important; }
     </style>
     </head>
 <body>
@@ -545,6 +546,7 @@
 
             <li class="nav-section-label" style="pointer-events:none; cursor:default; margin-top:10px; padding:10px 12px 5px; font-size:0.72rem; font-weight:800; letter-spacing:.08em; color:#94a3b8; background:transparent;">系統</li>
             <li id="nav-clinic" onclick="switchTab('clinic')">⚙️ 系統設定及醫院資料</li>
+            <li id="nav-backup" onclick="switchTab('backup')">💾 資料備份</li>
             <li id="nav-staff_management" onclick="switchTab('staff_management')">👥 人員與權限</li>
             <li id="nav-my_password" onclick="switchTab('my_password')">🔑 修改我的密碼</li>
             <li
@@ -561,7 +563,7 @@
     <div class="main-container">
         <header>
             <div class="header-left">
-                <h3>首頁管理介面 <small style="color:#64748b;font-size:12px">版本 18.7.3 搜尋點選修正版 v2</small></h3>
+                <h3>首頁管理介面 <small style="color:#64748b;font-size:12px">版本 18.7.3 一鍵備份測試 v3</small></h3>
                 <input type="text" id="globalSearchInput" class="search-box" placeholder="全域搜尋 寵物 / 晶片 / 飼主 / 電話 / 新舊編號..." onkeydown="handleGlobalSearch(event)" oninput="closeGlobalSearchResults()">
             </div>
             <div class="tenant-badge" id="currentTenantBadge">醫院代碼 (tenant_id):</div>
@@ -1390,6 +1392,26 @@
                     </div>
                     <div class="form-group" style="margin-top: 15px;"><label>醫院地址</label><input type="text" id="clinicAddressSet" value="台北市中正區動物路一段88號"></div>
                     <button style="margin-top: 15px;" onclick="saveClinicSettings()">儲存醫院設定 (同步寫入 Supabase)</button>
+                </div>
+            </div>
+
+            <div id="backup" class="tab-content">
+                <div class="card" style="max-width:1000px;">
+                    <h2>💾 院內資料備份（管理者專用）</h2>
+                    <p style="color:#475569;line-height:1.7;">備份本院飼主、寵物、新舊病歷、檢查、收費、庫存及相關資料。請在電腦上操作，完成後下載到您的下載資料夾。</p>
+                    <p style="color:#64748b;font-size:.9rem;line-height:1.7;">這是院內資料備份，包含人員權限資料；登入帳號密碼、程式及 Supabase 系統設定另行保存。目前版本會核對附件為零；如偵測到影像或附件，會停止並提示升級。</p>
+                    <button id="clinicBackupStart" type="button" onclick="startClinicDataBackup()">💾 一鍵備份本院資料</button>
+                    <progress id="clinicBackupProgress" max="100" hidden style="display:block;width:100%;margin:16px 0;"></progress>
+                    <p id="clinicBackupStatus" role="status" aria-live="polite" style="line-height:1.7;">尚未開始備份。</p>
+                    <a id="clinicBackupDownload" hidden style="font-weight:bold;" download>再次下載本次備份檔</a>
+                    <details style="margin:18px 0;"><summary style="cursor:pointer;">主要資料筆數</summary>
+                        <table><thead><tr><th>資料</th><th>筆數</th></tr></thead><tbody id="clinicBackupSummaryBody"></tbody></table>
+                    </details>
+                    <hr style="border:0;border-top:1px solid #e2e8f0;margin:24px 0;">
+                    <h3>檢查備份檔</h3>
+                    <p style="color:#64748b;">選取剛下載的 .json.gz 或 .json，核對校驗碼、筆數及資料關聯。檢查在這台電腦完成，不會上傳或還原到正式資料庫。</p>
+                    <input type="file" accept=".gz,.json" onchange="checkClinicBackupFile(event)" aria-label="選擇要檢查的備份檔">
+                    <p id="clinicBackupCheckStatus" role="status" aria-live="polite" style="line-height:1.7;">尚未選擇檔案。</p>
                 </div>
             </div>
 
@@ -2464,6 +2486,7 @@
     const staffNav = document.getElementById('nav-staff_management');
 
     const isAdmin = CURRENT_PROFILE?.role === 'admin';
+    document.getElementById('nav-backup').style.display = isAdmin ? '' : 'none';
     let roleBadge=document.getElementById('genblueRoleBadge');
     if (!roleBadge) {
         roleBadge=document.createElement('span');
@@ -2643,6 +2666,7 @@ async function handleSupabaseLogin() {
 }
 
 async function logoutSupabase() {
+    cancelClinicBackup();
     closeGlobalSearchResults();
     resetLegacyMedicalArchive();
     const { error } = await _supabase.auth.signOut();
@@ -3002,7 +3026,7 @@ bootstrapAuthentication();
         });
 
         function switchTab(tabId) {
-            if (['staff_management','audit_logs','clinic'].includes(tabId) && CURRENT_PROFILE?.role !== 'admin') { alert('需要管理者權限'); return; }
+            if (['staff_management','audit_logs','clinic','backup'].includes(tabId) && CURRENT_PROFILE?.role !== 'admin') { alert('需要管理者權限'); return; }
             if (tabId==='regulatory_reports' && CURRENT_PROFILE?.role!=='admin') { alert('需要管理者權限'); return; }
             if (['invoices','reports'].includes(tabId) &&
                 !(CURRENT_PROFILE?.role==='admin' || (CURRENT_PROFILE?.permission_checkout ??
@@ -5312,6 +5336,188 @@ bootstrapAuthentication();
             switchTab('appointments');
             renderAppointmentTable(activeAppointmentsList);
         }
+
+        // 一鍵資料備份 v1：完整原始 JSON 以文字保存，避免數值精度改變。
+        const CLINIC_BACKUP_TABLES = ["appointments", "audit_logs", "breeds", "categories", "clinic_settings", "clinic_trials", "controlled_drug_counts", "diagnostic_devices", "diagnostic_import_jobs", "diagnostic_results", "imaging_assets", "imaging_share_tokens", "imaging_studies", "inpatients", "inventory_movements", "invoice_items", "invoices", "item_categories", "items", "lab_reports", "lab_tests", "legacy_medical_histories", "medical_records", "medicines", "owner_code_counters", "owners", "pets", "rapid_test_records", "rapid_types", "regulated_drug_transactions", "regulated_lots", "regulatory_report_batch_transactions", "regulatory_report_batches", "report_export_profiles", "user_profiles", "vaccination_records", "vaccine_types"];
+        let clinicBackupBusy = false;
+        let clinicBackupController = null;
+        let clinicBackupDownloadUrl = null;
+
+        function validateClinicBackupSnapshot(snapshot, expectedTenant) {
+            if (!snapshot || snapshot.format !== 'genblue-clinic-snapshot' || snapshot.format_version !== 1) throw new Error('不是支援的 genblue 醫院資料備份。');
+            if (!snapshot.tenant_id || (expectedTenant && snapshot.tenant_id !== expectedTenant)) throw new Error('备份的醫院代碼與目前登入醫院不同。');
+            if (!snapshot.tables || snapshot.table_count !== CLINIC_BACKUP_TABLES.length ||
+                Object.keys(snapshot.tables).sort().join('|') !== [...CLINIC_BACKUP_TABLES].sort().join('|')) throw new Error('資料表範圍不完整或版本不同。');
+            if (snapshot.attachments?.mode !== 'verified_none_v1' || snapshot.attachments.patient_file_references !== 0 || snapshot.attachments.non_html_storage_objects !== 0) throw new Error('此備份含尚未支援的附件範圍。');
+            let total = 0;
+            const indexes = new Map();
+            for (const name of CLINIC_BACKUP_TABLES) {
+                const table = snapshot.tables[name];
+                if (!Array.isArray(table.rows) || !Number.isSafeInteger(table.row_count) || table.row_count !== table.rows.length ||
+                    !Array.isArray(table.columns) || !table.columns.length || !Array.isArray(table.foreign_keys) || !Array.isArray(table.constraints)) throw new Error(name + ' 的結構或筆數不完整。');
+                const columns = table.columns.map(c => c.name).sort().join('|');
+                const child = ['invoice_items','regulatory_report_batch_transactions'].includes(name);
+                if (table.scope !== (child ? 'parent_tenant' : 'tenant_id')) throw new Error(name + ' 的醫院範圍無效。');
+                const pk = table.constraints.find(c => c.kind === 'p');
+                const match = pk?.definition?.match(/PRIMARY KEY \(([^)]+)\)/);
+                const pkColumns = match ? match[1].split(',').map(k=>k.trim().replaceAll('"','')) : [];
+                const keys = new Set();
+                for (const row of table.rows) {
+                    if (!row || Array.isArray(row) || Object.keys(row).sort().join('|') !== columns) throw new Error(name + ' 有缺少或多出的欄位。');
+                    if (!child && String(row.tenant_id) !== snapshot.tenant_id) throw new Error(name + ' 有其他醫院的資料。');
+                    if (pkColumns.length) {
+                        if (pkColumns.some(k=>row[k] == null)) throw new Error(name + ' 的主鍵為空。');
+                        const key = JSON.stringify(pkColumns.map(k=>row[k]));
+                        if (keys.has(key)) throw new Error(name + ' 有重複主鍵。');
+                        keys.add(key);
+                    }
+                }
+                total += table.row_count;
+            }
+            if (total !== snapshot.total_rows) throw new Error('總筆數核對不一致。');
+            for (const name of CLINIC_BACKUP_TABLES) {
+                for (const fk of snapshot.tables[name].foreign_keys) {
+                    if (fk.parent_schema === 'auth' && fk.parent_table === 'users') continue;
+                    const parent = snapshot.tables[fk.parent_table];
+                    if (fk.parent_schema !== 'public' || !parent || !Array.isArray(fk.columns) || !fk.columns.length || fk.columns.length !== fk.parent_columns?.length) throw new Error(name + ' 有無法核對的關聯。');
+                    const indexKey = JSON.stringify([fk.parent_table, fk.parent_columns]);
+                    if (!indexes.has(indexKey)) indexes.set(indexKey, new Set(parent.rows.map(row=>JSON.stringify(fk.parent_columns.map(k=>row[k])))));
+                    for (const row of snapshot.tables[name].rows) {
+                        const values = fk.columns.map(k=>row[k]);
+                        if (values.some(v=>v == null)) continue;
+                        if (!indexes.get(indexKey).has(JSON.stringify(values))) throw new Error(name + ' 有找不到對應資料的關聯。');
+                    }
+                }
+            }
+            return {tenantId:snapshot.tenant_id, snapshotAt:snapshot.snapshot_at, tableCount:snapshot.table_count, totalRows:total};
+        }
+
+        async function clinicBackupSha256(text) {
+            if (!globalThis.crypto?.subtle) throw new Error('此瀏覽器不支援校驗，請使用最新版 Chrome 或 Edge。');
+            const bytes = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(text));
+            return Array.from(new Uint8Array(bytes), b=>b.toString(16).padStart(2,'0')).join('');
+        }
+
+        function showClinicBackupSummary(snapshot) {
+            const body = document.getElementById('clinicBackupSummaryBody');
+            body.replaceChildren();
+            const keyTables = [['飼主','owners'],['寵物','pets'],['舊系統病歷','legacy_medical_histories'],['新系統病歷','medical_records'],['收費單','invoices'],['收費明細','invoice_items'],['藥品','medicines'],['商品','items'],['編號計數器','owner_code_counters']];
+            for (const [label,name] of keyTables) {
+                const row = document.createElement('tr');
+                for (const value of [label, snapshot.tables[name].row_count.toLocaleString()]) {
+                    const cell = document.createElement('td'); cell.textContent = value; row.append(cell);
+                }
+                body.append(row);
+            }
+        }
+
+        function cancelClinicBackup() {
+            clinicBackupController?.abort();
+            if (clinicBackupDownloadUrl) { URL.revokeObjectURL(clinicBackupDownloadUrl); clinicBackupDownloadUrl = null; }
+            const link = document.getElementById('clinicBackupDownload');
+            if (link) { link.hidden = true; link.removeAttribute('href'); }
+            document.getElementById('clinicBackupSummaryBody')?.replaceChildren();
+        }
+
+        async function startClinicDataBackup() {
+            if (clinicBackupBusy) return;
+            if (CURRENT_PROFILE?.role !== 'admin' || !CURRENT_TENANT_ID) { alert('只有登入本院的管理者可以備份。'); return; }
+            const tenant = CURRENT_TENANT_ID;
+            const status = document.getElementById('clinicBackupStatus');
+            const button = document.getElementById('clinicBackupStart');
+            const progress = document.getElementById('clinicBackupProgress');
+            const link = document.getElementById('clinicBackupDownload');
+            cancelClinicBackup();
+            clinicBackupBusy = true;
+            button.disabled = true;
+            progress.hidden = false;
+            progress.removeAttribute('value');
+            status.style.color = '#475569';
+            status.textContent = '正在取得同一時間點的院內資料，請保留此頁面…';
+            const controller = new AbortController();
+            clinicBackupController = controller;
+            const timer = setTimeout(()=>controller.abort(), 180000);
+            try {
+                const {data, error} = await _supabase.rpc('genblue_export_clinic_backup_v1', {p_expected_tenant:tenant}).abortSignal(controller.signal);
+                if (error) {
+                    if (error.code === 'PGRST202' || /Could not find the function/i.test(error.message || '')) throw new Error('備份函式尚未安裝，請先完成一次性的安裝 SQL。');
+                    throw new Error(error.message || '資料讀取失敗');
+                }
+                if (controller.signal.aborted || tenant !== CURRENT_TENANT_ID || CURRENT_PROFILE?.role !== 'admin') throw new Error('備份已取消或登入狀態已改變。');
+                if (typeof data !== 'string') throw new Error('伺服器備份版本不符，請確認安裝的是 v1 函式。');
+                status.textContent = '正在核對資料表、筆數與病患關聯…'; progress.value = 55;
+                const snapshot = JSON.parse(data);
+                validateClinicBackupSnapshot(snapshot, tenant);
+                const hash = await clinicBackupSha256(data);
+                const envelope = {format:'genblue-clinic-backup-file',format_version:1,sha256:hash,payload_json:data};
+                const json = JSON.stringify(envelope);
+                status.textContent = '核對通過，正在製作備份檔…'; progress.value = 80;
+                let blob = new Blob([json], {type:'application/json'});
+                let extension = '.json';
+                if (typeof CompressionStream !== 'undefined') {
+                    blob = await new Response(blob.stream().pipeThrough(new CompressionStream('gzip'))).blob();
+                    extension = '.json.gz';
+                }
+                if (controller.signal.aborted || tenant !== CURRENT_TENANT_ID || CURRENT_PROFILE?.role !== 'admin') throw new Error('備份已取消或登入狀態已改變。');
+                clinicBackupDownloadUrl = URL.createObjectURL(blob);
+                link.href = clinicBackupDownloadUrl;
+                const stamp = new Date(snapshot.snapshot_at).toLocaleString('sv-SE', {timeZone:'Asia/Taipei'}).replace(/[^0-9]/g,'');
+                link.download = 'genblue_院內資料備份_' + tenant.replace(/[^A-Za-z0-9_-]/g,'_') + '_' + stamp + extension;
+                link.hidden = false;
+                showClinicBackupSummary(snapshot);
+                progress.value = 100;
+                status.style.color = '#059669';
+                status.textContent = `備份檔已產生（${snapshot.table_count} 張表、${snapshot.total_rows.toLocaleString()} 筆、${(blob.size/1048576).toFixed(1)} MB），已開始下載。請確認下載完成，再用下方「檢查備份檔」核對。`;
+                link.click();
+            } catch (error) {
+                progress.hidden = true;
+                status.style.color = '#dc2626';
+                status.textContent = '本次備份未完成：' + (controller.signal.aborted ? '已取消或等候逾時，請重新操作。' : (error.message || String(error)));
+            } finally {
+                clearTimeout(timer);
+                clinicBackupBusy = false;
+                button.disabled = false;
+                if (clinicBackupController === controller) clinicBackupController = null;
+            }
+        }
+
+        async function checkClinicBackupFile(event) {
+            const file = event.target.files?.[0];
+            const status = document.getElementById('clinicBackupCheckStatus');
+            if (!file) return;
+            if (CURRENT_PROFILE?.role !== 'admin' || !CURRENT_TENANT_ID) { status.textContent = '請先登入本院管理者帳號。'; return; }
+            const tenant = CURRENT_TENANT_ID;
+            status.style.color = '#475569'; status.textContent = '正在檢查備份檔…';
+            try {
+                if (file.size > 512*1048576) throw new Error('檔案超過此測試版可檢查的大小。');
+                let stream = file.stream();
+                if (/\.gz$/i.test(file.name)) {
+                    if (typeof DecompressionStream === 'undefined') throw new Error('此瀏覽器無法讀取壓縮檔，請使用最新版 Chrome 或 Edge。');
+                    stream = stream.pipeThrough(new DecompressionStream('gzip'));
+                }
+                const reader = stream.getReader(); const chunks = []; let length = 0;
+                while (true) {
+                    const {value,done} = await reader.read(); if (done) break;
+                    length += value.byteLength;
+                    if (length > 512*1048576) { await reader.cancel(); throw new Error('解壓後檔案過大。'); }
+                    chunks.push(value);
+                }
+                const envelope = JSON.parse(await new Blob(chunks).text());
+                if (envelope.format !== 'genblue-clinic-backup-file' || envelope.format_version !== 1 || typeof envelope.payload_json !== 'string') throw new Error('不是 genblue 的備份檔。');
+                if (await clinicBackupSha256(envelope.payload_json) !== envelope.sha256) throw new Error('備份校驗碼不符，檔案可能不完整或已變更。');
+                const snapshot = JSON.parse(envelope.payload_json);
+                validateClinicBackupSnapshot(snapshot, tenant);
+                if (tenant !== CURRENT_TENANT_ID || CURRENT_PROFILE?.role !== 'admin') throw new Error('登入狀態已改變，請重新檢查。');
+                showClinicBackupSummary(snapshot);
+                status.style.color = '#059669';
+                status.textContent = `檔案檢查通過：${snapshot.table_count} 張表、${snapshot.total_rows.toLocaleString()} 筆，醫院代碼 ${snapshot.tenant_id}。這是完整性檢查；此份真實資料的隔離還原測試尚待完成。`;
+            } catch (error) {
+                status.style.color = '#dc2626'; status.textContent = '檔案檢查失敗：' + (error.message || String(error));
+            } finally { event.target.value = ''; }
+        }
+        window.addEventListener('beforeunload', event=>{
+            if (clinicBackupBusy) { event.preventDefault(); event.returnValue = ''; }
+        });
 
         function calculateProductTotal() {
             let subtotal = 0;
