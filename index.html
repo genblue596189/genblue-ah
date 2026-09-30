@@ -429,7 +429,14 @@
     .staff-card-actions input[type=password] { width:220px;max-width:100%; }
     .staff-card-actions button { white-space:nowrap; }
     @media(max-width:650px) { .staff-permission-grid { grid-template-columns:1fr; } .staff-card { padding:16px; } }
-</style>
+
+        .legacy-archive { margin: 16px 0; padding: 16px; border: 1px solid #cbd5e1; border-radius: var(--radius); background: #f8fafc; }
+        .legacy-archive summary { cursor: pointer; font-weight: bold; color: #334155; padding: 4px 0; }
+        .legacy-archive-status { margin: 12px 0; color: #475569; font-size: .9rem; }
+        .legacy-archive-section { margin: 12px 0; padding: 12px; background: #fff; border: 1px solid #e2e8f0; border-radius: 8px; }
+        .legacy-archive-section h4 { margin: 0 0 8px; }
+        .legacy-archive-text { white-space: pre-wrap; overflow-wrap: anywhere; max-height: 440px; overflow-y: auto; line-height: 1.7; font-family: inherit; margin: 0; color: #334155; }
+    </style>
     </head>
 <body>
     <!-- Supabase 登入畫面 -->
@@ -554,11 +561,23 @@
     <div class="main-container">
         <header>
             <div class="header-left">
-                <h3>首頁管理介面 <small style="color:#64748b;font-size:12px">版本 18.7.3 測試版</small></h3>
-                <input type="text" id="globalSearchInput" class="search-box" placeholder="全域搜尋 寵物 / 晶片 / 飼主 / 電話 / 新舊編號..." onkeydown="handleGlobalSearch(event)">
+                <h3>首頁管理介面 <small style="color:#64748b;font-size:12px">版本 18.7.3 搜尋點選修正版 v2</small></h3>
+                <input type="text" id="globalSearchInput" class="search-box" placeholder="全域搜尋 寵物 / 晶片 / 飼主 / 電話 / 新舊編號..." onkeydown="handleGlobalSearch(event)" oninput="closeGlobalSearchResults()">
             </div>
             <div class="tenant-badge" id="currentTenantBadge">醫院代碼 (tenant_id):</div>
         </header>
+
+        <section id="globalSearchResultsPanel" class="card" hidden style="margin:16px 20px 0;">
+            <div style="display:flex;justify-content:space-between;align-items:center;gap:12px;">
+                <h3 style="margin:0;">搜尋結果：請確認飼主後選擇病患</h3>
+                <button type="button" class="btn-secondary" onclick="closeGlobalSearchResults()">關閉</button>
+            </div>
+            <p id="globalSearchResultsStatus" role="status" aria-live="polite" style="color:#475569;margin:12px 0;"></p>
+            <div style="overflow:auto;max-height:420px;">
+                <table><thead><tr><th>寵物</th><th>種類／品種</th><th>新編號／舊病歷號</th><th>飼主</th><th>聯絡電話</th><th>晶片</th><th>操作</th></tr></thead>
+                <tbody id="globalSearchResultsBody"></tbody></table>
+            </div>
+        </section>
 
         <div class="content-area">
 
@@ -816,6 +835,14 @@
                             請先從首頁預約報到列表選擇寵物，系統將自動載入其所有歷史紀錄。
                         </div>
                     </div>
+
+                    <details id="legacyMedicalArchive" class="legacy-archive" ontoggle="toggleLegacyMedicalArchive()">
+                        <summary>📚 舊系統病歷（點此展開查閱）</summary>
+                        <p style="font-size:.85rem;color:#64748b;margin:10px 0;">保留舊系統完整病歷、處置、用藥備註及住院記錄，供看診時查閱。</p>
+                        <div id="legacyMedicalArchiveStatus" class="legacy-archive-status" role="status" aria-live="polite">請先選擇看診寵物。</div>
+                        <button id="legacyMedicalArchiveRetry" type="button" class="btn-secondary" hidden onclick="loadLegacyMedicalArchive()">重新載入</button>
+                        <div id="legacyMedicalArchiveContent"></div>
+                    </details>
 
                     <!-- 精細化處方開立區塊 -->
                     <div class="search-add-box">
@@ -2616,6 +2643,8 @@ async function handleSupabaseLogin() {
 }
 
 async function logoutSupabase() {
+    closeGlobalSearchResults();
+    resetLegacyMedicalArchive();
     const { error } = await _supabase.auth.signOut();
 
     if (error) {
@@ -5177,54 +5206,111 @@ bootstrapAuthentication();
             document.getElementById('footTotal').innerText = `NT$ ${totalRevenue.toLocaleString()}`;
         }
 
-        async function handleGlobalSearch(event) {
-            if (event.key === 'Enter') {
-                const query = document.getElementById('globalSearchInput').value.trim();
-                if (!query) return;
+        let globalSearchRequest = 0;
+        let globalSearchMatches = new Map();
+        let globalSearchTenant = null;
 
-                let { data: petsData } = await _supabase.from('pets').select('*, owners(id, name, phone, mobile, owner_code, system_code)').eq('tenant_id', CURRENT_TENANT_ID).or(`name.ilike.%${query}%,microchip.ilike.%${query}%`);
+        function closeGlobalSearchResults() {
+            globalSearchRequest++;
+            globalSearchMatches.clear();
+            globalSearchTenant = null;
+            document.getElementById('globalSearchResultsPanel').hidden = true;
+            document.getElementById('globalSearchResultsBody').replaceChildren();
+        }
+
+        async function handleGlobalSearch(event) {
+            if (event.key !== 'Enter' || event.isComposing || event.repeat) return;
+            event.preventDefault();
+            const query = document.getElementById('globalSearchInput').value.trim();
+            closeGlobalSearchResults();
+            if (!query || !CURRENT_TENANT_ID) return;
+            const request = globalSearchRequest;
+            const tenant = CURRENT_TENANT_ID;
+            const panel = document.getElementById('globalSearchResultsPanel');
+            const status = document.getElementById('globalSearchResultsStatus');
+            panel.hidden = false;
+            status.textContent = '正在搜尋…';
+            try {
+                const term = '"*' + query.replace(/\\/g, '\\\\').replace(/"/g, '\\"') + '*"';
+                const fields = '*, owners(id, name, phone, mobile, owner_code, system_code)';
+                const { data: petsData, error: petsError } = await _supabase.from('pets').select(fields)
+                    .eq('tenant_id', tenant).or(`name.ilike.${term},microchip.ilike.${term}`);
+                if (petsError) throw petsError;
                 let matchedPets = petsData || [];
                 if (matchedPets.length === 0) {
-                    const { data: ownersData } = await _supabase.from('owners').select('id').eq('tenant_id', CURRENT_TENANT_ID).or(`name.ilike.%${query}%,phone.ilike.%${query}%,mobile.ilike.%${query}%,owner_code.ilike.%${query}%,system_code.ilike.%${query}%`);
-                    if (ownersData && ownersData.length > 0) {
-                        const ownerIds = ownersData.map(o => o.id);
-                        const { data: petsByOwner } = await _supabase.from('pets').select('*, owners(id, name, phone, mobile, owner_code, system_code)').in('owner_id', ownerIds);
-                        if (petsByOwner) matchedPets = petsByOwner;
+                    const { data: ownersData, error: ownersError } = await _supabase.from('owners').select('id')
+                        .eq('tenant_id', tenant).or(`name.ilike.${term},phone.ilike.${term},mobile.ilike.${term},owner_code.ilike.${term},system_code.ilike.${term}`);
+                    if (ownersError) throw ownersError;
+                    if (ownersData?.length) {
+                        const { data: petsByOwner, error: ownerPetsError } = await _supabase.from('pets').select(fields)
+                            .eq('tenant_id', tenant).in('owner_id', ownersData.map(o => o.id));
+                        if (ownerPetsError) throw ownerPetsError;
+                        matchedPets = petsByOwner || [];
                     }
                 }
-
-                if (matchedPets.length > 0) {
-                    matchedPets.forEach(pet => {
-                        const ownerName = pet.owners ? pet.owners.name : '未知飼主';
-                        const ownerId = pet.owners ? pet.owners.id : '';
-                        
-                        let exists = activeAppointmentsList.some(p => p.id === pet.id);
-                        if (!exists) {
-                            activeAppointmentsList.push({
-                                id: pet.id,
-                                name: pet.name,
-                                microchip: pet.microchip || '',
-                                weight: pet.weight || 0,
-                                birthday: pet.birthday || '',
-                                gender: pet.gender || '',
-                                species: pet.species || '貓',
-                                breed: pet.breed || '',
-                                owner_id: ownerId,
-                                owner_name: ownerName,
-                                status: '候診中',
-                                session: '上午診',
-                                doctor: '張醫師',
-                                time: new Date().toLocaleTimeString()
-                            });
-                        }
-                    });
-                } else {
-                    alert('查無符合條件的病患！');
+                if (request !== globalSearchRequest || tenant !== CURRENT_TENANT_ID) return;
+                globalSearchTenant = tenant;
+                globalSearchMatches = new Map(matchedPets.map(pet => [pet.id, pet]));
+                const body = document.getElementById('globalSearchResultsBody');
+                body.replaceChildren();
+                status.textContent = matchedPets.length
+                    ? `找到 ${matchedPets.length} 隻寵物。請核對飼主及電話，再點該筆「加入候診」。`
+                    : '查無符合條件的病患，請換個關鍵字再搜尋。';
+                for (const pet of globalSearchMatches.values()) {
+                    const owner = pet.owners || {};
+                    const row = document.createElement('tr');
+                    const values = [pet.name || '-', [pet.species, pet.breed].filter(Boolean).join('／') || '-',
+                        '新：' + (owner.system_code || '-') + '\n舊：' + (owner.owner_code || '-'),
+                        owner.name || '未知飼主', [owner.mobile, owner.phone].filter(Boolean).join('／') || '無電話', pet.microchip || '-'];
+                    for (const value of values) {
+                        const cell = document.createElement('td');
+                        cell.textContent = value;
+                        cell.style.whiteSpace = 'pre-wrap';
+                        row.append(cell);
+                    }
+                    const action = document.createElement('td');
+                    const button = document.createElement('button');
+                    button.type = 'button';
+                    button.className = 'btn-success';
+                    const existing = activeAppointmentsList.find(p => p.id === pet.id);
+                    button.textContent = existing?.status === '已預約' ? '預約報到' : existing ? '已在列表' : '加入候診';
+                    button.disabled = !!existing && existing.status !== '已預約';
+                    button.addEventListener('click', () => addGlobalSearchPetToWaiting(pet.id));
+                    action.append(button);
+                    row.append(action);
+                    body.append(row);
                 }
-
-                switchTab('appointments');
-                renderAppointmentTable(activeAppointmentsList);
+            } catch (error) {
+                if (request !== globalSearchRequest || tenant !== CURRENT_TENANT_ID) return;
+                status.textContent = '搜尋失敗，請重新按 Enter 搜尋。';
+                console.error('全域搜尋失敗', error);
             }
+        }
+
+        async function addGlobalSearchPetToWaiting(petId) {
+            const pet = globalSearchMatches.get(petId);
+            if (!pet || globalSearchTenant !== CURRENT_TENANT_ID) return;
+            const canRegister = CURRENT_PROFILE?.role === 'admin' ||
+                (CURRENT_PROFILE?.permission_appointment ?? ['staff', 'doctor'].includes(CURRENT_PROFILE?.role));
+            if (!canRegister) { alert('此帳號沒有掛號權限。'); return; }
+            const existing = activeAppointmentsList.find(p => p.id === petId);
+            if (existing) {
+                closeGlobalSearchResults();
+                if (existing.status === '已預約') await checkInAppointment(appointmentKey(existing));
+                else alert('此寵物已在候診／看診列表，無須重複加入。');
+                switchTab('appointments');
+                return;
+            }
+            activeAppointmentsList.push({
+                id: pet.id, name: pet.name, microchip: pet.microchip || '', weight: pet.weight || 0,
+                birthday: pet.birthday || pet.birth_date || '', gender: pet.gender || '', species: pet.species || '貓',
+                breed: pet.breed || '', owner_id: pet.owner_id || pet.owners?.id || '',
+                owner_name: pet.owners?.name || '未知飼主', status: '候診中', session: '上午診', doctor: '張醫師',
+                time: new Date().toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'})
+            });
+            closeGlobalSearchResults();
+            switchTab('appointments');
+            renderAppointmentTable(activeAppointmentsList);
         }
 
         function calculateProductTotal() {
@@ -5404,6 +5490,7 @@ bootstrapAuthentication();
         processInvoiceCheckoutToArchive
         async function startConsultationById(petId, chipId, petNameStr, ownerId, weight, ownerName, birthday, gender, species, breed) {
             currentPetId = petId;
+            resetLegacyMedicalArchive();
             currentPetMicrochip = chipId;
             currentPetName = petNameStr;
             currentOwnerId = ownerId || "";
@@ -5592,6 +5679,7 @@ bootstrapAuthentication();
             const sourceAppointment = activeAppointmentsList.find(p => p.id === petId && p.appointment_id);
             currentAppointmentId = sourceAppointment?.appointment_id || null;
             currentPetId = petId || currentPetId;
+            resetLegacyMedicalArchive();
             if (sourceAppointment?.name) currentPetName = sourceAppointment.name;
 
             activeAppointmentsList = activeAppointmentsList.filter(p => p.id !== petId);
@@ -5924,6 +6012,84 @@ bootstrapAuthentication();
             container.appendChild(div);
         }
 
+        // 舊病歷按需查閱；切換寵物後作廢先前的讀取結果。
+        let legacyArchiveRequest = 0;
+        let legacyArchiveLoaded = false;
+        let legacyArchiveLoading = false;
+
+        function resetLegacyMedicalArchive() {
+            legacyArchiveRequest++;
+            legacyArchiveLoaded = false;
+            legacyArchiveLoading = false;
+            document.getElementById('legacyMedicalArchive').open = false;
+            document.getElementById('legacyMedicalArchiveContent').replaceChildren();
+            document.getElementById('legacyMedicalArchiveRetry').hidden = true;
+            document.getElementById('legacyMedicalArchiveStatus').textContent = currentPetId
+                ? '展開後載入此寵物的舊系統病歷。' : '請先選擇看診寵物。';
+        }
+
+        function toggleLegacyMedicalArchive() {
+            if (document.getElementById('legacyMedicalArchive').open && !legacyArchiveLoaded && !legacyArchiveLoading) {
+                loadLegacyMedicalArchive();
+            }
+        }
+
+        async function loadLegacyMedicalArchive() {
+            if (legacyArchiveLoading) return;
+            const status = document.getElementById('legacyMedicalArchiveStatus');
+            const content = document.getElementById('legacyMedicalArchiveContent');
+            const retry = document.getElementById('legacyMedicalArchiveRetry');
+            const petId = currentPetId;
+            const tenantId = CURRENT_TENANT_ID;
+            const petName = currentPetName || '此寵物';
+            if (!petId || !tenantId) {
+                status.textContent = '請先登入並選擇看診寵物。';
+                content.replaceChildren();
+                return;
+            }
+            const request = ++legacyArchiveRequest;
+            legacyArchiveLoading = true;
+            legacyArchiveLoaded = false;
+            retry.hidden = true;
+            content.replaceChildren();
+            status.textContent = '正在載入「' + petName + '」的舊系統病歷…';
+            try {
+                const { data, error } = await _supabase.from('legacy_medical_histories')
+                    .select('source_pet_no,medical_text,treatment_text,med_note,hospitalization_text')
+                    .eq('tenant_id', tenantId).eq('pet_id', petId).maybeSingle();
+                if (request !== legacyArchiveRequest || petId !== currentPetId || tenantId !== CURRENT_TENANT_ID) return;
+                if (error) throw error;
+                legacyArchiveLoaded = true;
+                if (!data) {
+                    status.textContent = '「' + petName + '」尚無可查閱的舊系統病歷。';
+                    return;
+                }
+                status.textContent = '「' + petName + '」｜舊系統寵物資料編號：' + (data.source_pet_no || '未提供');
+                const sections = [
+                    ['病歷', data.medical_text], ['處置', data.treatment_text],
+                    ['用藥備註', data.med_note], ['住院記錄', data.hospitalization_text]
+                ];
+                for (const [label, value] of sections) {
+                    const section = document.createElement('section');
+                    section.className = 'legacy-archive-section';
+                    const title = document.createElement('h4');
+                    title.textContent = label;
+                    const body = document.createElement('div');
+                    body.className = 'legacy-archive-text';
+                    body.textContent = value && value.trim() ? value : '無記錄';
+                    section.append(title, body);
+                    content.append(section);
+                }
+            } catch (error) {
+                if (request !== legacyArchiveRequest || petId !== currentPetId || tenantId !== CURRENT_TENANT_ID) return;
+                status.textContent = '舊系統病歷載入失敗，請重試。若持續失敗，請確認帳號的讀取權限。';
+                retry.hidden = false;
+                console.error('舊系統病歷載入失敗', error);
+            } finally {
+                if (request === legacyArchiveRequest) legacyArchiveLoading = false;
+            }
+        }
+
         async function loadAllMedicalRecords(petId) {
             const container = document.getElementById('lastMedicalHistoryContent');
             container.innerHTML = '正在載入歷史病歷...';
@@ -6046,6 +6212,7 @@ bootstrapAuthentication();
 
         async function printLatestPrescription(petId, petName, petWeight, petMicrochip) {
             currentPetId = petId; currentPetName = petName; currentPetWeight = petWeight; currentPetMicrochip = petMicrochip;
+            resetLegacyMedicalArchive();
             const { data, error } = await _supabase.from('medical_records').select('*').eq('tenant_id', CURRENT_TENANT_ID).eq('pet_id', petId).order('created_at', { ascending: false }).limit(1);
 
             if (error || !data || data.length === 0) { alert('找不到此寵物的歷史處方紀錄！'); return; }
@@ -6085,6 +6252,7 @@ bootstrapAuthentication();
         function clearMedicalFormInputs() {
             medicalStateCache = { chiefComplaint: "", weight: 0, prescriptions: [] };
             currentPetId = "";
+            resetLegacyMedicalArchive();
             currentPetMicrochip = "";
             currentPetName = "";
             currentPetWeight = 0;
