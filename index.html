@@ -563,7 +563,7 @@
     <div class="main-container">
         <header>
             <div class="header-left">
-                <h3>首頁管理介面 <small style="color:#64748b;font-size:12px">版本 18.7.3 一鍵備份測試 v3</small></h3>
+                <h3>首頁管理介面 <small style="color:#64748b;font-size:12px">版本 18.7.3 一鍵備份與預約收合 v4</small></h3>
                 <input type="text" id="globalSearchInput" class="search-box" placeholder="全域搜尋 寵物 / 晶片 / 飼主 / 電話 / 新舊編號..." onkeydown="handleGlobalSearch(event)" oninput="closeGlobalSearchResults()">
             </div>
             <div class="tenant-badge" id="currentTenantBadge">醫院代碼 (tenant_id):</div>
@@ -1892,9 +1892,10 @@
                     </table>
                 </div>
 
-                <div class="card">
-                    <div style="display:flex; justify-content:space-between; align-items:center; gap:10px; flex-wrap:wrap; margin-bottom:10px;">
-                        <h3>預約歷史紀錄</h3>
+                <details class="card" id="appointmentHistoryPanel" ontoggle="if(this.open) loadAppointmentHistory('all')">
+                    <summary style="cursor:pointer; font-weight:bold; font-size:1.1rem; color:#334155; padding:4px 0;">預約歷史紀錄（點此展開／收合）</summary>
+                    <div style="margin-top:12px; display:flex; justify-content:space-between; align-items:center; gap:10px; flex-wrap:wrap; margin-bottom:10px;">
+                        <span style="color:#64748b; font-size:0.85rem;">顯示最近 200 筆，可切換狀態</span>
                         <div style="display:flex; gap:8px; flex-wrap:wrap;">
                             <button class="btn-secondary" style="padding:4px 10px; font-size:0.8rem;" onclick="loadAppointmentHistory('all')">全部紀錄</button>
                             <button class="btn-secondary" style="padding:4px 10px; font-size:0.8rem;" onclick="loadAppointmentHistory('已取消')">已取消</button>
@@ -1904,10 +1905,10 @@
                     <table>
                         <thead><tr><th>預約日期</th><th>寵物</th><th>飼主</th><th>診別 / 醫師</th><th>狀態</th><th>取消原因</th></tr></thead>
                         <tbody id="appointmentHistoryBody">
-                            <tr><td colspan="6" style="text-align:center; color:#64748b;">載入預約歷史紀錄中...</td></tr>
+                            <tr><td colspan="6" style="text-align:center; color:#64748b;">點擊上方標題展開歷史紀錄</td></tr>
                         </tbody>
                     </table>
-                </div>
+                </details>
             </div>
 
         </div>
@@ -3040,6 +3041,8 @@ bootstrapAuthentication();
                 document.getElementById('auditEndDate').value = '';
                 filterAuditByDate();
             }
+            const appointmentHistoryPanel = document.getElementById('appointmentHistoryPanel');
+            if (appointmentHistoryPanel) appointmentHistoryPanel.open = false;
             document.querySelectorAll('.tab-content.active').forEach(resetHistorySearches);
             document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
             document.querySelectorAll('.nav-links li').forEach(el => el.classList.remove('active'));
@@ -6787,7 +6790,7 @@ bootstrapAuthentication();
 
         async function loadAppointmentHistory(statusFilter = 'all') {
             const tbody = document.getElementById('appointmentHistoryBody');
-            if (!tbody || !CURRENT_TENANT_ID) return;
+            if (!tbody || !CURRENT_TENANT_ID || !document.getElementById('appointmentHistoryPanel')?.open) return;
             tbody.innerHTML = `<tr><td colspan="6" style="text-align:center; color:#64748b;">載入中...</td></tr>`;
 
             let query = _supabase.from('appointments')
