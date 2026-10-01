@@ -563,7 +563,7 @@
     <div class="main-container">
         <header>
             <div class="header-left">
-                <h3>首頁管理介面 <small style="color:#64748b;font-size:12px">版本 18.7.3 用藥與搜尋清空修正版 v5</small></h3>
+                <h3>首頁管理介面 <small style="color:#64748b;font-size:12px">版本 18.7.3 生日月曆選取版 v6</small></h3>
                 <input type="text" id="globalSearchInput" class="search-box" placeholder="全域搜尋 寵物 / 晶片 / 飼主 / 電話 / 新舊編號..." onkeydown="handleGlobalSearch(event)" oninput="closeGlobalSearchResults()">
             </div>
             <div class="tenant-badge" id="currentTenantBadge">醫院代碼 (tenant_id):</div>
@@ -724,7 +724,7 @@
                         <!-- 出生日期與即時計算年齡顯示 -->
                         <div class="form-group">
                             <label id="petBirthdayLabel">出生日期 (日曆選單)</label>
-                            <input type="date" id="intPetBirthday" oninput="updateLiveAgeDisplay()" onchange="updateLiveAgeDisplay()">
+                            <div style="display:flex;gap:8px;align-items:center;"><input type="date" id="intPetBirthday" oninput="updateLiveAgeDisplay()" onchange="updateLiveAgeDisplay()" style="flex:1;min-width:0;"><button type="button" class="btn-secondary" onclick="chooseIntegratedPetBirthday()" style="white-space:nowrap;">📅 選日期</button></div>
                         </div>
 
                         <div class="form-group">
@@ -1911,6 +1911,26 @@
                 </details>
             </div>
 
+        </div>
+    </div>
+
+    <div id="petBirthdayCalendarModal" class="modal-overlay" onkeydown="handleBirthdayCalendarKey(event)">
+        <div class="modal-content" role="dialog" aria-modal="true" aria-labelledby="petBirthdayCalendarTitle" style="width:360px;max-width:calc(100vw - 24px);">
+            <h3 id="petBirthdayCalendarTitle">選擇出生日期</h3>
+            <div style="display:flex;gap:8px;align-items:center;margin:14px 0;">
+                <button type="button" class="btn-secondary" onclick="moveBirthdayCalendarMonth(-1)" aria-label="上一個月">◀</button>
+                <select id="petBirthdayCalendarYear" aria-label="年份" onchange="renderPetBirthdayCalendar()" style="flex:1;"></select>
+                <select id="petBirthdayCalendarMonth" aria-label="月份" onchange="renderPetBirthdayCalendar()" style="flex:1;"></select>
+                <button type="button" class="btn-secondary" onclick="moveBirthdayCalendarMonth(1)" aria-label="下一個月">▶</button>
+            </div>
+            <div style="display:grid;grid-template-columns:repeat(7,minmax(0,1fr));text-align:center;color:#64748b;margin-bottom:6px;" aria-hidden="true"><span>日</span><span>一</span><span>二</span><span>三</span><span>四</span><span>五</span><span>六</span></div>
+            <div id="petBirthdayCalendarDays" style="display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:4px;"></div>
+            <p id="petBirthdayCalendarHint" style="color:#64748b;font-size:.85rem;margin:12px 0;">選好年月，再點日期。</p>
+            <div style="display:flex;gap:8px;flex-wrap:wrap;">
+                <button type="button" class="btn-secondary" onclick="finishPetBirthdayCalendar(localCalendarDate(new Date()))">今天</button>
+                <button type="button" class="btn-secondary" onclick="finishPetBirthdayCalendar('')">生日不詳</button>
+                <button type="button" class="btn-secondary" onclick="finishPetBirthdayCalendar(null)">取消</button>
+            </div>
         </div>
     </div>
 
@@ -5006,12 +5026,107 @@ bootstrapAuthentication();
             }
         }
 
+        let petBirthdayCalendarResolve = null;
+        let petBirthdayCalendarSelected = '';
+        let petBirthdayCalendarPreviousFocus = null;
+
+        function localCalendarDate(date) {
+            return date.getFullYear() + '-' + String(date.getMonth()+1).padStart(2,'0') + '-' + String(date.getDate()).padStart(2,'0');
+        }
+
+        function birthdayMonthCells(year, month) {
+            const cells = Array(new Date(year, month-1, 1).getDay()).fill(null);
+            const count = new Date(year, month, 0).getDate();
+            for (let day=1; day<=count; day++) cells.push(String(year)+'-'+String(month).padStart(2,'0')+'-'+String(day).padStart(2,'0'));
+            return cells;
+        }
+
+        function choosePetBirthday(currentValue='', title='選擇出生日期') {
+            if (petBirthdayCalendarResolve) finishPetBirthdayCalendar(null);
+            petBirthdayCalendarPreviousFocus = document.activeElement;
+            petBirthdayCalendarSelected = /^\d{4}-\d{2}-\d{2}$/.test(currentValue || '') ? currentValue : '';
+            const today = new Date();
+            const selected = petBirthdayCalendarSelected ? new Date(petBirthdayCalendarSelected+'T12:00:00') : today;
+            const valid = !Number.isNaN(selected.getTime()) && selected.getFullYear()>=1900 && localCalendarDate(selected)<=localCalendarDate(today);
+            const initial = valid ? selected : today;
+            const years = document.getElementById('petBirthdayCalendarYear');
+            const months = document.getElementById('petBirthdayCalendarMonth');
+            years.replaceChildren(); months.replaceChildren();
+            for (let y=today.getFullYear(); y>=1900; y--) years.add(new Option(y+' 年',String(y)));
+            for (let m=1; m<=12; m++) months.add(new Option(m+' 月',String(m)));
+            years.value=String(initial.getFullYear()); months.value=String(initial.getMonth()+1);
+            document.getElementById('petBirthdayCalendarTitle').textContent=title;
+            document.getElementById('petBirthdayCalendarModal').style.display='flex';
+            renderPetBirthdayCalendar(); years.focus();
+            return new Promise(resolve => { petBirthdayCalendarResolve=resolve; });
+        }
+
+        function renderPetBirthdayCalendar() {
+            const year=Number(document.getElementById('petBirthdayCalendarYear').value);
+            const month=Number(document.getElementById('petBirthdayCalendarMonth').value);
+            const days=document.getElementById('petBirthdayCalendarDays');
+            const today=localCalendarDate(new Date());
+            days.replaceChildren();
+            for (const date of birthdayMonthCells(year,month)) {
+                if (!date) { days.appendChild(document.createElement('span')); continue; }
+                const button=document.createElement('button');
+                button.type='button'; button.className='btn-secondary';
+                button.textContent=String(Number(date.slice(-2)));
+                button.setAttribute('aria-label',date+' 出生');
+                button.style.cssText='padding:9px 0;min-width:0;';
+                button.disabled=date>today;
+                if (button.disabled) { button.style.opacity='.35'; button.style.cursor='default'; }
+                if (date===petBirthdayCalendarSelected) { button.style.background='#0284c7'; button.style.color='#fff'; }
+                if (date===today) button.style.border='2px solid #059669';
+                button.onclick=()=>finishPetBirthdayCalendar(date);
+                days.appendChild(button);
+            }
+            document.getElementById('petBirthdayCalendarHint').textContent='原日期：'+(petBirthdayCalendarSelected || '未填寫')+'｜今天：'+today+'。點日期即可選定。';
+        }
+
+        function moveBirthdayCalendarMonth(change) {
+            const years=document.getElementById('petBirthdayCalendarYear');
+            const months=document.getElementById('petBirthdayCalendarMonth');
+            const next=new Date(Number(years.value),Number(months.value)-1+change,1);
+            const today=new Date();
+            if (next.getFullYear()<1900 || next.getFullYear()>today.getFullYear()) return;
+            years.value=String(next.getFullYear()); months.value=String(next.getMonth()+1);
+            renderPetBirthdayCalendar();
+        }
+
+        function finishPetBirthdayCalendar(value) {
+            if (value && value>localCalendarDate(new Date())) return;
+            const resolve=petBirthdayCalendarResolve;
+            petBirthdayCalendarResolve=null;
+            document.getElementById('petBirthdayCalendarModal').style.display='none';
+            petBirthdayCalendarPreviousFocus?.focus();
+            if (resolve) resolve(value);
+        }
+
+        function handleBirthdayCalendarKey(event) {
+            if (event.key==='Escape') { event.preventDefault(); finishPetBirthdayCalendar(null); return; }
+            if (event.key!=='Tab') return;
+            const controls=Array.from(document.getElementById('petBirthdayCalendarModal').querySelectorAll('button:not(:disabled), select'));
+            const first=controls[0], last=controls[controls.length-1];
+            if (event.shiftKey && document.activeElement===first) { event.preventDefault(); last.focus(); }
+            else if (!event.shiftKey && document.activeElement===last) { event.preventDefault(); first.focus(); }
+        }
+
+        async function chooseIntegratedPetBirthday() {
+            const input=document.getElementById('intPetBirthday');
+            const date=await choosePetBirthday(input.value);
+            if (date===null) return;
+            input.value=date;
+            updateLiveAgeDisplay();
+        }
+
         async function addPetToOwnerPrompt(ownerId, ownerName) {
             const petName = prompt(`要為飼主「${ownerName}」新增什麼名字的寵物？`);
             if (!petName) return;
             const petSpecies = prompt('請輸入動物分類 (犬 / 貓 / 兔 / 鼠 / 豬 / 其他)：', '貓');
             const petBreed = prompt('請輸入品種：', '混種貓');
-            const petBirthday = prompt('請輸入出生日期 (YYYY-MM-DD)：', '2022-01-01');
+            const petBirthday = await choosePetBirthday('', '新增寵物：選擇出生日期');
+            if (petBirthday === null) return;
             const petWeight = parseFloat(prompt('請輸入目前體重 (kg)：', '4.0')) || null;
             const petChip = prompt('請輸入晶片號碼 (選填)：', '');
 
@@ -5072,11 +5187,12 @@ bootstrapAuthentication();
             if (newBreed === null) return;
             const newChip = prompt('修改晶片號碼：', currentChip);
             if (newChip === null) return;
-            const newBirthday = prompt('修改出生日期 (YYYY-MM-DD)：', currentBirthday);
+            const newBirthday = await choosePetBirthday(currentBirthday, '修改寵物：選擇出生日期');
             if (newBirthday === null) return;
             const newWeight = parseFloat(prompt('修改目前體重 (kg)：', currentWeight));
 
-            await _supabase.from('pets').update({ name: newName, species: newSpecies || '貓', breed: newBreed || null, microchip: newChip || null, birthday: newBirthday || null, weight: newWeight }).eq('id', petId);
+            const { error } = await _supabase.from('pets').update({ name: newName, species: newSpecies || '貓', breed: newBreed || null, microchip: newChip || null, birthday: newBirthday || null, weight: newWeight }).eq('id', petId).eq('tenant_id', CURRENT_TENANT_ID);
+            if (error) { alert('寵物資料更新失敗：'+error.message); return; }
             alert('寵物資料已更新！');
             loadOwnersAndPetsIntegrated();
         }
