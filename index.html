@@ -46,7 +46,9 @@
 
         .main-container { flex: 1 1 auto; min-width: 0; display: flex; flex-direction: column; overflow: hidden; }
         header { background-color: var(--card-bg); padding: 15px 30px; border-bottom: 1px solid var(--border-color); display: flex; justify-content: space-between; align-items: center; }
-        .header-left { display: flex; align-items: center; gap: 20px; }
+        .header-left { display: flex; align-items: center; flex-wrap: wrap; gap: 12px; min-width: 0; }
+        .header-left h3 { flex-basis: 100%; }
+        .header-left .search-box { max-width: 100%; box-sizing: border-box; }
         .search-box { padding: 6px 12px; border: 1px solid var(--border-color); border-radius: var(--radius); font-size: 0.9rem; width: 280px; outline: none; }
         .tenant-badge { background: #e0f2fe; color: var(--primary-dark); padding: 4px 10px; border-radius: 20px; font-size: 0.85rem; font-weight: bold; }
         
@@ -563,8 +565,9 @@
     <div class="main-container">
         <header>
             <div class="header-left">
-                <h3>首頁管理介面 <small style="color:#64748b;font-size:12px">版本 18.7.3 疫苗接續與檢驗費用版 v8</small></h3>
-                <input type="text" id="globalSearchInput" class="search-box" placeholder="全域搜尋 寵物 / 晶片 / 飼主 / 電話 / 新舊編號..." onkeydown="handleGlobalSearch(event)" oninput="closeGlobalSearchResults()">
+                <h3>首頁管理介面 <small style="color:#64748b;font-size:12px">版本 18.7.5 候診永久儲存版 v10</small></h3>
+                <input type="text" id="globalSearchInput" class="search-box" placeholder="寵物／電話／編號，或 momo 王" onkeydown="handleGlobalSearch(event)" oninput="closeGlobalSearchResults()">
+                <input type="text" id="globalSearchOwnerInput" class="search-box" aria-label="飼主姓名或姓氏篩選" placeholder="飼主姓名／姓氏（可不填）" onkeydown="handleGlobalSearch(event)" oninput="closeGlobalSearchResults()" style="max-width:240px;">
             </div>
             <div class="tenant-badge" id="currentTenantBadge">醫院代碼 (tenant_id):</div>
         </header>
@@ -5428,15 +5431,37 @@ bootstrapAuthentication();
         function clearGlobalSearchAfterSelection(request, tenant) {
             if (request !== globalSearchRequest || tenant !== CURRENT_TENANT_ID) return;
             document.getElementById('globalSearchInput').value = '';
+            document.getElementById('globalSearchOwnerInput').value = '';
             closeGlobalSearchResults();
+        }
+
+        function globalSearchCriteria(query,ownerName) {
+            query=query.trim(); ownerName=ownerName.trim();
+            if (ownerName) return {query,ownerName};
+            const parts=query.split(/\s+/u);
+            return parts.length>1 ? {query:parts[0],ownerName:parts.slice(1).join(' ')} : {query,ownerName:''};
+        }
+        function globalSearchFilterTerm(value) {
+            return '"*'+value.replace(/\\/g,'\\\\').replace(/"/g,'\\"')+'*"';
+        }
+        async function fetchGlobalSearchPages(build,request,tenant) {
+            const all=[];
+            for (let start=0;;start+=1000) {
+                const {data,error}=await build().range(start,start+999);
+                if (error) throw error;
+                if (request!==globalSearchRequest || tenant!==CURRENT_TENANT_ID) return null;
+                all.push(...(data||[]));
+                if (!data || data.length<1000) return all;
+            }
         }
 
         async function handleGlobalSearch(event) {
             if (event.key !== 'Enter' || event.isComposing || event.repeat) return;
             event.preventDefault();
-            const query = document.getElementById('globalSearchInput').value.trim();
+            const criteria=globalSearchCriteria(document.getElementById('globalSearchInput').value,document.getElementById('globalSearchOwnerInput').value);
+            const {query,ownerName}=criteria;
             closeGlobalSearchResults();
-            if (!query || !CURRENT_TENANT_ID) return;
+            if ((!query && !ownerName) || !CURRENT_TENANT_ID) return;
             const request = globalSearchRequest;
             const tenant = CURRENT_TENANT_ID;
             const panel = document.getElementById('globalSearchResultsPanel');
@@ -5444,30 +5469,42 @@ bootstrapAuthentication();
             panel.hidden = false;
             status.textContent = '正在搜尋…';
             try {
-                const term = '"*' + query.replace(/\\/g, '\\\\').replace(/"/g, '\\"') + '*"';
-                const fields = '*, owners(id, name, phone, mobile, owner_code, system_code)';
-                const { data: petsData, error: petsError } = await _supabase.from('pets').select(fields)
-                    .eq('tenant_id', tenant).or(`name.ilike.${term},microchip.ilike.${term}`);
-                if (petsError) throw petsError;
-                let matchedPets = petsData || [];
-                if (matchedPets.length === 0) {
-                    const { data: ownersData, error: ownersError } = await _supabase.from('owners').select('id')
-                        .eq('tenant_id', tenant).or(`name.ilike.${term},phone.ilike.${term},mobile.ilike.${term},owner_code.ilike.${term},system_code.ilike.${term}`);
-                    if (ownersError) throw ownersError;
-                    if (ownersData?.length) {
-                        const { data: petsByOwner, error: ownerPetsError } = await _supabase.from('pets').select(fields)
-                            .eq('tenant_id', tenant).in('owner_id', ownersData.map(o => o.id));
-                        if (ownerPetsError) throw ownerPetsError;
-                        matchedPets = petsByOwner || [];
+                const term=globalSearchFilterTerm(query);
+                const fields='*, owners(id, name, phone, mobile, owner_code, system_code)';
+                let matchedPets;
+                if (ownerName) {
+                    // Inner join keeps both conditions in the database query; never broaden to unrelated owners.
+                    matchedPets=await fetchGlobalSearchPages(()=> {
+                        let q=_supabase.from('pets').select(fields.replace('owners(', 'owners!inner('))
+                            .eq('tenant_id',tenant).ilike('owners.name','%'+ownerName.replace(/[%_\\]/g,'\\$&')+'%');
+                        if (query) q=q.or(`name.ilike.${term},microchip.ilike.${term}`);
+                        return q.order('id');
+                    },request,tenant);
+                } else {
+                    matchedPets=await fetchGlobalSearchPages(()=>_supabase.from('pets').select(fields)
+                        .eq('tenant_id',tenant).or(`name.ilike.${term},microchip.ilike.${term}`).order('id'),request,tenant);
+                    if (matchedPets===null) return;
+                    if (!matchedPets.length) {
+                        const ownersData=await fetchGlobalSearchPages(()=>_supabase.from('owners').select('id')
+                            .eq('tenant_id',tenant).or(`name.ilike.${term},phone.ilike.${term},mobile.ilike.${term},owner_code.ilike.${term},system_code.ilike.${term}`).order('id'),request,tenant);
+                        if (ownersData===null) return;
+                        for (let start=0;start<ownersData.length;start+=200) {
+                            const ids=ownersData.slice(start,start+200).map(o=>o.id);
+                            const petsByOwner=await fetchGlobalSearchPages(()=>_supabase.from('pets').select(fields)
+                                .eq('tenant_id',tenant).in('owner_id',ids).order('id'),request,tenant);
+                            if (petsByOwner===null) return;
+                            matchedPets.push(...petsByOwner);
+                        }
                     }
                 }
+                if (matchedPets===null) return;
                 if (request !== globalSearchRequest || tenant !== CURRENT_TENANT_ID) return;
                 globalSearchTenant = tenant;
                 globalSearchMatches = new Map(matchedPets.map(pet => [pet.id, pet]));
                 const body = document.getElementById('globalSearchResultsBody');
                 body.replaceChildren();
                 status.textContent = matchedPets.length
-                    ? `找到 ${matchedPets.length} 隻寵物。請核對飼主及電話，再點該筆「加入候診」。`
+                    ? `找到 ${matchedPets.length} 隻寵物${ownerName ? "（已篩選飼主："+ownerName+"）" : ""}。請核對飼主及電話，再點該筆「加入候診」。`
                     : '查無符合條件的病患，請換個關鍵字再搜尋。';
                 for (const pet of globalSearchMatches.values()) {
                     const owner = pet.owners || {};
@@ -5500,35 +5537,56 @@ bootstrapAuthentication();
             }
         }
 
+        const globalWaitingSaveBusy = new Set();
+        function waitingPetFromAppointment(pet,appointment) {
+            return {...pet, id:appointment.pet_id, owner_id:appointment.owner_id||pet.owner_id||pet.owners?.id||'',
+                owner_name:pet.owners?.name||pet.owner_name||'未知飼主', appointment_id:appointment.id,
+                appointment_time:appointment.scheduled_at, status:appointment.status,
+                session:appointment.session||'上午診',doctor:appointment.doctor||'',
+                check_in_time:appointment.checked_in_at?new Date(appointment.checked_in_at).toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'}):'',
+                time:new Date(appointment.scheduled_at).toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'})};
+        }
         async function addGlobalSearchPetToWaiting(petId) {
-            const searchRequest = globalSearchRequest;
-            const searchTenant = CURRENT_TENANT_ID;
-            const pet = globalSearchMatches.get(petId);
-            if (!pet || globalSearchTenant !== CURRENT_TENANT_ID) return;
-            const canRegister = CURRENT_PROFILE?.role === 'admin' ||
-                (CURRENT_PROFILE?.permission_appointment ?? ['staff', 'doctor'].includes(CURRENT_PROFILE?.role));
-            if (!canRegister) { alert('此帳號沒有掛號權限。'); return; }
-            const existing = activeAppointmentsList.find(p => p.id === petId);
-            if (existing) {
-                if (existing.status === '已預約') {
-                    await checkInAppointment(appointmentKey(existing));
-                    if (existing.status === '已預約') return;
+            const searchRequest=globalSearchRequest, tenant=CURRENT_TENANT_ID;
+            const pet=globalSearchMatches.get(petId), busyKey=tenant+':'+petId;
+            if (!pet || globalSearchTenant!==tenant || globalWaitingSaveBusy.has(busyKey)) return;
+            const canRegister=CURRENT_PROFILE?.role==='admin'||(CURRENT_PROFILE?.permission_appointment??['staff','doctor'].includes(CURRENT_PROFILE?.role));
+            if (!canRegister) {alert('此帳號沒有掛號權限。');return;}
+            globalWaitingSaveBusy.add(busyKey);
+            try {
+                // Read the database before inserting so a refreshed/stale screen can reuse an existing visit.
+                const lookup=await _supabase.from('appointments').select('*').eq('tenant_id',tenant).eq('pet_id',petId)
+                    .in('status',['已預約','候診中','診間看診中']).order('scheduled_at',{ascending:true});
+                if (lookup.error) throw lookup.error;
+                if (tenant!==CURRENT_TENANT_ID) return;
+                let appointment=(lookup.data||[]).find(a=>a.status!=='已預約')||(lookup.data||[])[0];
+                if (!appointment) {
+                    const now=new Date(), iso=now.toISOString();
+                    const response=await _supabase.from('appointments').insert([{
+                        id:crypto.randomUUID(),tenant_id:tenant,pet_id:petId,owner_id:pet.owner_id||pet.owners?.id||null,
+                        scheduled_at:iso,checked_in_at:iso,status:'候診中',
+                        session:document.getElementById('appointmentSession')?.value||'上午診',
+                        doctor:document.getElementById('appointmentDoctor')?.value||null
+                    }]).select('*').single();
+                    if (response.error) throw response.error;
+                    appointment=response.data;
+                    if (!appointment?.id) throw new Error('未取得已儲存的報到紀錄。');
                 }
-                else alert('此寵物已在候診／看診列表，無須重複加入。');
-                clearGlobalSearchAfterSelection(searchRequest, searchTenant);
-                switchTab('appointments');
-                return;
-            }
-            activeAppointmentsList.push({
-                id: pet.id, name: pet.name, microchip: pet.microchip || '', weight: pet.weight || 0,
-                birthday: pet.birthday || pet.birth_date || '', gender: pet.gender || '', species: pet.species || '貓',
-                breed: pet.breed || '', owner_id: pet.owner_id || pet.owners?.id || '',
-                owner_name: pet.owners?.name || '未知飼主', status: '候診中', session: '上午診', doctor: '張醫師',
-                time: new Date().toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'})
-            });
-            clearGlobalSearchAfterSelection(searchRequest, searchTenant);
-            switchTab('appointments');
-            renderAppointmentTable(activeAppointmentsList);
+                if (tenant!==CURRENT_TENANT_ID) return;
+                appointmentsLoadRequest++;
+                const row=waitingPetFromAppointment(pet,appointment);
+                activeAppointmentsList=activeAppointmentsList.filter(p=>p.id!==petId|| (p.appointment_id && p.appointment_id!==appointment.id));
+                activeAppointmentsList.push(row);
+                if (row.status==='已預約') {
+                    await checkInAppointment(appointmentKey(row));
+                    if (row.status==='已預約') return;
+                }
+                if (tenant!==CURRENT_TENANT_ID) return;
+                clearGlobalSearchAfterSelection(searchRequest,tenant);
+                switchTab('appointments');renderAppointmentTable(activeAppointmentsList);
+            } catch(error) {
+                if (tenant===CURRENT_TENANT_ID) alert('加入候診未確認成功：'+error.message+'。請保留搜尋資料，重新讀取候診確認；未確認前請勿視為已完成報到。');
+            } finally {globalWaitingSaveBusy.delete(busyKey);}
         }
 
         // 一鍵資料備份 v1：完整原始 JSON 以文字保存，避免數值精度改變。
@@ -6760,6 +6818,11 @@ bootstrapAuthentication();
                 } catch (err) { alert('病歷已儲存，但體重更新失敗：' + err.message); }
             }
 
+            if (currentAppointmentId) {
+                const {error:waitingError}=await _supabase.from('appointments').update({status:'候診中'})
+                    .eq('id',currentAppointmentId).eq('tenant_id',CURRENT_TENANT_ID);
+                if (waitingError) {alert('病歷已儲存，但返回候診未成功：'+waitingError.message+'。請保留畫面並確認候診狀態。');return;}
+            }
             let targetPet = activeAppointmentsList.find(p => p.id === currentPetId);
             if (targetPet) {
                 targetPet.status = '候診中';
@@ -6999,16 +7062,20 @@ bootstrapAuthentication();
             alert(`${appointment.name} 已完成報到，現在進入候診中。`);
         }
 
+        let appointmentsLoadRequest=0;
         async function loadAppointments() {
             if (!CURRENT_TENANT_ID) return;
+            const tenant=CURRENT_TENANT_ID, request=++appointmentsLoadRequest;
             const { data, error } = await _supabase.from('appointments')
                 .select('id, tenant_id, pet_id, owner_id, scheduled_at, session, doctor, status, checked_in_at, pets(id,name,microchip,birthday,species,gender,weight,breed,owner_id,owners(name))')
-                .eq('tenant_id', CURRENT_TENANT_ID)
+                .eq('tenant_id', tenant)
                 .in('status', ['已預約','候診中','診間看診中'])
                 .order('scheduled_at', { ascending: true });
-            if (error) { console.error('讀取預約失敗：', error); return; }
+            if (tenant!==CURRENT_TENANT_ID || request!==appointmentsLoadRequest) return;
+            if (error) { console.error('讀取預約失敗：', error); alert('候診資料讀取失敗，請重新整理再確認。'); return; }
 
-            const localWalkins = activeAppointmentsList.filter(p => !p.appointment_id);
+            const storedPetIds=new Set((data||[]).map(a=>a.pet_id));
+            const localWalkins = activeAppointmentsList.filter(p => !p.appointment_id && !storedPetIds.has(p.id));
             const dbAppointments = (data || []).map(a => {
                 const pet = a.pets || {};
                 return {
@@ -7138,7 +7205,7 @@ bootstrapAuthentication();
                            : `<button class="btn-danger" style="padding: 4px 8px; font-size: 0.8rem;" onclick="removeAppointment('${key}')">移除</button>`}`
                     : `<button class="btn-secondary" style="padding: 4px 8px; font-size: 0.8rem;" onclick="startConsultationFromAppointment('${key}', '${pet.id}', '${pet.microchip || ''}', '${pet.name}', '${pet.owner_id || ''}', ${pet.weight || 0}, '${ownerName}', '${pet.birthday || ''}', '${pet.gender || ''}', '${pet.species || '貓'}', '${pet.breed || ''}')">看診</button>
                        <button class="btn-success" style="padding: 4px 8px; font-size: 0.8rem;" onclick="directCheckoutFromAppointment('${pet.id}', '${pet.owner_id || ''}')">💳 歸檔結帳</button>
-                       ${pet.appointment_id ? '' : `<button class="btn-danger" style="padding: 4px 8px; font-size: 0.8rem;" onclick="removeAppointment('${key}')">移除</button>`}`;
+                       ${statusStr === '候診中' ? `<button class="btn-danger" style="padding: 4px 8px; font-size: 0.8rem;" onclick="removeAppointment('${key}')">移除候診</button>` : ''}`;
 
                 const tr = document.createElement('tr');
                 tr.innerHTML = `
@@ -7202,15 +7269,23 @@ bootstrapAuthentication();
         }
 
         async function removeAppointment(key) {
-            const target = activeAppointmentsList.find(p => appointmentKey(p) === key);
+            const target=activeAppointmentsList.find(p=>appointmentKey(p)===key);
             if (!target) return;
+            if (target.status==='已預約') {alert('尚未報到的預約請使用取消預約。');return;}
+            if (target.status==='診間看診中') {alert('此病患正在看診，請先返回候診再移除。');return;}
+            if (!confirm('確定將此病患移出候診？已儲存的報到紀錄將保留為已取消。')) return;
+            const tenant=CURRENT_TENANT_ID;
             if (target.appointment_id) {
-                alert('正式預約不直接刪除。尚未報到請使用「取消預約」保留紀錄。');
-                return;
+                try {
+                    const {data,error}=await _supabase.from('appointments')
+                        .update({status:'已取消',cancelled_at:new Date().toISOString(),cancel_reason:'移除候診'})
+                        .eq('id',target.appointment_id).eq('tenant_id',tenant).eq('status','候診中').select('id').single();
+                    if (error || !data) throw error||new Error('紀錄狀態已改變，請重新讀取候診。');
+                } catch(error) {alert('移除失敗：'+error.message);return;}
             }
-            if (!confirm('確定要將此現場報到病患從即時列表中移除嗎？')) return;
-            activeAppointmentsList = activeAppointmentsList.filter(p => appointmentKey(p) !== key);
-            renderAppointmentTable(activeAppointmentsList);
+            if (tenant!==CURRENT_TENANT_ID) return;
+            activeAppointmentsList=activeAppointmentsList.filter(p=>appointmentKey(p)!==key);
+            renderAppointmentTable(activeAppointmentsList);await loadAppointmentHistory('all');
         }
 
         // Enter 依目前顯示的檢驗表格順序移動；最後一格移至備註，不送出報告。
