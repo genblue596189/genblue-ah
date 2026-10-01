@@ -434,6 +434,14 @@
 
         .legacy-archive { margin: 16px 0; padding: 16px; border: 1px solid #cbd5e1; border-radius: var(--radius); background: #f8fafc; }
         .legacy-archive summary { cursor: pointer; font-weight: bold; color: #334155; padding: 4px 0; }
+
+        .medical-history-toolbar {display:flex;flex-wrap:nowrap;gap:8px;overflow-x:auto;margin:12px 0;padding:3px 0 6px;}
+        .medical-history-toolbar button {flex:1 0 auto;white-space:nowrap;font-size:13px;line-height:1.4;padding:9px 12px;background:#f8fafc;color:#334155;border:1px solid #cbd5e1;border-radius:8px;}
+        .medical-history-toolbar button[aria-expanded="true"] {background:#e0f2fe;color:#0369a1;border-color:#7dd3fc;}
+        .medical-history-toolbar button:focus-visible {outline:2px solid #0284c7;outline-offset:2px;}
+        .medical-history-panels .legacy-archive:not([open]) {display:none;}
+        .medical-history-panels .legacy-archive {margin:0 0 12px;padding:12px;font-size:14px;}
+        .medical-history-panels .legacy-archive summary {font-size:14px;}
         .legacy-archive-status { margin: 12px 0; color: #475569; font-size: .9rem; }
         .legacy-archive-section { margin: 12px 0; padding: 12px; background: #fff; border: 1px solid #e2e8f0; border-radius: 8px; }
         .legacy-archive-section h4 { margin: 0 0 8px; }
@@ -565,7 +573,7 @@
     <div class="main-container">
         <header>
             <div class="header-left">
-                <h3>首頁管理介面 <small style="color:#64748b;font-size:12px">版本 18.7.5 候診永久儲存版 v10</small></h3>
+                <h3>首頁管理介面 <small style="color:#64748b;font-size:12px">版本 18.7.10 門診紀錄單行版 v15</small></h3>
                 <input type="text" id="globalSearchInput" class="search-box" placeholder="寵物／電話／編號，或 momo 王" onkeydown="handleGlobalSearch(event)" oninput="closeGlobalSearchResults()">
                 <input type="text" id="globalSearchOwnerInput" class="search-box" aria-label="飼主姓名或姓氏篩選" placeholder="飼主姓名／姓氏（可不填）" onkeydown="handleGlobalSearch(event)" oninput="closeGlobalSearchResults()" style="max-width:240px;">
             </div>
@@ -612,7 +620,7 @@
                             <thead>
                                 <tr>
                                     <th>看診時間</th>
-                                    <th>寵物名字 (晶片)</th>
+                                    <th>寵物／飼主（新舊編號、電話）</th>
                                     <th>主訴與診斷內容</th>
                                     <th>處方用藥摘要</th>
                                     <th>操作</th>
@@ -628,12 +636,12 @@
                     <div id="subtab_vaccines_history" class="search-subtab-content" style="display: none;">
                         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
                             <h3>曾經施打預防針查詢</h3>
-                            <input type="text" id="searchVacKeyword" class="search-box" placeholder="🔍 輸入寵物名字或疫苗名稱..." oninput="filterSearchVaccines()">
+                            <input type="text" id="searchVacKeyword" class="search-box" placeholder="飼主／寵物／疫苗／電話／編號（可空格組合）" oninput="filterSearchVaccines()">
                         </div>
                         <table>
                             <thead>
                                 <tr>
-                                    <th>寵物名字 (晶片)</th>
+                                    <th>寵物／飼主（新舊編號、電話）</th>
                                     <th>疫苗種類</th>
                                     <th>上次施打日期</th>
                                     <th>下次預計施打日</th>
@@ -845,7 +853,7 @@
                         </div>
                     </div>
 
-                    <details id="legacyMedicalArchive" class="legacy-archive" ontoggle="toggleLegacyMedicalArchive()">
+<div class="medical-history-toolbar" role="group" aria-label="此寵物歷史紀錄"><button type="button" id="historyToggle_legacyMedicalArchive" aria-controls="legacyMedicalArchive" aria-expanded="false" data-label="舊系統病歷" onclick="toggleMedicalHistoryPanel('legacyMedicalArchive')">▶ 舊系統病歷</button><button type="button" id="historyToggle_medicalVaccineHistoryPanel" aria-controls="medicalVaccineHistoryPanel" aria-expanded="false" data-label="疫苗紀錄" onclick="toggleMedicalHistoryPanel('medicalVaccineHistoryPanel')">▶ 疫苗紀錄</button><button type="button" id="historyToggle_medicalHistoryPanel_rapid" aria-controls="medicalHistoryPanel_rapid" aria-expanded="false" data-label="快篩紀錄" onclick="toggleMedicalHistoryPanel('medicalHistoryPanel_rapid')">▶ 快篩紀錄</button><button type="button" id="historyToggle_medicalHistoryPanel_cbc" aria-controls="medicalHistoryPanel_cbc" aria-expanded="false" data-label="CBC 血球" onclick="toggleMedicalHistoryPanel('medicalHistoryPanel_cbc')">▶ CBC 血球</button><button type="button" id="historyToggle_medicalHistoryPanel_bio" aria-controls="medicalHistoryPanel_bio" aria-expanded="false" data-label="血清生化" onclick="toggleMedicalHistoryPanel('medicalHistoryPanel_bio')">▶ 血清生化</button><button type="button" id="historyToggle_medicalHistoryPanel_imaging" aria-controls="medicalHistoryPanel_imaging" aria-expanded="false" data-label="影像／附件" onclick="toggleMedicalHistoryPanel('medicalHistoryPanel_imaging')">▶ 影像／附件</button></div><div class="medical-history-panels">                    <details id="legacyMedicalArchive" class="legacy-archive" ontoggle="toggleLegacyMedicalArchive();syncMedicalHistoryButton(this.id)">
                         <summary>📚 舊系統病歷（點此展開查閱）</summary>
                         <p style="font-size:.85rem;color:#64748b;margin:10px 0;">保留舊系統完整病歷、處置、用藥備註及住院記錄，供看診時查閱。</p>
                         <div id="legacyMedicalArchiveStatus" class="legacy-archive-status" role="status" aria-live="polite">請先選擇看診寵物。</div>
@@ -853,6 +861,12 @@
                         <div id="legacyMedicalArchiveContent"></div>
                     </details>
 
+                    <details id="medicalVaccineHistoryPanel" class="legacy-archive" ontoggle="if(this.open) loadPetVaccines();syncMedicalHistoryButton(this.id)"><summary>此寵物疫苗施打紀錄（點擊展開）</summary><div id="medicalVaccineHistoryContent" style="padding:12px;">請先選擇寵物，再展開查詢。</div></details>
+                    <details id="medicalHistoryPanel_rapid" class="legacy-archive" ontoggle="if(this.open) loadCurrentPetClinicalHistory('rapid');syncMedicalHistoryButton(this.id)"><summary>此寵物快篩紀錄（點擊展開）</summary><div id="medicalHistoryContent_rapid" style="padding:12px;">請先選擇寵物，再展開查詢。</div></details>
+                    <details id="medicalHistoryPanel_cbc" class="legacy-archive" ontoggle="if(this.open) loadCurrentPetClinicalHistory('cbc');syncMedicalHistoryButton(this.id)"><summary>此寵物CBC 血球紀錄（點擊展開）</summary><div id="medicalHistoryContent_cbc" style="padding:12px;">請先選擇寵物，再展開查詢。</div></details>
+                    <details id="medicalHistoryPanel_bio" class="legacy-archive" ontoggle="if(this.open) loadCurrentPetClinicalHistory('bio');syncMedicalHistoryButton(this.id)"><summary>此寵物血清生化紀錄（點擊展開）</summary><div id="medicalHistoryContent_bio" style="padding:12px;">請先選擇寵物，再展開查詢。</div></details>
+                    <details id="medicalHistoryPanel_imaging" class="legacy-archive" ontoggle="if(this.open) loadCurrentPetClinicalHistory('imaging');syncMedicalHistoryButton(this.id)"><summary>此寵物影像／附件紀錄（點擊展開）</summary><div id="medicalHistoryContent_imaging" style="padding:12px;">請先選擇寵物，再展開查詢。</div></details>
+</div>
                     <div class="history-box"><h4>本次疫苗與檢驗待收費</h4><div id="clinicalServiceChargeSummary">尚無待收費項目。</div><p style="font-size:.85rem;color:#64748b;">待收費項目暫存於此瀏覽器，前往收費時自動帶入；請在同一瀏覽器完成結帳。</p></div>
                     <!-- 精細化處方開立區塊 -->
                     <div class="search-add-box">
@@ -1011,12 +1025,12 @@
 
                     <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 25px; margin-bottom: 10px;">
                         <h3>各寵物疫苗施打歷史與狀態總覽 (支援即時搜尋)</h3>
-                        <input type="text" id="vacReportTableSearch" class="search-box" placeholder="🔍 搜尋寵物名字或疫苗..." oninput="filterVaccineTable()" style="width: 300px;">
+                        <input type="text" id="vacReportTableSearch" class="search-box" placeholder="飼主／寵物／疫苗／電話／編號" oninput="filterVaccineTable()" style="width: 300px;">
                     </div>
                     <table>
                         <thead>
                             <tr>
-                                <th>寵物名字 (晶片)</th>
+                                <th>寵物／飼主（新舊編號、電話）</th>
                                 <th>疫苗種類</th>
                                 <th>上次施打日期</th>
                                 <th>下次預計施打日</th>
@@ -1849,7 +1863,7 @@
                         <div class="form-group span-2"><label>關聯寵物晶片/名字</label><input type="text" placeholder="輸入晶片或搜尋寵物"></div>
                         <div class="form-group span-4"><label>上傳附件檔案</label><input type="file" id="labFile" style="padding: 6px;"></div>
                     </div>
-                    <button style="margin-top: 15px;" onclick="alert('檔案已成功上傳！')">確認上傳檔案</button>
+                    <button style="margin-top: 15px;" onclick="alert('此頁尚未接通附件儲存，檔案未上傳。請勿視為已存檔。')">確認上傳檔案</button>
                 </div>
             </div>
 
@@ -3092,6 +3106,8 @@ bootstrapAuthentication();
                 loadRegulatoryCenter();
                 loadRegulatoryReportHistory();
             }
+            if(tabId === 'medical') for(const kind of ['rapid','cbc','bio','imaging'])refreshOpenCurrentPetHistory(kind);
+            if(tabId === 'vaccines') loadPetVaccines();
             if(tabId === 'search_center') {
                 loadSearchCenterData();
             }
@@ -3116,14 +3132,42 @@ bootstrapAuthentication();
             if(subTabId === 'sales_history') document.getElementById('btnSearchSales').style.background = 'var(--primary-color)';
         }
 
+        let searchCenterLoadRequest=0;
+        async function loadRetailSalesWithRelations(tenant,request) {
+            const invoices=[];
+            for (let offset=0;;offset+=1000) {
+                const {data,error}=await _supabase.from('invoices')
+                    .select('*, owners(id,name,mobile,phone,owner_code,system_code), invoice_items(*)')
+                    .eq('tenant_id',tenant).eq('checkout_type','商品零售')
+                    .order('created_at',{ascending:false}).order('id',{ascending:false}).range(offset,offset+999);
+                if (error) throw error;
+                if (tenant!==CURRENT_TENANT_ID || request!==searchCenterLoadRequest) return null;
+                invoices.push(...(data||[]));
+                if (!data || data.length<1000) break;
+            }
+            const ids=[...new Set(invoices.map(i=>i.pet_id).filter(Boolean))],pets=new Map();
+            for (let offset=0;offset<ids.length;offset+=200) {
+                const {data,error}=await _supabase.from('pets').select('id,name').eq('tenant_id',tenant).in('id',ids.slice(offset,offset+200));
+                if (error) throw error;
+                if (tenant!==CURRENT_TENANT_ID || request!==searchCenterLoadRequest) return null;
+                for (const pet of data||[]) pets.set(pet.id,pet);
+            }
+            return invoices.map(i=>({...i,category:i.category||'一般商品',items:i.invoice_items||[],pets:pets.get(i.pet_id)||null}));
+        }
+
         async function loadSearchCenterData() {
-            const { data: medData } = await _supabase.from('medical_records').select('*, pets(name, microchip)').eq('tenant_id', CURRENT_TENANT_ID).order('created_at', { ascending: false });
+            const tenant=CURRENT_TENANT_ID,request=++searchCenterLoadRequest;
+            if (!tenant) return;
+            const { data: medData } = await _supabase.from('medical_records').select('*, pets(name, microchip)').eq('tenant_id', tenant).order('created_at', { ascending: false });
+            if (tenant!==CURRENT_TENANT_ID || request!==searchCenterLoadRequest) return;
             searchMedRecordsCache = medData || [];
             filterSearchMedHistory();
 
-            filterSearchVaccines();
+            await loadPetVaccines();
+            if (tenant!==CURRENT_TENANT_ID || request!==searchCenterLoadRequest) return;
 
-            const { data: dbMedicines } = await _supabase.from('medicines').select('name, calculated_dose').eq('tenant_id', CURRENT_TENANT_ID);
+            const { data: dbMedicines } = await _supabase.from('medicines').select('name, calculated_dose').eq('tenant_id', tenant);
+            if (tenant!==CURRENT_TENANT_ID || request!==searchCenterLoadRequest) return;
             const medCategoryMap = {};
             if (dbMedicines) {
                 dbMedicines.forEach(m => { medCategoryMap[m.name] = m.calculated_dose || '一般藥品'; });
@@ -3151,34 +3195,15 @@ bootstrapAuthentication();
             }
             filterSearchMedicinesUsage();
 
-            const { data: invData, error: invError } = await _supabase
-                .from('invoices')
-                .select('*')
-                .eq('tenant_id', CURRENT_TENANT_ID)
-                .eq('checkout_type', '商品零售')
-                .order('created_at', { ascending: false });
-
-            if (!invError && invData && invData.length > 0) {
-                const { data: ownersData } = await _supabase.from('owners').select('id, name, mobile, owner_code').eq('tenant_id', CURRENT_TENANT_ID);
-                const { data: petsData } = await _supabase.from('pets').select('id, name').eq('tenant_id', CURRENT_TENANT_ID);
-                const { data: allInvoiceItems } = await _supabase.from('invoice_items').select('*');
-
-                searchSalesCache = invData.map(inv => {
-                    const matchedOwner = ownersData ? ownersData.find(o => o.id === inv.owner_id) : null;
-                    const matchedPet = petsData ? petsData.find(p => p.id === inv.pet_id) : null;
-                    const matchedItems = allInvoiceItems ? allInvoiceItems.filter(i => i.invoice_id === inv.id) : [];
-                    return {
-                        ...inv,
-                        category: inv.category || '一般商品',
-                        items: matchedItems,
-                        owners: matchedOwner ? { name: matchedOwner.name, mobile: matchedOwner.mobile, owner_code: matchedOwner.owner_code } : null,
-                        pets: matchedPet ? { name: matchedPet.name } : null
-                    };
-                });
-            } else {
-                searchSalesCache = [];
+            try {
+                const sales=await loadRetailSalesWithRelations(tenant,request);
+                if (sales===null) return;
+                searchSalesCache=sales;
+            } catch(error) {
+                if (tenant===CURRENT_TENANT_ID && request===searchCenterLoadRequest) alert('商品銷售紀錄讀取失敗：'+error.message+'。請重新查詢；目前保留上次成功結果。');
+                return;
             }
-            
+
             filterSearchSales();
         }
 
@@ -3222,38 +3247,32 @@ bootstrapAuthentication();
             renderSearchMedHistory(filtered);
         }
 
+        function vaccineIdentityHtml(v) {
+            const e=escapeCheckoutText;
+            const codes=[v.owner_system_code?'新：'+v.owner_system_code:'',v.owner_code?'舊：'+v.owner_code:''].filter(Boolean).join('／');
+            return '<b>'+e(v.pet_name)+(v.pet_species?'（'+e(v.pet_species)+'）':'')+'</b><br><small>飼主：'+e(v.owner_name||'飼主資料無法讀取')+
+                (codes?' ['+e(codes)+']':'')+'<br>電話：'+e([v.owner_mobile,v.owner_phone].filter(Boolean).join('／')||'無電話')+'<br>晶片：'+e(v.pet_microchip||'無')+'</small>';
+        }
+        function currentClinicVaccineRows() {return allVaccinationCache.filter(v=>v.tenant_id===CURRENT_TENANT_ID);}
+        function filterVaccineRecords(keyword) {
+            const terms=keyword.trim().toLowerCase().split(/\s+/u).filter(Boolean);
+            return currentClinicVaccineRows().filter(v=>{
+                const values=[v.pet_name,v.pet_species,v.pet_microchip,v.vaccine_name,v.notes,v.last_date,v.next_due_date,
+                    v.owner_name,v.owner_mobile,v.owner_phone,v.owner_code,v.owner_system_code].map(x=>String(x||'').toLowerCase());
+                return terms.every(term=>values.some(value=>value.includes(term)));
+            });
+        }
+        function vaccineRecordCells(v) {
+            return '<td>'+vaccineIdentityHtml(v)+'</td><td><b>'+escapeCheckoutText(v.vaccine_name||'未指定疫苗')+'</b></td>'+ 
+                '<td>'+escapeCheckoutText(v.last_date||'未填日期')+'</td><td>'+escapeCheckoutText(v.next_due_date||'未設定')+'</td><td>'+escapeCheckoutText(v.notes||'-')+'</td>';
+        }
         function renderSearchVaccines(dataList) {
-            const tbody = document.getElementById('searchVacTableBody');
-            if(!tbody) return;
-            tbody.innerHTML = '';
-            if (collapseHistoryUntilSearch(tbody, 'searchVacKeyword')) return;
-            if(!dataList || dataList.length === 0) {
-                tbody.innerHTML = `<tr><td colspan="5" style="text-align: center; color: #64748b;">尚無施打預防針紀錄</td></tr>`;
-                return;
-            }
-            dataList.forEach(v => {
-                const tr = document.createElement('tr');
-                tr.innerHTML = `
-                    <td><b>${v.pet_name}</b><br><small style="color:#64748b;">晶片: ${v.pet_microchip || '無'}</small></td>
-                    <td><span style="background: #e0f2fe; color: #0369a1; padding: 2px 6px; border-radius: 4px; font-weight: bold;">${v.vaccine_name || ''}</span></td>
-                    <td><b style="color: #0284c7;">${v.last_date || ''}</b></td>
-                    <td style="color: #dc2626; font-weight: bold;">${v.next_due_date || '未設定'}</td>
-                    <td>${v.notes || '-'}</td>
-                `;
-                tbody.appendChild(tr);
-            });
+            const tbody=document.getElementById('searchVacTableBody');if(!tbody)return;tbody.innerHTML='';
+            if(collapseHistoryUntilSearch(tbody,'searchVacKeyword'))return;
+            if(!dataList?.length){tbody.innerHTML='<tr><td colspan="5">查無符合的疫苗施打紀錄。</td></tr>';return;}
+            for(const v of dataList){const tr=document.createElement('tr');tr.innerHTML=vaccineRecordCells(v);tbody.appendChild(tr);}
         }
-
-        function filterSearchVaccines() {
-            const kw = document.getElementById('searchVacKeyword').value.trim().toLowerCase();
-            if(!kw) { renderSearchVaccines(allVaccinationCache); return; }
-            const filtered = allVaccinationCache.filter(v => {
-                const pName = (v.pet_name || '').toLowerCase();
-                const vName = (v.vaccine_name || '').toLowerCase();
-                return pName.includes(kw) || vName.includes(kw);
-            });
-            renderSearchVaccines(filtered);
-        }
+        function filterSearchVaccines() {renderSearchVaccines(filterVaccineRecords(document.getElementById('searchVacKeyword').value));}
 
         function renderSearchMedicinesUsage(dataList) {
             const tbody = document.getElementById('searchMedUsageTableBody');
@@ -3297,16 +3316,15 @@ bootstrapAuthentication();
                 return;
             }
             dataList.forEach(inv => {
-                const ownerCodeStr = inv.owners && inv.owners.owner_code ? `[${inv.owners.owner_code}] ` : '';
-                const ownerName = inv.owners ? `${ownerCodeStr}${inv.owners.name} (${inv.owners.mobile || '無電話'})` : '<span style="color:#94a3b8;">散客 / 不指定飼主</span>';
-                const petName = inv.pets ? ` 🐶 <b>${inv.pets.name}</b>` : '';
+                const ownerName = financialOwnerDisplay(inv);
+                const petName = inv.pets ? ` 🐾 <b>${escapeCheckoutText(inv.pets.name)}</b>` : '';
                 const category = inv.category || '一般商品';
                 
                 let itemsSummary = '';
                 if (inv.items && inv.items.length > 0) {
                     inv.items.forEach(it => {
                         const unitPrice = it.unit_price !== undefined ? it.unit_price : (it.price || 0);
-                        itemsSummary += `• <b>${it.item_name}</b> (數量: ${it.quantity} | 單價: NT$ ${unitPrice})<br>`;
+                        itemsSummary += `• <b>${escapeCheckoutText(it.item_name)}</b> (數量: ${it.quantity} | 單價: NT$ ${unitPrice})<br>`;
                     });
                 } else {
                     itemsSummary = '<span style="color:#ef4444;">無明細記錄</span>';
@@ -3351,7 +3369,7 @@ bootstrapAuthentication();
             const filtered = kw ? searchSalesCache.filter(inv => {
                 const owner = inv.owners || {};
                 const pet = inv.pets || {};
-                return [inv.category || '一般商品', owner.name, owner.mobile, owner.owner_code,
+                return [inv.category || '一般商品', owner.name, owner.mobile, owner.phone, owner.owner_code, owner.system_code,
                     pet.name, ...(inv.items || []).map(item => item.item_name)]
                     .some(value => String(value || '').toLowerCase().includes(kw));
             }) : [];
@@ -3737,69 +3755,151 @@ bootstrapAuthentication();
             finally { vaccineRecordSaveBusy=false; }
         }
 
+        function syncMedicalHistoryButton(panelId) {
+            const panel=document.getElementById(panelId),button=document.getElementById('historyToggle_'+panelId);
+            if(!panel||!button)return;
+            button.setAttribute('aria-expanded',String(panel.open));
+            button.textContent=(panel.open?'▼ ':'▶ ')+button.dataset.label;
+        }
+        function toggleMedicalHistoryPanel(panelId) {
+            const panel=document.getElementById(panelId);if(!panel)return;
+            panel.open=!panel.open;syncMedicalHistoryButton(panelId);
+        }
+
+        const currentPetHistoryRequests=new Map();
+        function resetCurrentPetClinicalHistories() {
+            for (const kind of ['rapid','cbc','bio','imaging']) {
+                currentPetHistoryRequests.set(kind,(currentPetHistoryRequests.get(kind)||0)+1);
+                const panel=document.getElementById('medicalHistoryPanel_'+kind);if(panel)panel.open=false;
+                const box=document.getElementById('medicalHistoryContent_'+kind);if(box)box.textContent=currentPetId?'點擊展開查詢目前寵物紀錄。':'請先選擇寵物。';
+            }
+        }
+        async function queryCurrentPetHistoryPages(table,petId,tenant,kind) {
+            const rows=[];
+            for(let offset=0;;offset+=1000) {
+                let q=_supabase.from(table).select('*').eq('tenant_id',tenant).eq('pet_id',petId);
+                if(table==='lab_reports') q=kind==='cbc'?q.eq('test_type','CBC全血球'):q.neq('test_type','CBC全血球');
+                if(table==='lab_tests') q=q.in('test_category',['數位 X 光影像','超音波掃描','X光','X 光','超音波','影像']);
+                const {data,error}=await q.order(table==='imaging_studies'?'study_date':'created_at',{ascending:false}).order('id',{ascending:false}).range(offset,offset+999);
+                if(error)throw error;
+                if(tenant!==CURRENT_TENANT_ID||petId!==currentPetId)return null;
+                rows.push(...(data||[]));if(!data||data.length<1000)return rows;
+            }
+        }
+        function currentPetHistoryIdentity(pet) {
+            const owner=pet.owners||{},codes=[owner.system_code?'新：'+owner.system_code:'',owner.owner_code?'舊：'+owner.owner_code:''].filter(Boolean).join('／');
+            return '寵物：'+pet.name+'（'+(pet.species||'未填物種')+'）｜飼主：'+(owner.name||'飼主資料無法讀取')+
+                (codes?' ['+codes+']':'')+'｜電話：'+([owner.mobile,owner.phone].filter(Boolean).join('／')||'無電話');
+        }
+        function renderCurrentPetRapidReport(record) {
+            const e=escapeCheckoutText;let results=record.result;
+            if(typeof results==='string') {try{results=JSON.parse(results);}catch{results={'結果':results};}}
+            if(!results||typeof results!=='object'||Array.isArray(results))results={'結果':results??'未填'};
+            let text='<h4>'+e(record.test_item||'快篩')+'</h4><p>檢驗時間：'+e(new Date(record.created_at).toLocaleString())+'｜批號：'+e(record.batch_no||'未填')+'</p>';
+            for(const [name,value]of Object.entries(results)){const result=String(value??'未填');text+='<p><b>'+e(name)+'</b>：<span style="color:'+(result.includes('陽性')?'#dc2626':'#334155')+';font-weight:bold">'+e(result)+'</span></p>';}
+            return text+'<p>備註：'+e(record.notes||'-')+'</p>';
+        }
+        function appendPatientImageRecord(container,record,nativeStudy=false) {
+            const item=document.createElement('div');item.style.cssText='padding:12px 0;border-bottom:1px solid #e2e8f0;';
+            const title=document.createElement('h4');title.textContent=nativeStudy?(record.modality||'影像'):(record.test_category||'影像／附件');item.appendChild(title);
+            const info=document.createElement('p');info.textContent='日期：'+new Date(record.study_date||record.created_at).toLocaleString()+
+                (nativeStudy?'｜部位：'+(record.body_part||'未填')+'｜拍攝方向：'+(record.views||'未填')+'｜醫師：'+(record.veterinarian_name||'未填'):'');item.appendChild(info);
+            if(nativeStudy){const interpretation=document.createElement('p');interpretation.textContent='判讀：'+(record.interpretation||'未填')+'；臨床備註：'+(record.clinical_note||'未填');item.appendChild(interpretation);}
+            if(record.file_url){
+                let url;try{url=new URL(record.file_url);if(!['https:','http:'].includes(url.protocol))url=null;}catch{url=null;}
+                if(url){
+                    if(/\.(png|jpe?g|gif|webp)$/i.test(url.pathname)){const image=document.createElement('img');image.src=url.href;image.alt='此寵物影像';image.loading='lazy';image.style.cssText='max-width:100%;max-height:600px;object-fit:contain;';item.appendChild(image);}
+                    else if(/\.pdf$/i.test(url.pathname)){const frame=document.createElement('iframe');frame.src=url.href;frame.title='此寵物影像報告';frame.setAttribute('sandbox','');frame.style.cssText='width:100%;height:600px;border:1px solid #e2e8f0;';item.appendChild(frame);}
+                    const link=document.createElement('a');link.href=url.href;link.target='_blank';link.rel='noopener noreferrer';link.textContent='開啟原始附件（另開視窗）';item.appendChild(link);
+                } else {const note=document.createElement('p');note.textContent='附件連結格式無法預覽，請確認原始檔案。';item.appendChild(note);}
+            }
+            container.appendChild(item);
+        }
+        async function loadCurrentPetClinicalHistory(kind) {
+            if(!['rapid','cbc','bio','imaging'].includes(kind))return;
+            const tenant=CURRENT_TENANT_ID,petId=currentPetId,box=document.getElementById('medicalHistoryContent_'+kind);if(!box)return;
+            if(!petId||!tenant){box.textContent='請先選擇寵物。';return;}
+            const request=(currentPetHistoryRequests.get(kind)||0)+1;currentPetHistoryRequests.set(kind,request);box.textContent='讀取中…';
+            const valid=()=>tenant===CURRENT_TENANT_ID&&petId===currentPetId&&currentPetHistoryRequests.get(kind)===request;
+            try {
+                const {data:pet,error:petError}=await _supabase.from('pets').select('id,name,species,owners(name,mobile,phone,owner_code,system_code)').eq('tenant_id',tenant).eq('id',petId).single();
+                if(petError||!pet)throw petError||new Error('寵物資料無法讀取');if(!valid())return;
+                const table=kind==='rapid'?'rapid_test_records':kind==='imaging'?'lab_tests':'lab_reports';
+                const rows=await queryCurrentPetHistoryPages(table,petId,tenant,kind);if(!valid()||rows===null)return;
+                let studies=[];
+                // The dedicated imaging schema requires UUID tenant IDs. No clinic-ID guessing or cross-tenant query.
+                const imagingSupported=/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(tenant);
+                if(kind==='imaging'&&imagingSupported){studies=await queryCurrentPetHistoryPages('imaging_studies',petId,tenant,kind);if(!valid()||studies===null)return;}
+                box.replaceChildren();const identity=document.createElement('p');identity.textContent=currentPetHistoryIdentity(pet);box.appendChild(identity);
+                if(!rows.length&&!studies.length){const empty=document.createElement('p');empty.textContent='此寵物尚無已儲存的'+({rapid:'快篩',cbc:'CBC 血球',bio:'血清生化',imaging:'影像／附件'}[kind])+'紀錄。';box.appendChild(empty);}
+                for(const record of rows){
+                    if(kind==='imaging'){appendPatientImageRecord(box,record);continue;}
+                    const item=document.createElement('div');item.style.cssText='padding:12px 0;border-bottom:1px solid #e2e8f0;';
+                    item.innerHTML=kind==='rapid'?renderCurrentPetRapidReport(record):buildLabReportHtml({...record,pets:{name:pet.name,species:pet.species}});box.appendChild(item);
+                }
+                for(const record of studies)appendPatientImageRecord(box,record,true);
+                if(kind==='imaging'&&!imagingSupported){const note=document.createElement('p');note.textContent='目前顯示院內已儲存的影像附件；儀器影像中心尚未接通此醫院代碼。';box.appendChild(note);}
+            }catch(error){if(valid()){box.textContent='讀取失敗：'+error.message+'。';const retry=document.createElement('button');retry.textContent='重新讀取';retry.onclick=()=>loadCurrentPetClinicalHistory(kind);box.appendChild(retry);}}
+        }
+        function refreshOpenCurrentPetHistory(kind){if(document.getElementById('medicalHistoryPanel_'+kind)?.open)loadCurrentPetClinicalHistory(kind);}
+
+        let vaccineLoadRequest=0;
         async function loadPetVaccines() {
-            const { data, error } = await _supabase.from('vaccination_records').select('*').eq('tenant_id', CURRENT_TENANT_ID).order('last_date', { ascending: false });
-            const { data: petsData } = await _supabase.from('pets').select('id, name, microchip').eq('tenant_id', CURRENT_TENANT_ID);
-            
-            if (error || !data) {
-                allVaccinationCache = [];
-            } else {
-                allVaccinationCache = data.map(v => {
-                    const matchedPet = petsData ? petsData.find(p => p.id === v.pet_id) : null;
-                    return {
-                        ...v,
-                        pet_name: matchedPet ? matchedPet.name : '未知寵物',
-                        pet_microchip: matchedPet ? matchedPet.microchip : ''
-                    };
-                });
+            const tenant=CURRENT_TENANT_ID,request=++vaccineLoadRequest;if(!tenant)return;
+            try {
+                const rows=[];
+                for(let offset=0;;offset+=1000){
+                    const {data,error}=await _supabase.from('vaccination_records').select('*').eq('tenant_id',tenant)
+                        .order('last_date',{ascending:false}).order('id',{ascending:false}).range(offset,offset+999);
+                    if(error)throw error;
+                    if(tenant!==CURRENT_TENANT_ID||request!==vaccineLoadRequest)return;
+                    rows.push(...(data||[]));if(!data||data.length<1000)break;
+                }
+                // vaccination_records.pet_id has no FK here; fetch only its referenced pets and their owner FK.
+                const ids=[...new Set(rows.map(v=>v.pet_id).filter(Boolean))],pets=new Map();
+                for(let offset=0;offset<ids.length;offset+=200){
+                    const {data,error}=await _supabase.from('pets').select('id,name,microchip,species,owner_id,owners(id,name,mobile,phone,owner_code,system_code)')
+                        .eq('tenant_id',tenant).in('id',ids.slice(offset,offset+200));
+                    if(error)throw error;
+                    if(tenant!==CURRENT_TENANT_ID||request!==vaccineLoadRequest)return;
+                    for(const pet of data||[])pets.set(pet.id,pet);
+                }
+                allVaccinationCache=rows.map(v=>{const pet=pets.get(v.pet_id),owner=pet?.owners;return {...v,
+                    pet_name:pet?.name||'寵物資料無法讀取',pet_microchip:pet?.microchip||'',pet_species:pet?.species||'',
+                    owner_id:pet?.owner_id||null,owner_name:owner?.name||'飼主資料無法讀取',owner_mobile:owner?.mobile||'',
+                    owner_phone:owner?.phone||'',owner_code:owner?.owner_code||'',owner_system_code:owner?.system_code||''};});
+                filterVaccineTable();filterSearchVaccines();renderCurrentPetVaccineHistory();
+            }catch(error){
+                if(tenant===CURRENT_TENANT_ID&&request===vaccineLoadRequest){
+                    alert('疫苗紀錄查詢失敗：'+error.message+'。請重新查詢，勿重新登記已施打紀錄。');
+                    const box=document.getElementById('medicalVaccineHistoryContent');if(box)box.textContent='疫苗紀錄讀取失敗，請重新展開查詢。';
+                }
             }
-            filterVaccineTable();
         }
-
-        function renderVaccineTable(dataList) {
-            const tbody = document.getElementById('petVaccineTableBody');
-            if(!tbody) return;
-            tbody.innerHTML = '';
-            if (collapseHistoryUntilSearch(tbody, 'vacReportTableSearch')) return;
-
-            if(!dataList || dataList.length === 0) {
-                tbody.innerHTML = `<tr><td colspan="6" style="text-align: center; color: #64748b;">尚無任何寵物疫苗施打紀錄</td></tr>`;
-                return;
-            }
-
-            dataList.forEach(v => {
-                const tr = document.createElement('tr');
-                tr.innerHTML = `
-                    <td><b>${v.pet_name}</b><br><small style="color:#64748b;">晶片: ${v.pet_microchip || '無'}</small></td>
-                    <td><span style="background: #e0f2fe; color: #0369a1; padding: 2px 6px; border-radius: 4px; font-weight: bold;">${v.vaccine_name || '未指定疫苗'}</span></td>
-                    <td><b style="color: #0284c7;">📅 ${v.last_date || '未填寫日期'}</b></td>
-                    <td style="color: #dc2626; font-weight: bold;">${v.next_due_date || '未設定'}</td>
-                    <td>${v.notes || '-'}</td>
-                    <td><button class="btn-danger" style="padding: 4px 8px; font-size: 0.8rem;" onclick="deletePetVaccine('${v.id}')">刪除</button></td>
-                `;
-                tbody.appendChild(tr);
-            });
+        function renderCurrentPetVaccineHistory(){
+            const box=document.getElementById('medicalVaccineHistoryContent');if(!box)return;box.replaceChildren();
+            if(!currentPetId){box.textContent='請先選擇寵物。';return;}
+            const rows=currentClinicVaccineRows().filter(v=>v.pet_id===currentPetId);
+            if(!rows.length){box.textContent='此寵物尚無疫苗施打紀錄。';return;}
+            for(const v of rows){const item=document.createElement('div');item.style.cssText='padding:12px 0;border-bottom:1px solid #e2e8f0;';
+                item.innerHTML=vaccineIdentityHtml(v)+'<p><b>'+escapeCheckoutText(v.vaccine_name||'未指定疫苗')+'</b>｜施打：'+escapeCheckoutText(v.last_date||'未填')+
+                    '｜下次：'+escapeCheckoutText(v.next_due_date||'未設定')+'</p><p>備註／批號：'+escapeCheckoutText(v.notes||'-')+'</p>';box.appendChild(item);}
         }
-
-        function filterVaccineTable() {
-            const keyword = document.getElementById('vacReportTableSearch').value.trim().toLowerCase();
-            if(!keyword) { renderVaccineTable(allVaccinationCache); return; }
-
-            const filtered = allVaccinationCache.filter(v => {
-                const petName = (v.pet_name || '').toLowerCase();
-                const vacName = (v.vaccine_name || '').toLowerCase();
-                const chip = (v.pet_microchip || '').toLowerCase();
-                const notes = (v.notes || '').toLowerCase();
-                return petName.includes(keyword) || vacName.includes(keyword) || chip.includes(keyword) || notes.includes(keyword);
-            });
-
-            renderVaccineTable(filtered);
+        function renderVaccineTable(dataList){
+            const tbody=document.getElementById('petVaccineTableBody');if(!tbody)return;tbody.innerHTML='';
+            if(collapseHistoryUntilSearch(tbody,'vacReportTableSearch'))return;
+            if(!dataList?.length){tbody.innerHTML='<tr><td colspan="6">查無符合的疫苗施打紀錄。</td></tr>';return;}
+            for(const v of dataList){const tr=document.createElement('tr');tr.innerHTML=vaccineRecordCells(v);
+                const td=document.createElement('td'),button=document.createElement('button');button.className='btn-danger';button.textContent='刪除';button.onclick=()=>deletePetVaccine(v.id);td.appendChild(button);tr.appendChild(td);tbody.appendChild(tr);}
         }
-
-        async function deletePetVaccine(id) {
-            if(!confirm('確定要刪除這筆施打紀錄嗎？')) return;
-            const { error } = await _supabase.from('vaccination_records').delete().eq('id', id);
-            if(error) { alert('刪除失敗'); } else { removePendingServiceRecord('vaccine',id); loadPetVaccines(); }
+        function filterVaccineTable(){renderVaccineTable(filterVaccineRecords(document.getElementById('vacReportTableSearch').value));}
+        async function deletePetVaccine(id){
+            if(!confirm('確定刪除這筆施打紀錄？已結帳費用不會因此自動退款。'))return;
+            const tenant=CURRENT_TENANT_ID;
+            const {data,error}=await _supabase.from('vaccination_records').delete().eq('id',id).eq('tenant_id',tenant).select('id').single();
+            if(error||!data){alert('刪除失敗：'+(error?.message||'找不到紀錄'));return;}
+            if(tenant!==CURRENT_TENANT_ID)return;
+            removePendingServiceRecord('vaccine',id);await loadPetVaccines();
         }
 
         async function showStockHistory(kind, id) {
@@ -4762,6 +4862,7 @@ bootstrapAuthentication();
     }
 
     const invoiceOwnerSelect = document.getElementById('invoiceOwnerSelect');
+    const previousInvoiceOwnerId=invoiceOwnerSelect?.value||'';
     if(invoiceOwnerSelect) invoiceOwnerSelect.innerHTML = '<option value="">-- 請選擇飼主 --</option>';
 
     ownersData.forEach(owner => {
@@ -4773,6 +4874,8 @@ bootstrapAuthentication();
             invoiceOwnerSelect.appendChild(opt);
         }
     });
+
+    if (invoiceOwnerSelect && previousInvoiceOwnerId && Array.from(invoiceOwnerSelect.options).some(o=>o.value===previousInvoiceOwnerId)) invoiceOwnerSelect.value=previousInvoiceOwnerId;
 
     // 展開所有寵物清單供下拉選單使用
     allPetsListForDropdown = [];
@@ -5298,7 +5401,42 @@ bootstrapAuthentication();
             fetchFinancialReport();
         }
 
+        let financialReportRequest=0;
+        async function loadFinancialReportRows(startDate,endDate,tenant,request) {
+            const invoices=[];
+            for (let offset=0;;offset+=1000) {
+                const {data,error}=await _supabase.from('invoices')
+                    .select('*, owners(id,name,mobile,phone,owner_code,system_code)')
+                    .eq('tenant_id',tenant).gte('created_at',startDate.toISOString()).lte('created_at',endDate.toISOString())
+                    .order('created_at',{ascending:false}).order('id',{ascending:false}).range(offset,offset+999);
+                if (error) throw error;
+                if (tenant!==CURRENT_TENANT_ID || request!==financialReportRequest) return null;
+                invoices.push(...(data||[]));
+                if (!data || data.length<1000) break;
+            }
+            // invoices.pet_id has no FK in this installation: retrieve only the referenced pets explicitly.
+            const petIds=[...new Set(invoices.map(i=>i.pet_id).filter(Boolean))], pets=new Map();
+            for (let offset=0;offset<petIds.length;offset+=200) {
+                const {data,error}=await _supabase.from('pets').select('id,name').eq('tenant_id',tenant).in('id',petIds.slice(offset,offset+200));
+                if (error) throw error;
+                if (tenant!==CURRENT_TENANT_ID || request!==financialReportRequest) return null;
+                for (const pet of data||[]) pets.set(pet.id,pet);
+            }
+            return invoices.map(i=>({...i,pets:pets.get(i.pet_id)||null}));
+        }
+        function financialOwnerDisplay(invoice) {
+            const owner=invoice.owners;
+            if (owner) {
+                const codes=[owner.system_code?'新：'+owner.system_code:'',owner.owner_code?'舊：'+owner.owner_code:''].filter(Boolean).join('／');
+                return (codes?'['+escapeCheckoutText(codes)+'] ':'')+escapeCheckoutText(owner.name||'未填姓名')+' ('+escapeCheckoutText(owner.mobile||owner.phone||'無電話')+')';
+            }
+            if (invoice.owner_id) return '<span style="color:#b45309;">飼主資料無法讀取（已有飼主關聯）</span>';
+            return invoice.pet_id ? '<span style="color:#b45309;">未指定飼主（已有寵物關聯）</span>' : '<span style="color:#94a3b8;">散客 / 無指定飼主</span>';
+        }
+
         async function fetchFinancialReport() {
+            const tenant=CURRENT_TENANT_ID,request=++financialReportRequest;
+            if (!tenant) return;
             const reportType = document.getElementById('reportType').value;
             const startDateStr = document.getElementById('reportStartDate').value;
             const endDateStr = document.getElementById('reportEndDate').value;
@@ -5323,29 +5461,13 @@ bootstrapAuthentication();
                 endDate = new Date(endDateStr); endDate.setHours(23, 59, 59, 999);
             }
 
-            const { data: invData, error: invError } = await _supabase
-                .from('invoices')
-                .select('*')
-                .eq('tenant_id', CURRENT_TENANT_ID)
-                .gte('created_at', startDate.toISOString())
-                .lte('created_at', endDate.toISOString())
-                .order('created_at', { ascending: false });
-
-            let data = [];
-            if (!invError && invData) {
-                const { data: ownersData } = await _supabase.from('owners').select('id, name, mobile, owner_code').eq('tenant_id', CURRENT_TENANT_ID);
-                const { data: petsData } = await _supabase.from('pets').select('id, name').eq('tenant_id', CURRENT_TENANT_ID);
-
-                data = invData.map(inv => {
-                    const matchedOwner = ownersData ? ownersData.find(o => o.id === inv.owner_id) : null;
-                    const matchedPet = petsData ? petsData.find(p => p.id === inv.pet_id) : null;
-                    return {
-                        ...inv,
-                        owners: matchedOwner ? { name: matchedOwner.name, mobile: matchedOwner.mobile, owner_code: matchedOwner.owner_code } : null,
-                        pets: matchedPet ? { name: matchedPet.name } : null
-                    };
-                });
+            let data;
+            try { data=await loadFinancialReportRows(startDate,endDate,tenant,request); }
+            catch(error) {
+                if (tenant===CURRENT_TENANT_ID && request===financialReportRequest) alert('結算報表讀取失敗：'+error.message+'。請重新查詢，畫面目前保留上一次成功結果。');
+                return;
             }
+            if (data===null) return;
 
             const tbody = document.getElementById('reportTableBody');
             tbody.innerHTML = '';
@@ -5384,8 +5506,7 @@ bootstrapAuthentication();
                     if (!inv.voided_at) { clinicCount++; clinicDiscount += disc; clinicTotal += total; }
                 }
 
-                const ownerCodeStr = inv.owners && inv.owners.owner_code ? `[${inv.owners.owner_code}] ` : '';
-                const ownerStr = inv.owners ? `${ownerCodeStr}${inv.owners.name} (${inv.owners.mobile || '無'})` : '<span style="color:#94a3b8;">散客 / 無指定飼主</span>';
+                const ownerStr = financialOwnerDisplay(inv);
                 const petStr = inv.pets ? ` 🐶 <b>${inv.pets.name}</b>` : '';
                 const typeBadgeColor = inv.checkout_type === '商品零售' ? '#059669' : '#0284c7';
 
@@ -5948,6 +6069,9 @@ bootstrapAuthentication();
         processInvoiceCheckoutToArchive
         async function startConsultationById(petId, chipId, petNameStr, ownerId, weight, ownerName, birthday, gender, species, breed) {
             currentPetId = petId;
+            resetCurrentPetClinicalHistories();
+            const vaccinePanel=document.getElementById('medicalVaccineHistoryPanel');if(vaccinePanel)vaccinePanel.open=false;
+            const vaccineBox=document.getElementById('medicalVaccineHistoryContent');if(vaccineBox)vaccineBox.textContent='展開後查詢此寵物疫苗紀錄。';
             resetLegacyMedicalArchive();
             currentPetMicrochip = chipId;
             currentPetName = petNameStr;
@@ -6501,6 +6625,7 @@ bootstrapAuthentication();
         let legacyArchiveLoading = false;
 
         function resetLegacyMedicalArchive() {
+            resetCurrentPetClinicalHistories();
             legacyArchiveRequest++;
             legacyArchiveLoaded = false;
             legacyArchiveLoading = false;
@@ -7514,6 +7639,7 @@ bootstrapAuthentication();
         }
 
         async function loadLabReportsList() {
+            refreshOpenCurrentPetHistory('cbc');refreshOpenCurrentPetHistory('bio');
             const { data, error } = await _supabase.from('lab_reports').select('*, pets(name, species)').eq('tenant_id', CURRENT_TENANT_ID).order('created_at', { ascending: false });
             if (error || !data) { allLabReportsCache = []; } else { allLabReportsCache = data; }
             filterLabReportsTable();
@@ -7725,6 +7851,7 @@ bootstrapAuthentication();
         }
 
         async function loadRapidReportsList() {
+            refreshOpenCurrentPetHistory('rapid');
             const { data, error } = await _supabase.from('rapid_test_records').select('*, pets(name)').eq('tenant_id', CURRENT_TENANT_ID).order('created_at', { ascending: false });
             if (error || !data) { allRapidReportsCache = []; } else { allRapidReportsCache = data; }
             filterRapidReportsTable();
@@ -7865,6 +7992,7 @@ bootstrapAuthentication();
             if (inventoryCheckoutBusy) return;
             const ownerSelect = document.getElementById('invoiceOwnerSelect');
             const ownerId = ownerSelect?.value || null;
+            if (!ownerId && clinicalInvoiceContext?.tenantId===CURRENT_TENANT_ID && clinicalInvoiceContext.ownerId) {alert('這次門診已有飼主，收費頁尚未選定。請先選擇該飼主，避免以散客儲存。');return;}
             const ownerName = ownerId ? ownerSelect.selectedOptions[0]?.text || '飼主' : '散客 / 未指定飼主';
             const billingContext=clinicalInvoiceContext?.tenantId===CURRENT_TENANT_ID && clinicalInvoiceContext.ownerId===ownerId ? clinicalInvoiceContext : null;
             const billingPetId=billingContext?.petId || currentPetId || null;
@@ -7981,6 +8109,14 @@ bootstrapAuthentication();
 
 async function processProductCheckoutToArchive(shouldPrintReceipt = true) {
             if (inventoryCheckoutBusy) return;
+            const customerInput=document.getElementById('checkoutOwnerSearch');
+            if (customerInput?.value.trim()) {
+                const previousProductPetId=document.getElementById('checkoutPetSelect')?.value||'';
+                onCheckoutOwnerInput({target:customerInput});
+                const productPetSelect=document.getElementById('checkoutPetSelect');
+                if (previousProductPetId && productPetSelect && Array.from(productPetSelect.options).some(o=>o.value===previousProductPetId)) productPetSelect.value=previousProductPetId;
+                if (!document.getElementById('selectedCheckoutOwnerId')?.value) {alert('已輸入飼主，但尚未選定資料。請點選搜尋建議中的飼主後再結帳；散客請清空飼主欄。');return;}
+            } else document.getElementById('selectedCheckoutOwnerId').value='';
             const ownerId = document.getElementById('selectedCheckoutOwnerId')?.value || null;
             const petId = document.getElementById('checkoutPetSelect')?.value || null;
             const ownerName = document.getElementById('checkoutOwnerSearch')?.value.trim() || '散客 / 未指定飼主';
