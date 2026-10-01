@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>吉布動物醫院管理系統 genblue設計版權所有｜雙編號測試</title>
+    <title>實操修正 v20｜吉布動物醫院管理系統 genblue設計版權所有｜雙編號測試</title>
     <!-- 引入 Supabase JS SDK CDN -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
@@ -572,7 +572,7 @@
     <!-- 主容器 -->
     <div class="main-container">
         <header>
-            <div class="header-left">
+            <div class="header-left"><span style="color:#0369a1;font-weight:bold;">原院實操修正 v20（測試版）</span>
                 <h3>首頁管理介面 <small style="color:#64748b;font-size:12px">版本 18.7.14 處方共用設定保留版 v19</small></h3>
                 <input type="text" id="globalSearchInput" class="search-box" placeholder="寵物／電話／編號，或 momo 王" onkeydown="handleGlobalSearch(event)" oninput="closeGlobalSearchResults()">
                 <input type="text" id="globalSearchOwnerInput" class="search-box" aria-label="飼主姓名或姓氏篩選" placeholder="飼主姓名／姓氏（可不填）" onkeydown="handleGlobalSearch(event)" oninput="closeGlobalSearchResults()" style="max-width:240px;">
@@ -816,7 +816,7 @@
                             <button class="btn-warning" style="padding: 6px 14px; font-size: 0.85rem; background-color: #0284c7;" onclick="admitCurrentPetToHospital()">🏥 轉入住院觀察 (Admit)</button>
                             <button class="btn-warning" style="padding: 6px 14px; font-size: 0.85rem;" onclick="goToVaccinesFromMedical()">💉 前往疫苗施打登錄</button>
                             <button class="btn-warning" style="padding: 6px 14px; font-size: 0.85rem;" onclick="goToLabManagerFromMedical()">🩸 前往血球/生化檢驗登錄</button>
-                            <button class="btn-warning" style="padding: 6px 14px; font-size: 0.85rem;" onclick="goToRapidTestsFromMedical()">🦠 前往快篩檢驗登錄</button>
+                            <button class="btn-warning" style="padding: 6px 14px; font-size: 0.85rem;" onclick="goToRapidTestsFromMedical()">🦠 前往快篩檢驗登錄</button><button type="button" onclick="openNewPetForCurrentOwner()">🐾 替此飼主新增寵物</button><button type="button" onclick="goToProductsFromMedical()">🛒 此飼主購買商品</button>
                         </div>
                     </div>
 
@@ -1190,7 +1190,7 @@
             <!-- 6. 純商品購買結帳分頁 -->
             <div id="product_checkout" class="tab-content">
                 <div class="card">
-                    <h2>純商品購買結帳</h2>
+                    <h2>純商品購買結帳</h2><button id="returnMedicalFromProducts" type="button" hidden onclick="backToMedicalFromProducts()">⬅ 返回原看診（保留病歷與處方）</button><p id="medicalProductContext" hidden style="color:#0369a1;"></p>
                     <div class="form-grid" style="margin-bottom: 15px;">
                         <div class="form-group span-2">
                             <label>購買飼主搜尋 (輸入姓名或手機，選取後自動帶入名下寵物)</label>
@@ -1808,6 +1808,12 @@
                         </div>
                     </div>
 
+                    <div id="rapidComponentsEditor" hidden class="card">
+                        <label for="rapidComponentsInput">此快篩的子項目（單項可留空；請依實際試劑填寫）</label>
+                        <input id="rapidComponentsInput" placeholder="例如：心絲蟲、萊姆病、艾利希體、焦蟲" oninput="applyRapidComponents()">
+                        <p style="color:#64748b;">套組請分別填每一種測試，可用逗號、頓號或分號分隔。每項結果獨立選擇，沒有全部連動。</p>
+                        <button type="button" onclick="saveRapidComponentsDefinition()">儲存此套組子項目設定（管理者）</button>
+                    </div>
                     <div id="rapidResultsContainer" style="background: #f8fafc; padding: 15px; border-radius: var(--radius); margin-bottom: 15px; border: 1px solid var(--border-color);">
                         <h4 style="margin-bottom: 10px; color: var(--primary-dark);">各項檢驗結果判定</h4>
                         <div id="rapidSubResultsList" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 10px;">
@@ -2197,7 +2203,15 @@
         </div>
     </div>
 
-    <script>
+    <div id="quickNewPetModal" class="modal" style="display:none; position:fixed; inset:0; background:#0008; z-index:10050; align-items:center; justify-content:center;">
+<form id="quickNewPetForm" class="card" style="width:min(600px,94vw);max-height:90vh;overflow:auto;" onsubmit="event.preventDefault();saveQuickNewPet()">
+<h3>替既有飼主新增寵物</h3><p id="quickPetOwnerLabel"></p>
+<div class="form-grid"><label>寵物名字<input id="quickPetName" required maxlength="100"></label><label>種類<select id="quickPetSpecies"><option>犬</option><option>貓</option><option>兔</option><option>鼠</option><option>豬</option><option>其他</option></select></label>
+<label>品種<input id="quickPetBreed"></label><label>性別／結紮<select id="quickPetGender"><option value="">-- 請選擇 --</option><option>公 (未結紮)</option><option>母 (未結紮)</option><option>公 (已結紮)</option><option>母 (已結紮)</option><option>未知</option></select></label>
+<label>出生日期（選填）<input id="quickPetBirthday" type="date"></label><label>體重 kg（選填）<input id="quickPetWeight" type="number" min="0" step="0.01"></label><label>晶片號碼（選填）<input id="quickPetChip" maxlength="50"></label></div>
+<p id="quickPetMessage" role="status"></p><button id="quickPetSave" type="submit">儲存新增寵物</button><button type="button" onclick="closeQuickNewPet()">取消／關閉</button>
+<p style="color:#64748b;">只新增至這位飼主名下；不自動掛號或切換目前看診寵物。</p></form></div>
+<script>
         const { createClient } = supabase;
         const SUPABASE_URL = 'https://rfprsbftkwtwjqrjcalq.supabase.co';
         const SUPABASE_ANON_KEY = 'sb_publishable_mbbz-W9Mwg-yzcokP8Yk3g_2Gqf1wum';
@@ -3583,45 +3597,48 @@ bootstrapAuthentication();
             }
         }
 
+        function parseRapidComponents(value) {
+            const items=Array.isArray(value)?value:String(value||'').split(/[,，、;；\n\r]+/);
+            return [...new Set(items.map(x=>String(x).trim()).filter(Boolean))];
+        }
+        function renderRapidComponents(names, previous={}) {
+            const container=document.getElementById('rapidSubResultsList');container.replaceChildren();
+            for(const name of names){
+                const box=document.createElement('div');box.className='form-group';
+                const label=document.createElement('label');label.textContent=name+' 結果';
+                const select=document.createElement('select');select.className='rapid-sub-result-select';select.dataset.subname=name;
+                for(const [value,text] of [['','-- 請選擇結果 --'],['陰性 (Negative)','陰性 (Negative)'],['陽性 (Positive)','陽性 (Positive)'],['無效 (Invalid)','無效 (Invalid)']]){const o=document.createElement('option');o.value=value;o.textContent=text;select.append(o);}
+                select.value=previous[name]||'';select.onchange=()=>{select.style.color=select.value.includes('Positive')?'#dc2626':select.value.includes('Negative')?'#059669':'';};select.onchange();
+                box.append(label,select);container.append(box);
+            }
+        }
         function onRapidItemSelected() {
-            const selectedName = document.getElementById('rapidTestItem').value;
-            const container = document.getElementById('rapidSubResultsList');
-            container.innerHTML = '';
-
-            if (!selectedName || !loadedRapidTypesMap[selectedName]) {
-                container.innerHTML = '<span style="color: #64748b;">請先選擇快篩項目...</span>';
-                return;
-            }
-
-            const rt = loadedRapidTypesMap[selectedName];
-            if (rt.sub_items && rt.sub_items.trim() !== '') {
-                const subArray = rt.sub_items.split(',').map(s => s.trim()).filter(s => s);
-                subArray.forEach(sub => {
-                    const div = document.createElement('div');
-                    div.className = 'form-group';
-                    div.innerHTML = `
-                        <label><b>${sub}</b> 結果</label>
-                        <select class="rapid-sub-result-select" data-subname="${sub}">
-                            <option value="陰性 (Negative)" style="color: #059669; font-weight: bold;">陰性 (Negative)</option>
-                            <option value="陽性 (Positive)" style="color: #dc2626; font-weight: bold;">陽性 (Positive)</option>
-                            <option value="無效 (Invalid)">無效 (Invalid)</option>
-                        </select>
-                    `;
-                    container.appendChild(div);
-                });
-            } else {
-                const div = document.createElement('div');
-                div.className = 'form-group';
-                div.innerHTML = `
-                    <label>整體結果判定</label>
-                    <select class="rapid-sub-result-select" data-subname="${rt.name}">
-                        <option value="陰性 (Negative)" style="color: #059669; font-weight: bold;">陰性 (Negative)</option>
-                        <option value="陽性 (Positive)" style="color: #dc2626; font-weight: bold;">陽性 (Positive)</option>
-                        <option value="無效 (Invalid)">無效 (Invalid)</option>
-                    </select>
-                `;
-                container.appendChild(div);
-            }
+            const name=document.getElementById('rapidTestItem').value,rt=loadedRapidTypesMap[name];
+            document.getElementById('rapidComponentsEditor').hidden=!rt;
+            document.getElementById('rapidComponentsInput').value=rt?parseRapidComponents(rt.sub_items).join('、'):'';
+            if(!rt){document.getElementById('rapidSubResultsList').textContent='請先選擇快篩項目…';return;}
+            const names=parseRapidComponents(rt.sub_items);renderRapidComponents(names.length?names:[rt.name]);
+        }
+        function applyRapidComponents() {
+            const rt=loadedRapidTypesMap[document.getElementById('rapidTestItem').value];if(!rt)return;
+            const names=parseRapidComponents(document.getElementById('rapidComponentsInput').value);
+            const previous=Object.fromEntries(Array.from(document.querySelectorAll('.rapid-sub-result-select'),s=>[s.dataset.subname,s.value]));
+            renderRapidComponents(names.length?names:[rt.name],previous);
+        }
+        let rapidComponentsSaveBusy=false;
+        async function saveRapidComponentsDefinition() {
+            if(rapidComponentsSaveBusy)return;
+            if(CURRENT_PROFILE?.role!=='admin'){alert('只有管理者可以修改快篩主檔；本次仍可使用子項目結果。');return;}
+            const tenant=CURRENT_TENANT_ID,name=document.getElementById('rapidTestItem').value,rt=loadedRapidTypesMap[name];if(!rt)return;
+            const names=parseRapidComponents(document.getElementById('rapidComponentsInput').value);
+            rapidComponentsSaveBusy=true;
+            try{
+                const {data,error}=await _supabase.from('rapid_types').update({sub_items:names.join(', ')}).eq('tenant_id',tenant).eq('id',rt.id).select('id').single();
+                if(error||!data)throw error||new Error('未更新任何資料');
+                if(tenant!==CURRENT_TENANT_ID)return;
+                rt.sub_items=names.join(', ');if(document.getElementById('rapidTestItem').value===name)applyRapidComponents();
+                alert('子項目設定已儲存；舊報告不會被改寫。');
+            }catch(e){alert('子項目設定儲存失敗：'+e.message);}finally{rapidComponentsSaveBusy=false;}
         }
 
         function filterVaccinePetDropdown() {
@@ -5297,6 +5314,69 @@ bootstrapAuthentication();
             updateLiveAgeDisplay();
         }
 
+        let quickPetContext=null,quickPetSaving=false;
+        async function openNewPetForCurrentOwner(){
+            if(!currentOwnerId){alert('請先選擇有飼主的看診寵物。');return;}
+            await openQuickNewPet(currentOwnerId);
+        }
+        async function openQuickNewPet(ownerId){
+            if(quickPetSaving)return;
+            const tenant=CURRENT_TENANT_ID;
+            try{
+                const {data:owner,error}=await _supabase.from('owners').select('id,name,mobile,system_code,owner_code').eq('tenant_id',tenant).eq('id',ownerId).single();
+                if(error||!owner)throw error||new Error('找不到飼主');if(tenant!==CURRENT_TENANT_ID)return;
+                document.getElementById('quickNewPetForm').reset();
+                quickPetContext={tenant,owner,id:crypto.randomUUID()};
+                document.getElementById('quickPetOwnerLabel').textContent='飼主：'+owner.name+'｜新編號：'+(owner.system_code||'-')+'｜舊病歷號：'+(owner.owner_code||'-')+'｜電話：'+(owner.mobile||'-');
+                document.getElementById('quickPetMessage').textContent='';document.getElementById('quickNewPetModal').style.display='flex';document.getElementById('quickPetName').focus();
+            }catch(e){alert('讀取飼主失敗：'+e.message);}
+        }
+        function closeQuickNewPet(){if(quickPetSaving)return;document.getElementById('quickNewPetModal').style.display='none';quickPetContext=null;}
+        async function saveQuickNewPet(){
+            if(quickPetSaving||!quickPetContext)return;
+            const ctx=quickPetContext;if(ctx.tenant!==CURRENT_TENANT_ID){closeQuickNewPet();return;}
+            const value=id=>document.getElementById(id).value.trim(),name=value('quickPetName'),gender=value('quickPetGender');
+            if(!name||!gender){alert('請填寫寵物名字並選擇性別。');return;}
+            const weight=value('quickPetWeight');if(weight&&(!Number.isFinite(Number(weight))||Number(weight)<0)){alert('體重不得小於零。');return;}
+            const pet={id:ctx.id,tenant_id:ctx.tenant,owner_id:ctx.owner.id,name,species:value('quickPetSpecies'),breed:value('quickPetBreed')||null,gender,birthday:value('quickPetBirthday')||null,weight:weight?roundPetWeight(weight):null,microchip:value('quickPetChip')||null};
+            quickPetSaving=true;document.getElementById('quickPetSave').disabled=true;
+            try{
+                const {error}=await _supabase.from('pets').insert([pet]);
+                if(error)throw error;
+                if(ctx.tenant!==CURRENT_TENANT_ID)return;
+                document.getElementById('quickPetMessage').textContent='已新增 '+name+'；原看診寵物保持不變。';
+                document.getElementById('quickNewPetModal').style.display='none';quickPetContext=null;
+                await loadOwnersAndPetsIntegrated();alert('已替「'+ctx.owner.name+'」新增「'+name+'」。可搜尋新寵物後掛號，原看診內容保留。');
+            }catch(e){document.getElementById('quickPetMessage').textContent='新增失敗或結果待確認：'+e.message+'。請先查詢是否已新增，再重試。';}
+            finally{quickPetSaving=false;document.getElementById('quickPetSave').disabled=false;}
+        }
+        let medicalProductReturnContext=null,medicalProductOpening=false;
+        async function goToProductsFromMedical(){
+            if(medicalProductOpening)return;
+            if(!currentPetId||!currentOwnerId){alert('請先選擇有飼主的看診寵物。');return;}
+            const ctx={tenant:CURRENT_TENANT_ID,petId:currentPetId,ownerId:currentOwnerId};
+            if(document.querySelector('#productCheckoutItems .checkout-item-row') && document.getElementById('selectedCheckoutOwnerId').value!==ctx.ownerId){alert('商品頁尚有另一筆購物車，請先完成或清空，避免更換飼主。');return;}
+            medicalProductOpening=true;
+            try{
+                const {data:owner,error}=await _supabase.from('owners').select('*').eq('tenant_id',ctx.tenant).eq('id',ctx.ownerId).single();if(error||!owner)throw error||new Error('找不到飼主');
+                const {data:pets,error:petError}=await _supabase.from('pets').select('*').eq('tenant_id',ctx.tenant).eq('owner_id',ctx.ownerId);if(petError)throw petError;
+                if(ctx.tenant!==CURRENT_TENANT_ID||ctx.petId!==currentPetId||ctx.ownerId!==currentOwnerId)return;
+                if(!(pets||[]).some(p=>p.id===ctx.petId))throw new Error('寵物與飼主關聯不符');
+                collectCurrentMedicalState();medicalProductReturnContext=ctx;
+                const list=document.getElementById('checkoutOwnerDatalist');let opt=Array.from(list.options).find(o=>o.dataset.ownerId===owner.id);
+                if(!opt){opt=document.createElement('option');opt.dataset.ownerId=owner.id;opt.value='[新:'+(owner.system_code||'-')+'] '+owner.name+' ('+(owner.mobile||'無手機')+')';list.append(opt);}
+                const idx=globalOwnersPetsData.findIndex(x=>x.owner.id===owner.id);const group={owner,pets:pets||[]};if(idx<0)globalOwnersPetsData.push(group);else globalOwnersPetsData[idx]=group;
+                document.getElementById('checkoutOwnerSearch').value=opt.value;onCheckoutOwnerInput({target:document.getElementById('checkoutOwnerSearch')});document.getElementById('checkoutPetSelect').value=ctx.petId;
+                document.getElementById('returnMedicalFromProducts').hidden=false;const hint=document.getElementById('medicalProductContext');hint.hidden=false;hint.textContent='由門診帶入：'+owner.name+'／'+currentPetName+'。商品另行結帳，返回時保留原病歷與處方。';
+                switchTab('product_checkout');
+            }catch(e){alert('無法帶入商品頁：'+e.message);}finally{medicalProductOpening=false;}
+        }
+        function backToMedicalFromProducts(){
+            const ctx=medicalProductReturnContext;
+            if(!ctx||ctx.tenant!==CURRENT_TENANT_ID||ctx.petId!==currentPetId||ctx.ownerId!==currentOwnerId){alert('原看診已變更，請從候診清單重新開啟正確病患。');return;}
+            switchTab('medical'); // DOM stays mounted: preserve even unfinished prescription inputs.
+        }
+
         async function addPetToOwnerPrompt(ownerId, ownerName) {
             const petName = prompt(`要為飼主「${ownerName}」新增什麼名字的寵物？`);
             if (!petName) return;
@@ -5658,6 +5738,7 @@ bootstrapAuthentication();
                     button.disabled = !!existing && existing.status !== '已預約';
                     button.addEventListener('click', () => addGlobalSearchPetToWaiting(pet.id));
                     action.append(button);
+                    if(owner.id){const add=document.createElement('button');add.type='button';add.textContent='替此飼主新增寵物';add.className='btn-secondary';add.addEventListener('click',()=>openQuickNewPet(owner.id));action.append(add);}
                     row.append(action);
                     body.append(row);
                 }
@@ -7879,7 +7960,8 @@ bootstrapAuthentication();
             }
 
             const subSelects = document.querySelectorAll('.rapid-sub-result-select');
-            let resultsObj = {};
+            if(!subSelects.length || Array.from(subSelects).some(sel=>!sel.value)){alert('請逐項選擇快篩結果，不能留空。');return;}
+            let resultsObj = Object.create(null);
             subSelects.forEach(sel => {
                 const subName = sel.getAttribute('data-subname');
                 resultsObj[subName] = sel.value;
