@@ -573,7 +573,7 @@
     <div class="main-container">
         <header>
             <div class="header-left">
-                <h3>首頁管理介面 <small style="color:#64748b;font-size:12px">版本 18.7.10 門診紀錄單行版 v15</small></h3>
+                <h3>首頁管理介面 <small style="color:#64748b;font-size:12px">版本 18.7.12 處方計算與設定保留版 v17</small></h3>
                 <input type="text" id="globalSearchInput" class="search-box" placeholder="寵物／電話／編號，或 momo 王" onkeydown="handleGlobalSearch(event)" oninput="closeGlobalSearchResults()">
                 <input type="text" id="globalSearchOwnerInput" class="search-box" aria-label="飼主姓名或姓氏篩選" placeholder="飼主姓名／姓氏（可不填）" onkeydown="handleGlobalSearch(event)" oninput="closeGlobalSearchResults()" style="max-width:240px;">
             </div>
@@ -770,7 +770,7 @@
                                 <option value="母 (結紮未註明)">母 (結紮未註明)</option>
                             </select>
                         </div>
-                        <div class="form-group"><label>目前體重 (kg)</label><input type="number" step="0.1" id="intPetWeight" placeholder="4.5"></div>
+                        <div class="form-group"><label>目前體重 (kg)</label><input type="number" step="0.01" id="intPetWeight" onblur="normalizePetWeightInput(this)" placeholder="4.5"></div>
                     </div>
 
                     <!-- 儲存後的三種選擇按鈕群組 -->
@@ -836,7 +836,7 @@
                         </div>
                         <div class="form-group">
                             <label>本次看診體重 (kg) - 可直接修改</label>
-                            <input type="number" step="0.1" id="medicalPetWeightInput" value="0" oninput="onWeightChanged()" style="background: #ffffff; font-weight: bold; color: var(--primary-dark);">
+                            <input type="number" step="0.01" id="medicalPetWeightInput" onblur="normalizePetWeightInput(this);onWeightChanged()" value="0" oninput="onWeightChanged()" style="background: #ffffff; font-weight: bold; color: var(--primary-dark);">
                         </div>
                         <div class="form-group">
                             <label for="medicalTemperatureInput">本次看診體溫 (°C)</label>
@@ -4886,7 +4886,7 @@ bootstrapAuthentication();
                     id: pet.id,
                     name: pet.name,
                     microchip: pet.microchip || '',
-                    weight: pet.weight || 0,
+                    weight: roundPetWeight(pet.weight) || 0,
                     birthday: pet.birthday || '',
                     gender: pet.gender || '',
                     species: pet.species || '貓',
@@ -4917,7 +4917,7 @@ bootstrapAuthentication();
                 microchip: pet.microchip || '', 
                 name: pet.name, 
                 owner_id: pet.owner_id, 
-                weight: pet.weight || 0, 
+                weight: roundPetWeight(pet.weight) || 0, 
                 owner_name: pet.owner_name,
                 birthday: pet.birthday || '',
                 gender: pet.gender || '',
@@ -5053,12 +5053,18 @@ bootstrapAuthentication();
             document.getElementById('genericDetailModal').style.display = 'flex';
         }
 
+        function roundPetWeight(value) {
+            if(value===null||value===undefined||String(value).trim()==='')return null;
+            const number=Number(value);if(!Number.isFinite(number))return null;
+            return Math.round((number+Number.EPSILON*Math.max(1,Math.abs(number)))*100)/100;
+        }
+        function normalizePetWeightInput(input) {
+            if(!input||input.value.trim()==='')return;
+            const weight=roundPetWeight(input.value);if(weight!==null)input.value=String(weight);
+        }
         function formatPetWeight(value) {
-            if (value === null || value === undefined || value === '') return '';
-            const number = Number(value);
-            return Number.isFinite(number)
-                ? new Intl.NumberFormat('zh-TW', { maximumFractionDigits: 3 }).format(number)
-                : String(value);
+            const number=roundPetWeight(value);
+            return number===null?'':new Intl.NumberFormat('zh-TW',{maximumFractionDigits:2}).format(number);
         }
 
         let integratedSearchRequest = 0;
@@ -5114,7 +5120,7 @@ bootstrapAuthentication();
             const species = document.getElementById('intPetSpecies').value;
             const breed = document.getElementById('intPetBreed').value;
             const gender = document.getElementById('intPetGender').value;
-            const weight = parseFloat(document.getElementById('intPetWeight').value) || null;
+            const weight = roundPetWeight(document.getElementById('intPetWeight').value);
 
             if(!ownerName || !ownerMobile || !petName) { alert('請至少填寫「飼主姓名」、「手機」與「寵物名字」！'); return; }
 
@@ -5297,7 +5303,7 @@ bootstrapAuthentication();
             const petBreed = prompt('請輸入品種：', '混種貓');
             const petBirthday = await choosePetBirthday('', '新增寵物：選擇出生日期');
             if (petBirthday === null) return;
-            const petWeight = parseFloat(prompt('請輸入目前體重 (kg)：', '4.0')) || null;
+            const petWeight = roundPetWeight(prompt('請輸入目前體重 (kg，最多兩位小數)：', '4'));
             const petChip = prompt('請輸入晶片號碼 (選填)：', '');
 
             const { error } = await _supabase.from('pets').insert([{
@@ -5359,7 +5365,10 @@ bootstrapAuthentication();
             if (newChip === null) return;
             const newBirthday = await choosePetBirthday(currentBirthday, '修改寵物：選擇出生日期');
             if (newBirthday === null) return;
-            const newWeight = parseFloat(prompt('修改目前體重 (kg)：', currentWeight));
+            const newWeightText=prompt('修改目前體重 (kg，最多兩位小數)：', roundPetWeight(currentWeight)??'');
+            if(newWeightText===null)return;
+            const newWeight=roundPetWeight(newWeightText);
+            if(newWeightText.trim()!=='' && newWeight===null){alert('請輸入有效體重。');return;}
 
             const { error } = await _supabase.from('pets').update({ name: newName, species: newSpecies || '貓', breed: newBreed || null, microchip: newChip || null, birthday: newBirthday || null, weight: newWeight }).eq('id', petId).eq('tenant_id', CURRENT_TENANT_ID);
             if (error) { alert('寵物資料更新失敗：'+error.message); return; }
@@ -6076,7 +6085,7 @@ bootstrapAuthentication();
             currentPetMicrochip = chipId;
             currentPetName = petNameStr;
             currentOwnerId = ownerId || "";
-            currentPetWeight = parseFloat(weight) || 0;
+            currentPetWeight = roundPetWeight(weight) || 0;
             currentPetBirthday = birthday || "";
             currentPetGender = gender || "";
             currentPetSpecies = species || "貓";
@@ -6089,6 +6098,8 @@ bootstrapAuthentication();
             }
 
             medicalStateCache = { chiefComplaint: "", temperature: "", weight: currentPetWeight, prescriptions: [] };
+            document.getElementById('medFrequencyDetail').value='2';
+            document.getElementById('medDays').value='3';
 
             document.getElementById('medicalPetNameInfo').value = `${petNameStr} ${chipId ? '(晶片: ' + chipId + ')' : ''}`;
             document.getElementById('medicalPetWeightInput').value = currentPetWeight;
@@ -6441,7 +6452,7 @@ bootstrapAuthentication();
 
         function collectCurrentMedicalState() {
             const chiefComplaint = document.getElementById('medicalDiagnosis').value;
-            const weight = parseFloat(document.getElementById('medicalPetWeightInput').value) || 0;
+            const weight = roundPetWeight(document.getElementById('medicalPetWeightInput').value) || 0;
             
             const prescriptions = [];
             document.querySelectorAll('#prescriptionItemsContainer .prescription-item-row').forEach(row => {
@@ -6463,7 +6474,7 @@ bootstrapAuthentication();
                 document.getElementById('medicalPetNameInfo').value = `${currentPetName} ${currentPetMicrochip ? '(晶片: ' + currentPetMicrochip + ')' : ''}`;
                 updateMedicalPetProfileCard();
             }
-            document.getElementById('medicalPetWeightInput').value = medicalStateCache.weight || currentPetWeight;
+            document.getElementById('medicalPetWeightInput').value = roundPetWeight(medicalStateCache.weight ?? currentPetWeight) ?? 0;
             document.getElementById('medicalDiagnosis').value = medicalStateCache.chiefComplaint || "";
             document.getElementById('medicalTemperatureInput').value = medicalStateCache.temperature ?? "";
             renderClinicalServiceCharges();
@@ -6478,7 +6489,7 @@ bootstrapAuthentication();
                     div.innerHTML = `
                         <input type="text" value="${p.medicine_name}" style="flex: 2; background: #fff;" readonly title="藥品名稱">
                         <input type="text" value="${p.custom_dose}" class="prescribe-custom-dose" style="flex: 1.2;" placeholder="使用劑量" title="使用劑量">
-                        <input type="number" value="${p.quantity}" class="prescribe-qty" style="flex: 0.8;" placeholder="數量" title="數量">
+                        <input type="number" value="${p.quantity}" class="prescribe-qty" step="0.1" style="flex: 0.8;" placeholder="數量" title="數量">
                         <input type="text" value="${p.instruction}" class="prescribe-note" style="flex: 2;" placeholder="用法說明" title="用法">
                         <button class="btn-danger" onclick="this.parentElement.remove();" style="padding: 9px 12px;">刪除</button>
                     `;
@@ -6488,7 +6499,7 @@ bootstrapAuthentication();
         }
 
         function onWeightChanged() {
-            currentPetWeight = parseFloat(document.getElementById('medicalPetWeightInput').value) || 0;
+            currentPetWeight = roundPetWeight(document.getElementById('medicalPetWeightInput').value) || 0;
             medicalStateCache.weight = currentPetWeight;
             onMedicineSelectedForDoseCalculation();
         }
@@ -6534,42 +6545,26 @@ bootstrapAuthentication();
             runDetailedMathCalculation();
         }
 
+        function setCalculatedPrescriptionTotal(total,unit,prefix='建議總需') {
+            const result=document.getElementById('calculatedDoseResult'),qty=document.getElementById('medPrescribeQty');
+            if(!Number.isFinite(total)||total<0){result.value='請檢查計算欄位';qty.value='';return;}
+            const rounded=Math.round((total+Number.EPSILON*Math.max(1,Math.abs(total)))*10)/10;
+            if(total>0&&rounded===0){result.value='總量少於 0.1 '+unit+'，請手動確認開立數量';qty.value='';return;}
+            result.value=prefix+' '+rounded.toFixed(1)+' '+unit;qty.value=String(rounded);
+        }
         function runDetailedMathCalculation() {
-            const customRecDose = parseFloat(document.getElementById('medCustomRecDose').value) || 0;
-            const freqVal = parseFloat(document.getElementById('medFrequencyDetail').value) || 2;
-            const days = parseInt(document.getElementById('medDays').value) || 3;
-            const routeDetail = document.getElementById('medRouteDetailSelect').value;
-
-            const calcResultInput = document.getElementById('calculatedDoseResult');
-            const qtyInput = document.getElementById('medPrescribeQty');
-
-            if (routeDetail.includes('注射') || routeDetail.includes('外用滴劑') || routeDetail.includes('眼藥水')) {
-                const totalMl = customRecDose * currentPetWeight * (freqVal > 0 ? freqVal : 1) * days;
-                calcResultInput.value = `建議總需 ${totalMl.toFixed(2)} ml/單位`;
-                qtyInput.value = totalMl > 0 ? totalMl.toFixed(2) : 1;
-            } else {
-                const dropdown = document.getElementById('medSelectDropdown');
-                const selectedMedId = dropdown.value;
-                if (selectedMedId && loadedMedicinesMap[selectedMedId]) {
-                    const med = loadedMedicinesMap[selectedMedId];
-                    if (med.usage_dose) {
-                        const useMatch = med.usage_dose.match(/([\d.]+)\s*mg/i);
-                        if (useMatch) {
-                            const mgPerUnit = parseFloat(useMatch[1]);
-                            if (mgPerUnit > 0 && currentPetWeight > 0) {
-                                const totalMg = customRecDose * currentPetWeight * (freqVal > 0 ? freqVal : 1) * days;
-                                const calculatedPills = Math.ceil(totalMg / mgPerUnit);
-                                calcResultInput.value = `建議總需 ${calculatedPills} 顆`;
-                                qtyInput.value = calculatedPills;
-                                return;
-                            }
-                        }
-                    }
-                }
-                const fallbackPills = Math.ceil(customRecDose * currentPetWeight * (freqVal > 0 ? freqVal : 1) * days / 250);
-                calcResultInput.value = `估算總需 ${fallbackPills} 單位`;
-                qtyInput.value = fallbackPills;
+            const customRecDose=parseFloat(document.getElementById('medCustomRecDose').value)||0;
+            const freqVal=parseFloat(document.getElementById('medFrequencyDetail').value)||2;
+            const days=parseInt(document.getElementById('medDays').value)||3;
+            const routeDetail=document.getElementById('medRouteDetailSelect').value;
+            const totalDose=customRecDose*currentPetWeight*(freqVal>0?freqVal:1)*days;
+            if(routeDetail.includes('注射')||routeDetail.includes('外用滴劑')||routeDetail.includes('眼藥水')) {
+                setCalculatedPrescriptionTotal(totalDose,'ml/單位');return;
             }
+            const selectedMedId=document.getElementById('medSelectDropdown').value,med=loadedMedicinesMap[selectedMedId];
+            const useMatch=med?.usage_dose?.match(/([\d.]+)\s*mg/i),mgPerUnit=useMatch?parseFloat(useMatch[1]):0;
+            if(mgPerUnit>0&&currentPetWeight>0){setCalculatedPrescriptionTotal(totalDose/mgPerUnit,'顆');return;}
+            setCalculatedPrescriptionTotal(totalDose/250,'單位','估算總需');
         }
 
         function resetPrescriptionEntryAfterAdd() {
@@ -6584,8 +6579,6 @@ bootstrapAuthentication();
             });
             document.getElementById('medRouteDetailSelect').value = '口服錠劑/膠囊';
             document.getElementById('labelRecDoseTitle').innerText = '建議劑量 (mg/kg)';
-            document.getElementById('medFrequencyDetail').value = '2';
-            document.getElementById('medDays').value = '3';
             document.getElementById('medPrescribeQty').value = '1';
             search.focus();
         }
@@ -6598,7 +6591,7 @@ bootstrapAuthentication();
             const medName = selectedOpt.dataset.name || selectedOpt.text;
             const routeDetail = document.getElementById('medRouteDetailSelect').value;
             const customDose = document.getElementById('medCustomRecDose').value + ' 單位';
-            const qty = document.getElementById('medPrescribeQty').value || 1;
+            const qty = document.getElementById('medPrescribeQty').value;
             if (!Number.isFinite(Number(qty)) || Number(qty) <= 0) { alert('實際開立數量須大於零'); return; }
             const note = document.getElementById('medPrescribeNote').value || '';
 
@@ -6611,7 +6604,7 @@ bootstrapAuthentication();
             div.innerHTML = `
                 <input type="text" value="[${routeDetail}] ${medName}" style="flex: 2; background: #fff; color: ${badgeColor}; font-weight: bold;" readonly title="藥品與劑型">
                 <input type="text" value="${customDose}" class="prescribe-custom-dose" style="flex: 1.2;" placeholder="劑量" title="使用劑量">
-                <input type="number" value="${qty}" class="prescribe-qty" style="flex: 0.8;" placeholder="數量" title="數量">
+                <input type="number" value="${qty}" class="prescribe-qty" step="0.1" style="flex: 0.8;" placeholder="數量" title="數量">
                 <input type="text" value="${note}" class="prescribe-note" style="flex: 2;" placeholder="用法說明" title="用法">
                 <button class="btn-danger" onclick="this.parentElement.remove();" style="padding: 9px 12px;">刪除</button>
             `;
@@ -6819,7 +6812,7 @@ bootstrapAuthentication();
         }
 
         async function printLatestPrescription(petId, petName, petWeight, petMicrochip) {
-            currentPetId = petId; currentPetName = petName; currentPetWeight = petWeight; currentPetMicrochip = petMicrochip;
+            currentPetId = petId; currentPetName = petName; currentPetWeight = roundPetWeight(petWeight) || 0; currentPetMicrochip = petMicrochip;
             resetLegacyMedicalArchive();
             const { data, error } = await _supabase.from('medical_records').select('*').eq('tenant_id', CURRENT_TENANT_ID).eq('pet_id', petId).order('created_at', { ascending: false }).limit(1);
 
@@ -6938,7 +6931,7 @@ bootstrapAuthentication();
             if (currentPetWeight > 0) {
                 try {
                     const { error: weightError } = await _supabase.from('pets')
-                        .update({ weight: currentPetWeight }).eq('id', currentPetId).eq('tenant_id', CURRENT_TENANT_ID);
+                        .update({ weight: roundPetWeight(currentPetWeight) }).eq('id', currentPetId).eq('tenant_id', CURRENT_TENANT_ID);
                     if (weightError) alert('病歷已儲存，但體重更新失敗：' + weightError.message);
                 } catch (err) { alert('病歷已儲存，但體重更新失敗：' + err.message); }
             }
@@ -6997,7 +6990,7 @@ bootstrapAuthentication();
             if (currentPetWeight > 0) {
                 try {
                     const { error: weightError } = await _supabase.from('pets')
-                        .update({ weight: currentPetWeight }).eq('id', currentPetId).eq('tenant_id', CURRENT_TENANT_ID);
+                        .update({ weight: roundPetWeight(currentPetWeight) }).eq('id', currentPetId).eq('tenant_id', CURRENT_TENANT_ID);
                     if (weightError) alert('病歷已儲存，但體重更新失敗：' + weightError.message);
                 } catch (err) { alert('病歷已儲存，但體重更新失敗：' + err.message); }
             }
