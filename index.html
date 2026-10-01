@@ -563,7 +563,7 @@
     <div class="main-container">
         <header>
             <div class="header-left">
-                <h3>首頁管理介面 <small style="color:#64748b;font-size:12px">版本 18.7.3 一鍵備份與預約收合 v4</small></h3>
+                <h3>首頁管理介面 <small style="color:#64748b;font-size:12px">版本 18.7.3 用藥與搜尋清空修正版 v5</small></h3>
                 <input type="text" id="globalSearchInput" class="search-box" placeholder="全域搜尋 寵物 / 晶片 / 飼主 / 電話 / 新舊編號..." onkeydown="handleGlobalSearch(event)" oninput="closeGlobalSearchResults()">
             </div>
             <div class="tenant-badge" id="currentTenantBadge">醫院代碼 (tenant_id):</div>
@@ -5245,6 +5245,12 @@ bootstrapAuthentication();
             document.getElementById('globalSearchResultsBody').replaceChildren();
         }
 
+        function clearGlobalSearchAfterSelection(request, tenant) {
+            if (request !== globalSearchRequest || tenant !== CURRENT_TENANT_ID) return;
+            document.getElementById('globalSearchInput').value = '';
+            closeGlobalSearchResults();
+        }
+
         async function handleGlobalSearch(event) {
             if (event.key !== 'Enter' || event.isComposing || event.repeat) return;
             event.preventDefault();
@@ -5315,6 +5321,8 @@ bootstrapAuthentication();
         }
 
         async function addGlobalSearchPetToWaiting(petId) {
+            const searchRequest = globalSearchRequest;
+            const searchTenant = CURRENT_TENANT_ID;
             const pet = globalSearchMatches.get(petId);
             if (!pet || globalSearchTenant !== CURRENT_TENANT_ID) return;
             const canRegister = CURRENT_PROFILE?.role === 'admin' ||
@@ -5322,9 +5330,12 @@ bootstrapAuthentication();
             if (!canRegister) { alert('此帳號沒有掛號權限。'); return; }
             const existing = activeAppointmentsList.find(p => p.id === petId);
             if (existing) {
-                closeGlobalSearchResults();
-                if (existing.status === '已預約') await checkInAppointment(appointmentKey(existing));
+                if (existing.status === '已預約') {
+                    await checkInAppointment(appointmentKey(existing));
+                    if (existing.status === '已預約') return;
+                }
                 else alert('此寵物已在候診／看診列表，無須重複加入。');
+                clearGlobalSearchAfterSelection(searchRequest, searchTenant);
                 switchTab('appointments');
                 return;
             }
@@ -5335,7 +5346,7 @@ bootstrapAuthentication();
                 owner_name: pet.owners?.name || '未知飼主', status: '候診中', session: '上午診', doctor: '張醫師',
                 time: new Date().toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'})
             });
-            closeGlobalSearchResults();
+            clearGlobalSearchAfterSelection(searchRequest, searchTenant);
             switchTab('appointments');
             renderAppointmentTable(activeAppointmentsList);
         }
@@ -6193,6 +6204,24 @@ bootstrapAuthentication();
             }
         }
 
+        function resetPrescriptionEntryAfterAdd() {
+            const search = document.getElementById('prescriptionMedicineSearch');
+            search.value = '';
+            document.getElementById('medSelectDropdown').replaceChildren(new Option('-- 尚未選擇藥品 --', ''));
+            const results = document.getElementById('prescriptionMedicineResults');
+            results.replaceChildren();
+            results.style.display = 'none';
+            ['medUseDoseDisplay', 'medCustomRecDose', 'calculatedDoseResult', 'medPrescribeNote'].forEach(id => {
+                document.getElementById(id).value = '';
+            });
+            document.getElementById('medRouteDetailSelect').value = '口服錠劑/膠囊';
+            document.getElementById('labelRecDoseTitle').innerText = '建議劑量 (mg/kg)';
+            document.getElementById('medFrequencyDetail').value = '2';
+            document.getElementById('medDays').value = '3';
+            document.getElementById('medPrescribeQty').value = '1';
+            search.focus();
+        }
+
         function addDetailedPrescriptionItem() {
             const dropdown = document.getElementById('medSelectDropdown');
             const selectedOpt = dropdown.options[dropdown.selectedIndex];
@@ -6219,6 +6248,7 @@ bootstrapAuthentication();
                 <button class="btn-danger" onclick="this.parentElement.remove();" style="padding: 9px 12px;">刪除</button>
             `;
             container.appendChild(div);
+            resetPrescriptionEntryAfterAdd();
         }
 
         // 舊病歷按需查閱；切換寵物後作廢先前的讀取結果。
@@ -6632,6 +6662,8 @@ bootstrapAuthentication();
         }
 
         async function saveAppointment() {
+            const searchRequest = globalSearchRequest;
+            const searchTenant = CURRENT_TENANT_ID;
             const petSelectVal = document.getElementById('appointmentPetSelect').value;
             if(!petSelectVal) { alert('請選擇寵物！'); return; }
             if (!CURRENT_TENANT_ID) { alert('尚未取得醫院登入資訊，請重新登入。'); return; }
@@ -6695,6 +6727,8 @@ bootstrapAuthentication();
             petObj.time = new Date(data.scheduled_at).toLocaleTimeString([], { hour:'2-digit', minute:'2-digit' });
             activeAppointmentsList.push(petObj);
             renderAppointmentTable(activeAppointmentsList);
+            document.getElementById('appointmentPetSelect').value = '';
+            clearGlobalSearchAfterSelection(searchRequest, searchTenant);
             alert('預約已儲存到 Supabase！');
         }
 
