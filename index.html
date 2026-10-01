@@ -563,7 +563,7 @@
     <div class="main-container">
         <header>
             <div class="header-left">
-                <h3>首頁管理介面 <small style="color:#64748b;font-size:12px">版本 18.7.3 生日月曆選取版 v6</small></h3>
+                <h3>首頁管理介面 <small style="color:#64748b;font-size:12px">版本 18.7.3 疫苗接續與檢驗費用版 v8</small></h3>
                 <input type="text" id="globalSearchInput" class="search-box" placeholder="全域搜尋 寵物 / 晶片 / 飼主 / 電話 / 新舊編號..." onkeydown="handleGlobalSearch(event)" oninput="closeGlobalSearchResults()">
             </div>
             <div class="tenant-badge" id="currentTenantBadge">醫院代碼 (tenant_id):</div>
@@ -827,6 +827,10 @@
                             <label>本次看診體重 (kg) - 可直接修改</label>
                             <input type="number" step="0.1" id="medicalPetWeightInput" value="0" oninput="onWeightChanged()" style="background: #ffffff; font-weight: bold; color: var(--primary-dark);">
                         </div>
+                        <div class="form-group">
+                            <label for="medicalTemperatureInput">本次看診體溫 (°C)</label>
+                            <input type="number" id="medicalTemperatureInput" step="0.1" min="0" max="100" placeholder="例如 38.5（未量可留空）" oninput="medicalStateCache.temperature = this.value">
+                        </div>
                         <div class="form-group"><label>目前看診狀態</label><input type="text" id="medicalStatus" value="診間看診中" readonly style="background: #dbeafe; color: var(--primary-dark); font-weight: bold;"></div>
                         <div class="form-group span-2"><label>本次主訴與診斷 (chief_complaint)</label><textarea id="medicalDiagnosis" rows="3" placeholder="請輸入診斷與主訴..."></textarea></div>
                     </div>
@@ -846,6 +850,7 @@
                         <div id="legacyMedicalArchiveContent"></div>
                     </details>
 
+                    <div class="history-box"><h4>本次疫苗與檢驗待收費</h4><div id="clinicalServiceChargeSummary">尚無待收費項目。</div><p style="font-size:.85rem;color:#64748b;">待收費項目暫存於此瀏覽器，前往收費時自動帶入；請在同一瀏覽器完成結帳。</p></div>
                     <!-- 精細化處方開立區塊 -->
                     <div class="search-add-box">
                         <h3>處方用藥與針劑開立（多劑型專業細化）</h3>
@@ -993,12 +998,13 @@
                             <label>下次預計施打日期</label>
                             <input type="date" id="vacNextDueDate">
                         </div>
+                        <div class="form-group span-2"><label>本次疫苗費用 (NT$)</label><input type="number" id="vacServiceFee" min="0" step="0.01" placeholder="請填本次金額；免費填 0"></div>
                         <div class="form-group span-4">
                             <label>施打備註與批號</label>
                             <input type="text" id="vacNotes" placeholder="例如：施打順利，無不良反應，批號 #AB1234">
                         </div>
                     </div>
-                    <button style="margin-top: 15px;" onclick="recordPetVaccine()">紀錄本次疫苗施打</button>
+                    <div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:15px;"><button onclick="recordPetVaccine(false)">💾 儲存並繼續下一種疫苗</button><button class="btn-secondary" onclick="recordPetVaccine(true)">💾 儲存並返回門診</button></div><p style="color:#64748b;font-size:.85rem;">儲存後保留同一隻寵物。待收費項目請在同一瀏覽器接續結帳。</p>
 
                     <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 25px; margin-bottom: 10px;">
                         <h3>各寵物疫苗施打歷史與狀態總覽 (支援即時搜尋)</h3>
@@ -1399,7 +1405,7 @@
                 <div class="card" style="max-width:1000px;">
                     <h2>💾 院內資料備份（管理者專用）</h2>
                     <p style="color:#475569;line-height:1.7;">備份本院飼主、寵物、新舊病歷、檢查、收費、庫存及相關資料。請在電腦上操作，完成後下載到您的下載資料夾。</p>
-                    <p style="color:#64748b;font-size:.9rem;line-height:1.7;">這是院內資料備份，包含人員權限資料；登入帳號密碼、程式及 Supabase 系統設定另行保存。目前版本會核對附件為零；如偵測到影像或附件，會停止並提示升級。</p>
+                    <p style="color:#64748b;font-size:.9rem;line-height:1.7;">這是院內資料備份，包含人員權限資料；登入帳號密碼、程式及 Supabase 系統設定另行保存。尚未結帳的疫苗／檢驗費用暫存於此瀏覽器，不包含於此備份；請先完成結帳。目前版本會核對附件為零；如偵測到影像或附件，會停止並提示升級。</p>
                     <button id="clinicBackupStart" type="button" onclick="startClinicDataBackup()">💾 一鍵備份本院資料</button>
                     <progress id="clinicBackupProgress" max="100" hidden style="display:block;width:100%;margin:16px 0;"></progress>
                     <p id="clinicBackupStatus" role="status" aria-live="polite" style="line-height:1.7;">尚未開始備份。</p>
@@ -1566,6 +1572,7 @@
                         <div class="lab-table-scroll"><table class="lab-entry-table"><thead><tr><th>項目</th><th>參考範圍</th><th>單位</th><th>結果輸入</th></tr></thead><tbody id="bioLabRows"></tbody></table></div>
                     </div>
 
+                    <div class="form-group"><label>本次檢驗費用 (NT$)</label><input type="number" id="labServiceFee" min="0" step="0.01" placeholder="請填本次金額；免費填 0"></div>
                     <div class="form-group" style="margin-bottom: 15px;">
                         <label>檢驗備註與臨床判讀說明</label>
                         <input type="text" id="labReportNotes" placeholder="例如：數值大致正常，建議三個月後追蹤">
@@ -1790,6 +1797,7 @@
                         </div>
                     </div>
 
+                    <div class="form-group"><label>本次快篩費用 (NT$)</label><input type="number" id="rapidServiceFee" min="0" step="0.01" placeholder="請填本次金額；免費填 0"></div>
                     <div class="form-group" style="margin-bottom: 15px;">
                         <label>快篩判讀備註與臨床說明</label>
                         <input type="text" id="rapidTestNotes" placeholder="例如：顯色清晰，對照線正常。">
@@ -2224,6 +2232,7 @@
 
         let medicalStateCache = {
             chiefComplaint: "",
+            temperature: "",
             weight: 0,
             prescriptions: []
         };
@@ -3632,42 +3641,97 @@ bootstrapAuthentication();
             });
         }
 
-        async function recordPetVaccine() {
-            const petId = document.getElementById('selectedVacPetId').value;
-            const vaccineName = document.getElementById('vacTypeSelect').value;
-            const administeredDate = document.getElementById('vacAdministeredDate').value;
-            const nextDueDate = document.getElementById('vacNextDueDate').value;
-            const notes = document.getElementById('vacNotes').value;
-
-            if(!petId || !vaccineName || !administeredDate) {
-                alert('請完整選擇寵物、疫苗種類與施打日期！');
-                return;
+        let clinicalInvoiceContext = null;
+        const serviceChargesPaidInSession = new Set();
+        let vaccineRecordSaveBusy = false;
+        let rapidRecordSaveBusy = false;
+        function serviceDraftKey(tenantId=CURRENT_TENANT_ID) { return 'genblue-service-drafts-v1:'+tenantId; }
+        function readServiceDrafts(tenantId=CURRENT_TENANT_ID) {
+            const raw=localStorage.getItem(serviceDraftKey(tenantId));
+            if (!raw) return [];
+            const data=JSON.parse(raw);
+            if (!Array.isArray(data)) throw new Error('待收費暫存格式錯誤，請先保留此瀏覽器資料。');
+            for (const item of data) if (serviceChargesPaidInSession.has(tenantId+':'+item.id)) item.state='paid';
+            return data;
+        }
+        function writeServiceDrafts(data,tenantId=CURRENT_TENANT_ID) { localStorage.setItem(serviceDraftKey(tenantId),JSON.stringify(data)); }
+        function prepareServiceCharge(field,petId,kind,name) {
+            const raw=document.getElementById(field).value.trim(), amount=Number(raw);
+            if (!raw || !Number.isFinite(amount) || amount<0 || amount>99999999.99 || Math.abs(amount*100-Math.round(amount*100))>0.000001) throw new Error('請填寫有效的本次費用，免費請填 0；金額最多兩位小數。');
+            if (!CURRENT_TENANT_ID) throw new Error('請先登入醫院帳號。');
+            const pet=allPetsListForDropdown.find(p=>p.id===petId);
+            if (!pet?.owner_id) throw new Error('找不到此寵物的飼主資料，請重新選取。');
+            const charge={id:crypto.randomUUID(),tenantId:CURRENT_TENANT_ID,petId,ownerId:pet.owner_id,kind,name:name.slice(0,140),amount,state:'saving',createdAt:new Date().toISOString()};
+            const drafts=readServiceDrafts(); drafts.push(charge); writeServiceDrafts(drafts);
+            return charge;
+        }
+        function cancelServiceCharge(charge) {
+            if (!charge) return;
+            writeServiceDrafts(readServiceDrafts(charge.tenantId).filter(x=>x.id!==charge.id),charge.tenantId);
+        }
+        function finishServiceCharge(charge,recordId) {
+            const drafts=readServiceDrafts(charge.tenantId), item=drafts.find(x=>x.id===charge.id);
+            if (!item) throw new Error('待收費暫存遺失，請先保留畫面。');
+            item.recordId=String(recordId); item.state='ready'; writeServiceDrafts(drafts,charge.tenantId);
+            renderClinicalServiceCharges();
+        }
+        function renderClinicalServiceCharges() {
+            const box=document.getElementById('clinicalServiceChargeSummary'); if (!box) return;
+            box.replaceChildren();
+            const scoped=readServiceDrafts().filter(x=>x.petId===currentPetId && x.tenantId===CURRENT_TENANT_ID);
+            const drafts=scoped.filter(x=>x.state==='ready');
+            if (scoped.some(x=>x.state==='saving')) { const warning=document.createElement('p'); warning.style.color='#b45309'; warning.textContent='有登記結果尚未確認的費用，未自動帶入帳單。請核對已儲存的檢驗／疫苗紀錄及帳單，勿重複登記。'; box.appendChild(warning); }
+            if (!scoped.length) { box.textContent='此寵物尚無待收費項目。'; return; }
+            for (const item of drafts) { const row=document.createElement('div'); row.textContent=item.name+'：NT$ '+item.amount.toLocaleString(); box.appendChild(row); }
+        }
+        function attachServiceChargesToInvoice(petId) {
+            const pet=allPetsListForDropdown.find(p=>p.id===petId); if (!pet) return;
+            clinicalInvoiceContext={tenantId:CURRENT_TENANT_ID,petId,petName:pet.name,ownerId:pet.owner_id};
+            const container=document.getElementById('invoiceItemsList');
+            const present=new Set(Array.from(container.querySelectorAll('[data-service-charge-id]')).map(x=>x.dataset.serviceChargeId));
+            for (const charge of readServiceDrafts().filter(x=>x.state==='ready' && x.petId===petId && x.tenantId===CURRENT_TENANT_ID)) {
+                if (present.has(charge.id)) continue;
+                const row=document.createElement('div'); row.className='list-row'; row.dataset.serviceChargeId=charge.id;
+                const name=document.createElement('input'); name.className='invoice-name'; name.value=charge.name; name.type='text';
+                const qty=document.createElement('input'); qty.className='invoice-qty'; qty.type='number'; qty.value='1'; qty.oninput=calculateInvoiceTotal;
+                const price=document.createElement('input'); price.className='invoice-price'; price.type='number'; price.min='0'; price.step='0.01'; price.value=String(charge.amount); price.oninput=calculateInvoiceTotal;
+                const remove=document.createElement('button'); remove.className='btn-danger'; remove.textContent='移出本次帳單'; remove.onclick=()=>{row.remove();calculateInvoiceTotal();};
+                row.append(name,qty,price,remove); container.appendChild(row);
             }
+        }
+        function markServiceChargesPaid(ids,invoiceId) {
+            const drafts=readServiceDrafts();
+            for (const item of drafts) if (ids.includes(item.id)) { serviceChargesPaidInSession.add(CURRENT_TENANT_ID+':'+item.id); item.state='paid'; item.invoiceId=invoiceId; }
+            writeServiceDrafts(drafts);
+        }
+        function removePendingServiceRecord(kind,recordId) {
+            writeServiceDrafts(readServiceDrafts().filter(x=>!(x.kind===kind && x.recordId===String(recordId) && x.state!=='paid')));
+            renderClinicalServiceCharges();
+        }
 
-            const { error } = await _supabase.from('vaccination_records').insert([{
-                tenant_id: CURRENT_TENANT_ID,
-                pet_id: petId,
-                vaccine_name: vaccineName,
-                last_date: administeredDate,
-                next_due_date: nextDueDate || null,
-                notes: notes || ''
-            }]);
-
-            if(error) {
-                alert('紀錄儲存失敗：' + error.message);
-            } else {
-                alert('疫苗施打紀錄已成功存檔！');
-                document.getElementById('vacPetSearchInput').value = '';
-                document.getElementById('selectedVacPetId').value = '';
-                document.getElementById('vacNotes').value = '';
-                loadPetVaccines();
-
-                if (currentPetId && currentPetId === petId) {
-                    if (confirm('疫苗紀錄已完成！是否要返回目前的看診病歷？')) {
-                        backToMedicalFromVaccine();
-                    }
-                }
-            }
+        async function recordPetVaccine(returnToMedical=false) {
+            if (vaccineRecordSaveBusy) return;
+            const petId=document.getElementById('selectedVacPetId').value;
+            const vaccineName=document.getElementById('vacTypeSelect').value;
+            const administeredDate=document.getElementById('vacAdministeredDate').value;
+            const nextDueDate=document.getElementById('vacNextDueDate').value;
+            const notes=document.getElementById('vacNotes').value;
+            if (!petId || !vaccineName || !administeredDate) { alert('請完整選擇寵物、疫苗種類與施打日期！'); return; }
+            let charge; vaccineRecordSaveBusy=true;
+            try {
+                charge=prepareServiceCharge('vacServiceFee',petId,'vaccine','疫苗：'+vaccineName);
+                const {data,error}=await _supabase.from('vaccination_records').insert([{tenant_id:CURRENT_TENANT_ID,pet_id:petId,vaccine_name:vaccineName,last_date:administeredDate,next_due_date:nextDueDate||null,notes:notes||''}]).select('id').single();
+                if (error) { cancelServiceCharge(charge); alert('紀錄儲存失敗：'+error.message); return; }
+                finishServiceCharge(charge,data.id);
+                document.getElementById('vacTypeSelect').value='';
+                document.getElementById('vacNextDueDate').value='';
+                document.getElementById('vacNotes').value='';
+                document.getElementById('vacServiceFee').value='';
+                await loadPetVaccines();
+                alert('疫苗紀錄已儲存，費用已加入此寵物待收費清單。');
+                if (returnToMedical) backToMedicalFromVaccine();
+            } catch(error) { alert('疫苗登記未完成或結果待確認：'+error.message+'。請保留畫面，勿重複按儲存。'); }
+            finally { vaccineRecordSaveBusy=false; }
         }
 
         async function loadPetVaccines() {
@@ -3732,7 +3796,7 @@ bootstrapAuthentication();
         async function deletePetVaccine(id) {
             if(!confirm('確定要刪除這筆施打紀錄嗎？')) return;
             const { error } = await _supabase.from('vaccination_records').delete().eq('id', id);
-            if(error) { alert('刪除失敗'); } else { loadPetVaccines(); }
+            if(error) { alert('刪除失敗'); } else { removePendingServiceRecord('vaccine',id); loadPetVaccines(); }
         }
 
         async function showStockHistory(kind, id) {
@@ -5842,17 +5906,19 @@ bootstrapAuthentication();
                 renderAppointmentTable(activeAppointmentsList);
             }
 
-            medicalStateCache = { chiefComplaint: "", weight: currentPetWeight, prescriptions: [] };
+            medicalStateCache = { chiefComplaint: "", temperature: "", weight: currentPetWeight, prescriptions: [] };
 
             document.getElementById('medicalPetNameInfo').value = `${petNameStr} ${chipId ? '(晶片: ' + chipId + ')' : ''}`;
             document.getElementById('medicalPetWeightInput').value = currentPetWeight;
             document.getElementById('medicalDiagnosis').value = "";
+            document.getElementById('medicalTemperatureInput').value = "";
             document.getElementById('prescriptionItemsContainer').innerHTML = "";
             
             updateMedicalPetProfileCard();
 
             switchTab('medical');
             await loadAllMedicalRecords(petId);
+            renderClinicalServiceCharges();
         }
 
         function updateMedicalPetProfileCard() {
@@ -6037,6 +6103,7 @@ bootstrapAuthentication();
                 <button class="btn-danger" onclick="this.parentElement.remove(); calculateInvoiceTotal();" style="padding: 9px 12px;">刪除</button>
             `;
             invoiceListContainer.appendChild(diagnosticDiv);
+            attachServiceChargesToInvoice(petId);
             calculateInvoiceTotal();
 
             alert('已將病患從候診列表移除，並為您跳轉至收費與付款頁面進行結帳歸檔！');
@@ -6205,7 +6272,8 @@ bootstrapAuthentication();
                 });
             });
 
-            medicalStateCache = { chiefComplaint, weight, prescriptions };
+            const temperature = document.getElementById('medicalTemperatureInput').value;
+            medicalStateCache = { chiefComplaint, temperature, weight, prescriptions };
         }
 
         function restoreMedicalState() {
@@ -6215,6 +6283,8 @@ bootstrapAuthentication();
             }
             document.getElementById('medicalPetWeightInput').value = medicalStateCache.weight || currentPetWeight;
             document.getElementById('medicalDiagnosis').value = medicalStateCache.chiefComplaint || "";
+            document.getElementById('medicalTemperatureInput').value = medicalStateCache.temperature ?? "";
+            renderClinicalServiceCharges();
 
             const container = document.getElementById('prescriptionItemsContainer');
             container.innerHTML = "";
@@ -6605,7 +6675,7 @@ bootstrapAuthentication();
         }
 
         function clearMedicalFormInputs() {
-            medicalStateCache = { chiefComplaint: "", weight: 0, prescriptions: [] };
+            medicalStateCache = { chiefComplaint: "", temperature: "", weight: 0, prescriptions: [] };
             currentPetId = "";
             resetLegacyMedicalArchive();
             currentPetMicrochip = "";
@@ -6620,6 +6690,7 @@ bootstrapAuthentication();
             document.getElementById('medicalPetNameInfo').value = "尚未選擇";
             document.getElementById('medicalPetWeightInput').value = "0";
             document.getElementById('medicalDiagnosis').value = "";
+            document.getElementById('medicalTemperatureInput').value = "";
             document.getElementById('medCustomRecDose').value = "";
             document.getElementById('medPrescribeQty').value = "1";
             document.getElementById('calculatedDoseResult').value = "";
@@ -6633,12 +6704,31 @@ bootstrapAuthentication();
             document.getElementById('cardPetBreed').innerText = "-";
         }
 
+        function medicalChiefComplaintWithTemperature() {
+            const chiefComplaint = document.getElementById('medicalDiagnosis').value;
+            const input = document.getElementById('medicalTemperatureInput');
+            const raw = input.value.trim();
+            if (input.validity?.badInput) {
+                alert('請輸入有效的體溫數值，或未量時留空。');
+                input.focus(); return null;
+            }
+            if (!raw) return chiefComplaint;
+            const temperature = Number(raw);
+            if (!Number.isFinite(temperature) || temperature<=0 || temperature>100) {
+                alert('體溫需為大於 0、且不超過 100 的 °C 數值；未量時請留空。');
+                input.focus(); return null;
+            }
+            // 隨本次病歷文字保存；不新增資料庫欄位，沿用備份與歷史查閱。
+            return '體溫：'+temperature+' °C'+(chiefComplaint ? '\n'+chiefComplaint : '');
+        }
+
         let medicalSaveBusy = false;
         async function saveMedicalRecordAndBackToWaiting() {
             if (medicalSaveBusy) return;
             medicalSaveBusy = true;
             try {
-            const chiefComplaint = document.getElementById('medicalDiagnosis').value;
+            const chiefComplaint = medicalChiefComplaintWithTemperature();
+            if (chiefComplaint === null) return;
             if(!currentPetId) { alert('尚未指定看診寵物！'); return; }
 
             const prescriptions = [];
@@ -6690,7 +6780,8 @@ bootstrapAuthentication();
             if (medicalSaveBusy) return;
             medicalSaveBusy = true;
             try {
-            const chiefComplaint = document.getElementById('medicalDiagnosis').value;
+            const chiefComplaint = medicalChiefComplaintWithTemperature();
+            if (chiefComplaint === null) return;
             if(!currentPetId) { alert('尚未指定看診寵物！'); return; }
 
             const prescriptions = [];
@@ -6754,6 +6845,7 @@ bootstrapAuthentication();
                 invoiceListContainer.appendChild(div);
             });
 
+            attachServiceChargesToInvoice(currentPetId);
             calculateInvoiceTotal();
 
             activeAppointmentsList = activeAppointmentsList.filter(p => p.id !== currentPetId);
@@ -7299,7 +7391,7 @@ bootstrapAuthentication();
             }
             if (imported && !confirm(`確認將 Skyla 報告存入 ${selectedPet?.name||'未知寵物'}（${selectedPet?.species||''}）的血液生化紀錄？\n原始檢驗日期：${pendingSkylaTransfer.date}\n請先核對 PDF 與表單。`)) return;
             labReportSaveBusy=true;
-            let error;
+            let error, serviceCharge;
             try {
                 if (imported) {
                     const lookup=await _supabase.from('lab_reports').select('notes,report_data')
@@ -7311,16 +7403,21 @@ bootstrapAuthentication();
                     );
                     if (duplicate) { alert('同一隻寵物、同一來源與相同檢驗數值已存檔，已取消重複儲存。'); return; }
                 }
+                serviceCharge=prepareServiceCharge('labServiceFee',petId,'lab','檢驗：'+testType);
                 const response=await _supabase.from('lab_reports').insert([{
+                    id: serviceCharge.id,
                     tenant_id: CURRENT_TENANT_ID, pet_id: petId, test_type: testType, report_data: reportData, notes: notes
                 }]);
                 error=response.error;
-            } catch (e) { alert(e.message||String(e)); return; }
+            } catch (e) { alert((e.message||String(e))+'。若已送出儲存請先確認報告，勿重複登記。'); return; }
             finally { labReportSaveBusy=false; }
 
             if(error) {
+                cancelServiceCharge(serviceCharge);
                 alert('儲存失敗：' + error.message);
             } else {
+                try { finishServiceCharge(serviceCharge,serviceCharge.id); } catch(error) { alert('檢驗報告已儲存，但待收費暫存更新失敗：'+error.message+'。請核對帳單，勿重新登記報告。'); return; }
+                document.getElementById('labServiceFee').value='';
                 document.querySelectorAll('#' + formType + 'LabRows .lab-result-input').forEach(input => {
                     input.value = '';
                     input.style.background = '#fff';
@@ -7504,10 +7601,11 @@ bootstrapAuthentication();
         async function deleteLabReport(id) {
             if(!confirm('確定要刪除這版檢驗報告嗎？')) return;
             const { error } = await _supabase.from('lab_reports').delete().eq('id', id);
-            if(error) { alert('刪除失敗'); } else { loadLabReportsList(); }
+            if(error) { alert('刪除失敗'); } else { removePendingServiceRecord('lab',id); loadLabReportsList(); }
         }
 
         async function saveRapidTestToDatabase() {
+            if (rapidRecordSaveBusy) return;
             const petId = document.getElementById('selectedRapidPetId').value;
             const testItem = document.getElementById('rapidTestItem').value;
             const batchNo = document.getElementById('rapidTestBatch').value;
@@ -7529,17 +7627,26 @@ bootstrapAuthentication();
                 resultsObj[subName] = sel.value;
             });
 
+            let serviceCharge;
+            try { serviceCharge=prepareServiceCharge('rapidServiceFee',petId,'rapid','快篩：'+testItem); } catch(error) { alert(error.message); return; }
+            rapidRecordSaveBusy=true;
+            try {
             const { error } = await _supabase.from('rapid_test_records').insert([{
+                id:serviceCharge.id,
                 tenant_id: CURRENT_TENANT_ID, pet_id: petId, test_item: testItem, result: JSON.stringify(resultsObj), batch_no: batchNo, notes: notes
             }]);
 
             if(error) {
+                cancelServiceCharge(serviceCharge);
                 alert('快篩儲存失敗：' + error.message);
             } else {
-                alert('快篩檢驗報告已成功儲存！');
+                finishServiceCharge(serviceCharge,serviceCharge.id);
+                document.getElementById('rapidServiceFee').value='';
+                alert('快篩檢驗報告已成功儲存，費用已加入待收費清單！');
                 loadRapidReportsList();
                 backToMedicalFromRapid();
             }
+                    } catch(error) { alert('快篩儲存結果待確認：'+error.message+'，請保留畫面，勿重複登記。'); } finally { rapidRecordSaveBusy=false; }
         }
 
         async function loadRapidReportsList() {
@@ -7636,7 +7743,7 @@ bootstrapAuthentication();
         async function deleteRapidReport(id) {
             if(!confirm('確定要刪除這筆快篩紀錄嗎？')) return;
             const { error } = await _supabase.from('rapid_test_records').delete().eq('id', id);
-            if(error) { alert('刪除失敗'); } else { loadRapidReportsList(); }
+            if(error) { alert('刪除失敗'); } else { removePendingServiceRecord('rapid',id); loadRapidReportsList(); }
         }
 
         let inventoryCheckoutBusy = false;
@@ -7684,6 +7791,10 @@ bootstrapAuthentication();
             const ownerSelect = document.getElementById('invoiceOwnerSelect');
             const ownerId = ownerSelect?.value || null;
             const ownerName = ownerId ? ownerSelect.selectedOptions[0]?.text || '飼主' : '散客 / 未指定飼主';
+            const billingContext=clinicalInvoiceContext?.tenantId===CURRENT_TENANT_ID && clinicalInvoiceContext.ownerId===ownerId ? clinicalInvoiceContext : null;
+            const billingPetId=billingContext?.petId || currentPetId || null;
+            const billingPetName=billingContext?.petName || currentPetName || '無指定寵物';
+            const serviceIds=[];
             const paymentMethod = document.getElementById('invoicePaymentMethod')?.value || '現金';
             const discount = Number(document.getElementById('invoiceDiscount')?.value || 0);
             const lines = [];
@@ -7695,8 +7806,13 @@ bootstrapAuthentication();
                 if (!Number.isFinite(qty) || qty <= 0 || !Number.isFinite(price) || price < 0) {
                     alert('請檢查帳單明細的數量與單價'); return;
                 }
+                if (row.dataset.serviceChargeId) {
+                    const charge=readServiceDrafts().find(x=>x.id===row.dataset.serviceChargeId);
+                    if (!charge || charge.state!=='ready' || charge.petId!==billingPetId || charge.ownerId!==ownerId || charge.tenantId!==CURRENT_TENANT_ID) { alert('待收費項目與目前飼主／寵物不符，請重新由門診轉入收費。'); return; }
+                    serviceIds.push(charge.id);
+                }
                 const id = row.dataset.medicineId || '';
-                if (!id && Object.values(loadedMedicinesMap).some(m => name.includes(m.name))) {
+                if (!id && !row.dataset.serviceChargeId && Object.values(loadedMedicinesMap).some(m => name.includes(m.name))) {
                     alert('手動輸入的藥品無法對應庫存，請從處方選藥後轉入結帳'); return;
                 }
                 if (id && !loadedMedicinesMap[id]) { alert('處方藥品資料已變更，請重新開立'); return; }
@@ -7710,10 +7826,11 @@ bootstrapAuthentication();
             if (discount < 0 || discount > subtotal) { alert('折扣金額不正確'); return; }
             const total = subtotal - discount;
             const id = await commitInventoryCheckout({ p_tenant_id: CURRENT_TENANT_ID,
-                p_owner_id: ownerId, p_pet_id: currentPetId || null,
+                p_owner_id: ownerId, p_pet_id: billingPetId,
                 p_checkout_type: `門診收費 (${paymentMethod})`, p_category: '門診',
                 p_subtotal: subtotal, p_discount: discount, p_total: total, p_lines: lines });
             if (!id) return;
+            try { markServiceChargesPaid(serviceIds,id); } catch(error) { alert('帳單已成功儲存，但待收費暫存更新失敗；請勿重複結帳，帳單號：'+id); }
             const invoice = { id, created_at: new Date().toISOString(),
                 checkout_type: `門診收費 (${paymentMethod})`, subtotal, discount, total_amount: total };
             const receiptLines = lines.map(x => ({ item_name: `${x.item_name} [付款: ${paymentMethod}]`,
@@ -7722,12 +7839,13 @@ bootstrapAuthentication();
             await completeCurrentAppointmentAfterCheckout();
 
             if (shouldPrintReceipt) {
-                openReceiptModal(invoice, ownerName, currentPetName || '無指定寵物', receiptLines);
+                openReceiptModal(invoice, ownerName, billingPetName, receiptLines);
             } else {
                 alert('結帳成功，帳單與庫存已同步儲存');
                 switchTab('appointments');
                 await loadAppointments();
             }
+            clinicalInvoiceContext=null;
             document.getElementById('invoiceItemsList').innerHTML = '';
             calculateInvoiceTotal();
         }
