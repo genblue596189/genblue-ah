@@ -573,7 +573,7 @@
     <div class="main-container">
         <header>
             <div class="header-left">
-                <h3>首頁管理介面 <small style="color:#64748b;font-size:12px">版本 18.7.12 處方計算與設定保留版 v17</small></h3>
+                <h3>首頁管理介面 <small style="color:#64748b;font-size:12px">版本 18.7.14 處方共用設定保留版 v19</small></h3>
                 <input type="text" id="globalSearchInput" class="search-box" placeholder="寵物／電話／編號，或 momo 王" onkeydown="handleGlobalSearch(event)" oninput="closeGlobalSearchResults()">
                 <input type="text" id="globalSearchOwnerInput" class="search-box" aria-label="飼主姓名或姓氏篩選" placeholder="飼主姓名／姓氏（可不填）" onkeydown="handleGlobalSearch(event)" oninput="closeGlobalSearchResults()" style="max-width:240px;">
             </div>
@@ -884,7 +884,7 @@
                             </div>
                             <div class="form-group">
                                 <label>給藥途徑與劑型細分</label>
-                                <select id="medRouteDetailSelect" onchange="onRouteDetailChanged()">
+                                <select id="medRouteDetailSelect" onchange="preservePrescriptionRouteForVisit=true;onRouteDetailChanged()">
                                     <option value="口服錠劑/膠囊" selected>口服錠劑 / 膠囊 (Oral)</option>
                                     <option value="口服液/懸浮液">口服液 / 懸浮液 (Liquid)</option>
                                     <option value="外用滴劑">外用滴劑 (Spot-on)</option>
@@ -937,6 +937,7 @@
                     
                     <div style="display: flex; gap: 15px; flex-wrap: wrap;">
                         <button class="btn-success" onclick="openPrescriptionPreviewModal()">📄 預覽並列印正式處方箋</button>
+                        <button class="btn-secondary" onclick="saveMedicalRecordOnlyAndArchive()">📁 僅儲存歸檔（不收費）</button>
                         <button class="btn-warning" onclick="saveMedicalRecordAndBackToWaiting()">💾 儲存並返回候診</button>
                         <button class="btn-danger" onclick="saveMedicalRecordAndDirectCheckout()">💳 儲存並前往收費結帳</button>
                     </div>
@@ -6098,8 +6099,7 @@ bootstrapAuthentication();
             }
 
             medicalStateCache = { chiefComplaint: "", temperature: "", weight: currentPetWeight, prescriptions: [] };
-            document.getElementById('medFrequencyDetail').value='2';
-            document.getElementById('medDays').value='3';
+            resetPrescriptionSharedSettingsForVisit();
 
             document.getElementById('medicalPetNameInfo').value = `${petNameStr} ${chipId ? '(晶片: ' + chipId + ')' : ''}`;
             document.getElementById('medicalPetWeightInput').value = currentPetWeight;
@@ -6515,6 +6515,16 @@ bootstrapAuthentication();
             runDetailedMathCalculation();
         }
 
+        let preservePrescriptionRouteForVisit=false;
+        function resetPrescriptionSharedSettingsForVisit(){
+            preservePrescriptionRouteForVisit=false;
+            document.getElementById('medRouteDetailSelect').value='口服錠劑/膠囊';
+            document.getElementById('labelRecDoseTitle').innerText='建議劑量 (mg/kg)';
+            document.getElementById('medFrequencyDetail').value='2';
+            document.getElementById('medDays').value='3';
+            document.getElementById('medPrescribeNote').value='一天兩次，連續3天，飯後服用';
+        }
+
         function onMedicineSelectedForDoseCalculation() {
             const dropdown = document.getElementById('medSelectDropdown');
             const selectedMedId = dropdown.value;
@@ -6529,10 +6539,12 @@ bootstrapAuthentication();
             const med = loadedMedicinesMap[selectedMedId];
             useDoseDisplay.value = med.usage_dose || '';
 
+            if (!preservePrescriptionRouteForVisit) {
             if (med.route === '針劑') {
                 routeDetailSelect.value = '皮下/肌肉注射';
             } else {
                 routeDetailSelect.value = '口服錠劑/膠囊';
+            }
             }
             onRouteDetailChanged();
 
@@ -6574,11 +6586,10 @@ bootstrapAuthentication();
             const results = document.getElementById('prescriptionMedicineResults');
             results.replaceChildren();
             results.style.display = 'none';
-            ['medUseDoseDisplay', 'medCustomRecDose', 'calculatedDoseResult', 'medPrescribeNote'].forEach(id => {
+            ['medUseDoseDisplay', 'medCustomRecDose', 'calculatedDoseResult'].forEach(id => {
                 document.getElementById(id).value = '';
             });
-            document.getElementById('medRouteDetailSelect').value = '口服錠劑/膠囊';
-            document.getElementById('labelRecDoseTitle').innerText = '建議劑量 (mg/kg)';
+            preservePrescriptionRouteForVisit=true;
             document.getElementById('medPrescribeQty').value = '1';
             search.focus();
         }
@@ -6851,6 +6862,7 @@ bootstrapAuthentication();
         }
 
         function clearMedicalFormInputs() {
+            resetPrescriptionSharedSettingsForVisit();
             medicalStateCache = { chiefComplaint: "", temperature: "", weight: 0, prescriptions: [] };
             currentPetId = "";
             resetLegacyMedicalArchive();
@@ -6896,6 +6908,58 @@ bootstrapAuthentication();
             }
             // 隨本次病歷文字保存；不新增資料庫欄位，沿用備份與歷史查閱。
             return '體溫：'+temperature+' °C'+(chiefComplaint ? '\n'+chiefComplaint : '');
+        }
+
+        const archiveOnlyAttempts=new Map();
+        async function saveMedicalRecordOnlyAndArchive() {
+            if(medicalSaveBusy)return;
+            const tenant=CURRENT_TENANT_ID,petId=currentPetId;
+            if(!tenant||!petId){alert('請先選擇寵物。');return;}
+            if(document.querySelectorAll('#prescriptionItemsContainer .prescription-item-row').length){alert('本次有處方，請使用收費流程處理；僅儲存歸檔適用於查閱或無處方的紀錄。');return;}
+            let pending;try{pending=readServiceDrafts().filter(x=>x.tenantId===tenant&&x.petId===petId&&x.state!=='paid');}catch(error){alert('無法確認待收費項目：'+error.message);return;}
+            if(pending.length){alert('此寵物仍有疫苗／檢驗待收費項目，請先完成或核對收費，再使用不收費歸檔。');return;}
+            let chief=medicalChiefComplaintWithTemperature();if(chief===null)return;
+            let hasNewContent=chief.trim().length>0;
+            const appointmentId=currentAppointmentId||activeAppointmentsList.find(p=>p.id===petId&&p.appointment_id)?.appointment_id||null;
+            const key=tenant+':'+petId+':'+(appointmentId||'direct');
+            const previousAttempt=archiveOnlyAttempts.get(key);
+            if(previousAttempt?.saved&&!hasNewContent){chief=previousAttempt.chief;hasNewContent=true;}
+            medicalSaveBusy=true;
+            const valid=()=>tenant===CURRENT_TENANT_ID&&petId===currentPetId;
+            let saved=false;
+            try {
+                let appointment=null;
+                if(appointmentId){
+                    const {data,error}=await _supabase.from('appointments').select('id,status,notes').eq('tenant_id',tenant).eq('pet_id',petId).eq('id',appointmentId).single();
+                    if(error||!data)throw error||new Error('找不到本次報到資料。');if(!valid())return;
+                    appointment=data;
+                    if(!['候診中','診間看診中','已完成'].includes(data.status))throw new Error('本次尚未報到或已取消，請先核對預約狀態。');
+                }
+                if(hasNewContent){
+                    let attempt=archiveOnlyAttempts.get(key);
+                    if(!attempt){attempt={id:crypto.randomUUID()};archiveOnlyAttempts.set(key,attempt);}
+                    // Reusing this attempt's UUID makes retrying after a partial failure update the same record.
+                    const {data,error}=await _supabase.from('medical_records').upsert({id:attempt.id,tenant_id:tenant,pet_id:petId,status:'已完成',chief_complaint:chief,prescription_details:[]},{onConflict:'id'}).select('id').single();
+                    if(error||!data)throw error||new Error('未確認病歷已儲存。');attempt.saved=true;attempt.chief=chief;saved=true;if(!valid())return;
+                }
+                if(appointment&&appointment.status!=='已完成'){
+                    const label=hasNewContent?'僅病歷歸檔（未收費）':'僅查閱舊資料（未收費）';
+                    const {data,error}=await _supabase.from('appointments').update({status:'已完成',completed_at:new Date().toISOString(),notes:[appointment.notes,label].filter(Boolean).join('\n')})
+                        .eq('tenant_id',tenant).eq('pet_id',petId).eq('id',appointmentId).in('status',['候診中','診間看診中']).select('id').single();
+                    if(error||!data)throw error||new Error('本次候診狀態已改變，請重新核對。');if(!valid())return;
+                }
+                if(hasNewContent){
+                    const weight=roundPetWeight(document.getElementById('medicalPetWeightInput').value);
+                    if(weight>0){const {error}=await _supabase.from('pets').update({weight}).eq('tenant_id',tenant).eq('id',petId);if(error)alert('病歷已歸檔，但體重更新失敗：'+error.message);}
+                    if(!valid())return;
+                }
+                activeAppointmentsList=activeAppointmentsList.filter(p=>appointmentId?p.appointment_id!==appointmentId&&!(p.id===petId&&!p.appointment_id):p.id!==petId);
+                currentAppointmentId=null;archiveOnlyAttempts.delete(key);renderAppointmentTable(activeAppointmentsList);
+                clearMedicalFormInputs();switchTab('appointments');
+                alert(hasNewContent?'病歷已儲存歸檔，本次未建立帳單、未收費。':'已結束查閱，本次未新增病歷或帳單。');
+                await loadAppointments();
+            }catch(error){if(valid())alert((saved?'病歷已儲存，但歸檔尚未全部完成：':'歸檔未完成：')+error.message+'。請保留畫面；重試此按鈕會沿用同一筆病歷。');}
+            finally{medicalSaveBusy=false;}
         }
 
         let medicalSaveBusy = false;
