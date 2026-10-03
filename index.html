@@ -1,7 +1,7 @@
 <!DOCTYPE html><html lang="zh-TW"><head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>吉布動物醫院管理系統 genblue設計版權所有 · 醫院 Logo v45</title>
+    <title>吉布動物醫院管理系統 genblue設計版權所有 · Skyla 空白計算結果 v49</title>
     <!-- 引入 Supabase JS SDK CDN -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
@@ -576,7 +576,7 @@ sidebar{width:190px;min-width:190px;flex-basis:190px;background:var(--paper);bor
     <div class="main-container">
         <header>
             <div class="header-left"><h3><span id="journalClinicName">吉布動物醫院 · 毛孩工作手帳</span></h3></div>
-            <span class="journal-header-edition">醫院 Logo v45</span>
+            <span class="journal-header-edition">Skyla 空白計算結果 v49</span>
         <div class="journal-header-search" id="journalHeaderSearchDock"></div></header>
 
         <section id="globalSearchResultsPanel" class="card" hidden="" style="margin:16px 20px 0;">
@@ -830,6 +830,7 @@ sidebar{width:190px;min-width:190px;flex-basis:190px;background:var(--paper);bor
                             <button class="btn-warning" style="padding: 6px 14px; font-size: 0.85rem; background-color: #0284c7;" onclick="admitCurrentPetToHospital()">🏥 轉入住院觀察 (Admit)</button>
                             <button class="btn-warning" style="padding: 6px 14px; font-size: 0.85rem;" onclick="goToVaccinesFromMedical()">💉 前往疫苗施打登錄</button>
                             <button class="btn-warning" style="padding: 6px 14px; font-size: 0.85rem;" onclick="goToLabManagerFromMedical()">🩸 前往血球/生化檢驗登錄</button>
+<button type="button" id="medicalOpenDiagnosticExchange" class="btn-secondary" style="padding:6px 14px;font-size:.85rem;" onclick="goToDiagnosticExchangeFromMedical()">🔌 檢驗／影像中心（匯入報告）</button>
                             <button class="btn-warning" style="padding: 6px 14px; font-size: 0.85rem;" onclick="goToRapidTestsFromMedical()">🦠 前往快篩檢驗登錄</button><button type="button" onclick="openNewPetForCurrentOwner()">🐾 替此飼主新增寵物</button><button type="button" onclick="goToProductsFromMedical()">🛒 此飼主購買商品</button>
                         </div>
                     </div></aside><div class="journal-book-right"><div class="form-group journal-chief-section"><label>本次主訴與診斷 (chief_complaint)</label><textarea id="medicalDiagnosis" rows="3" placeholder="請輸入診斷與主訴..."></textarea></div>
@@ -1623,7 +1624,9 @@ sidebar{width:190px;min-width:190px;flex-basis:190px;background:var(--paper);bor
 
 
             <!-- 17.1 檢驗／影像資料交換中心 -->
-            <div id="diagnostic_exchange" class="tab-content">
+            <div id="diagnostic_exchange" class="tab-content"><div id="medicalExchangeReturnBar" hidden style="position:sticky;top:0;z-index:5;padding:12px;margin-bottom:12px;background:#f4f6eb;border:1px solid #d3ddc9;border-radius:8px;">
+<button type="button" class="btn-secondary" id="medicalReturnFromDiagnosticExchange" onclick="backToMedicalFromDiagnosticExchange()">← 返回門診</button>
+<span id="medicalExchangeContext" style="font-size:.85rem;margin-left:8px;color:#476343;"></span></div>
                 <div class="card">
                     <h2>🔌 檢驗／影像資料交換中心</h2>
                     <p style="color:#64748b;margin-bottom:16px;">
@@ -1681,7 +1684,7 @@ sidebar{width:190px;min-width:190px;flex-basis:190px;background:var(--paper);bor
                 </div>
 
 
-                <div class="card">
+                <div class="card" id="diagnosticImportCardV47" style="scroll-margin-top:85px;">
                     <h3>🧪 Skyla 接收與檢驗結果匯入</h3>
 <section style="padding:14px;border:1px solid #d3ddc9;border-radius:8px;margin-bottom:16px;background:#f4f6eb">
  <b>Skyla Solution 直接接收</b>
@@ -9191,7 +9194,8 @@ function syncAppointmentPetSearchSelection(){
     if(select.dataset.selectedTenant&&select.dataset.selectedTenant!==CURRENT_TENANT_ID){clearAppointmentPetSearch();return;}
     if(!document.getElementById('appointmentPetResults').hidden&&appointmentPetSearchLastQuery)searchAppointmentPets(true);
 }
-</script><script id="skylaSolutionParserV33">/* Skyla Solution 01/body/04 parser. Validated against the owner's real capture. */
+</script><script id="skylaSolutionParserV33">
+/* Skyla Solution 01/body/04 parser. Validated against the owner's real capture. */
 (function(root){
  'use strict';
  const map={ALB:'alb',TP:'tp',GLU:'glu',CHOL:'chol',ALP:'alp',ALT:'alt',GGT:'ggt',TBIL:'tbil',AMY:'amy',LIPA:'lipa',BUN:'bun',CREA:'crea',CA:'ca',PHOS:'phos','#GLOB':'glob','#UREA':'urea','#C-CA':'c_ca','#A/G':'ag_ratio','#B/C':'bc_ratio'};
@@ -9221,20 +9225,39 @@ function syncAppointmentPetSearchSelection(){
    const code=line.slice(0,11).trim();let value=line.slice(11,20).trim(),flag='';
    if(!/^[#A-Za-z0-9\/()-]+$/.test(code))throw Error('尚未支援的檢驗代碼欄位：'+code);
    if(/^[hl] /i.test(value)){flag=value[0].toLowerCase();value=value.slice(2).trim();}
-   if(!/^(?:[<>≤≥]?\s*[-+]?(?:\d+(?:\.\d*)?|\.\d+)|N\.?A\.?|---|Error)$/i.test(value))throw Error('無法可靠辨識結果：'+code+' '+value);
+   // U is an observed instrument marker, not a synonym for high or low.
+   // All analytes share this grammar; preserve the complete marked result.
+   const numericPattern=/^[<>≤≥]?\s*[-+]?(?:\d+(?:\.\d*)?|\.\d+)$/;
+   const marked=/^U\s*(.+)$/i.exec(value),numericText=marked?marked[1].trim():value;
+   const missingCalculated=value===''&&!flag&&['#GLOB','#UREA','#C-CA','#A/G','#B/C'].includes(code.toUpperCase());
+   if(!missingCalculated&&(marked?!numericPattern.test(numericText):!/^(?:[<>≤≥]?\s*[-+]?(?:\d+(?:\.\d*)?|\.\d+)|N\.?A\.?|---|Error)$/i.test(value)))throw Error('無法可靠辨識結果：'+code+' '+value);
    const key=map[code.toUpperCase()]||('skyla_'+code.replace(/[^A-Za-z0-9]/g,'_').toLowerCase());
    if(codes.has(code.toUpperCase())||keys.has(key))throw Error('報告出現重複項目：'+code);codes.add(code.toUpperCase());keys.add(key);
    const reference=line.slice(20,35).trim(),unit=line.slice(35).trim();
    if(reference&&!/^[-+]?\d+(?:\.\d+)?\s*-\s*[-+]?\d+(?:\.\d+)?$/.test(reference))throw Error('參考範圍格式尚未支援：'+code+' '+reference);
-   return {code,key,value,reference,unit,flag};
+   if(marked&&!flag){
+    flag='u'; // Review marker when range/direction does not establish high or low.
+    const range=/^([-+]?\d+(?:\.\d+)?)\s*-\s*([-+]?\d+(?:\.\d+)?)$/.exec(reference);
+    const number=/^([<>≤≥]?)\s*([-+]?(?:\d+(?:\.\d*)?|\.\d+))$/.exec(numericText);
+    if(range&&number){
+     const low=Number(range[1]),high=Number(range[2]),n=Number(number[2]),op=number[1];
+     if(low<=high){
+      if((!op&&n>high)||(op==='>'&&n>=high)||(op==='≥'&&n>high))flag='h';
+      else if((!op&&n<low)||(op==='<'&&n<=low)||(op==='≤'&&n<low))flag='l';
+     }
+    }
+   }
+   return {code,key,value,reference,unit,flag,result_marker:marked?'U':'',result_status:missingCalculated?'not_reported':'reported'};
   });
   return {format:'skyla-solution-01-04-v1',model,panel:get('Panel Name'),firmware:get('FW Version'),patient_id:get('Patient ID'),patient_name:get('Patient Name'),owner_name:get('Pet Owner'),species,species_raw:speciesRaw,sample_type:get('Sample Type'),pr_code:get('PR Code'),date,time,total:Number(total),rows,raw_text:body};
  }
  root.SkylaSolutionParser={parse,map};
  if(typeof module!=='undefined'&&module.exports)module.exports=root.SkylaSolutionParser;
 })(typeof window==='undefined'?globalThis:window);
+
 </script>
-<script id="skylaIntegrationV33">/* v39 Skyla direct receive + binary file import; explicit patient selection and save. */
+<script id="skylaIntegrationV33">
+/* v39 Skyla direct receive + binary file import; explicit patient selection and save. */
 var skylaLive={port:null,reader:null,writer:null,task:null,scope:'',bytes:[],inFrame:false,stopping:false,connecting:false};
 var skylaPending=null,skylaSelected=null,skylaSaveBusy=false,skylaReadGeneration=0;
 function skylaScope(){return CURRENT_TENANT_ID&&CURRENT_USER?.id?CURRENT_TENANT_ID+'|'+CURRENT_USER.id:'';}
@@ -9261,7 +9284,7 @@ async function skylaLoadBytes(bytes,name){
  document.getElementById('dxImportPreviewWrap').style.display='block';
  document.getElementById('dxImportPreviewHead').innerHTML='<tr><th>項目</th><th>結果</th><th>單位</th><th>儀器參考範圍</th><th>儀器標記</th></tr>';
  const body=document.getElementById('dxImportPreviewBody');body.replaceChildren();
- for(const r of report.rows){const tr=document.createElement('tr');if(r.flag==='h'||r.flag==='l')tr.style.color='#b42318';for(const value of [r.code,r.value,r.unit||'—',r.reference||'—',r.flag==='h'?'偏高':r.flag==='l'?'偏低':'—']){const td=document.createElement('td');td.textContent=value;tr.appendChild(td);}body.appendChild(tr);}
+ for(const r of report.rows){const tr=document.createElement('tr');if(r.flag)tr.style.color='#b42318';for(const value of [r.code,r.value===''?'未提供結果':r.value,r.unit||'—',r.reference||'—',r.result_status==='not_reported'?'原儀器結果空白':r.flag==='h'?'偏高':r.flag==='l'?'偏低':r.flag==='u'?'儀器 U 標記（請核對）':'—']){const td=document.createElement('td');td.textContent=value;tr.appendChild(td);}body.appendChild(tr);}
  document.getElementById('dxRawFileText').textContent=report.raw_text;
  skylaStatus(`已接收 ${report.total} 項，請核對、選寵物並填本次費用；尚未儲存。`);
  return true;
@@ -9396,11 +9419,12 @@ buildLabReportHtml=function(rep){
  const source=rep.report_data?._skyla;if(!source?.rows?.length)return skylaOriginalBuildLabReportHtml(rep);
  const esc=escapeLabText;
  const head=`<div class="lab-report-meta"><p><b>檢驗寵物：</b>${esc(rep.pets?.name||allPetsListForDropdown.find(p=>p.id===rep.pet_id)?.name||'未知寵物')}（${esc(source.species)}）</p><p><b>檢驗日期時間：</b>${esc(source.exam_date)} ${esc(source.exam_time)}（儀器原始時間）</p><p><b>系統登錄時間：</b>${esc(new Date(rep.created_at).toLocaleString())}</p><p><b>儀器／套組：</b>${esc(source.model)}／${esc(source.panel)}</p><p><b>儀器病患編號：</b>${esc(source.patient_id)}（已由人員選擇寵物）</p><p><b>備註：</b>${esc(rep.notes||'')}</p></div>`;
- const rows=source.rows.map(r=>`<tr><th>${esc(r.code)}</th><td class="${r.flag?'lab-abnormal':''}">${esc(rep.report_data[r.key]??r.value)} ${r.flag==='h'?'(高)':r.flag==='l'?'(低)':''}</td><td>${esc(r.unit||'—')}</td><td>${esc(r.reference||'—')}</td></tr>`).join('');
+ const rows=source.rows.map(r=>`<tr><th>${esc(r.code)}</th><td class="${r.flag?'lab-abnormal':''}">${esc((rep.report_data[r.key]??r.value)===''?'未提供結果':(rep.report_data[r.key]??r.value))} ${r.flag==='h'?'(高)':r.flag==='l'?'(低)':r.flag==='u'?'(儀器 U 標記，請核對)':''}</td><td>${esc(r.unit||'—')}</td><td>${esc(r.reference||'—')}</td></tr>`).join('');
  return head+'<table class="lab-report-table"><thead><tr><th>項目</th><th>結果</th><th>單位</th><th>儀器參考範圍</th></tr></thead><tbody>'+rows+'</tbody></table><p class="lab-report-note">保留儀器當次結果、符號、單位、參考範圍及高低標記。</p>';
 };
 window.addEventListener('beforeunload',event=>{if(skylaPending||skylaLive.port){event.preventDefault();event.returnValue='';}});
 setInterval(()=>{if((skylaLive.port&&skylaLive.scope!==skylaScope()))void skylaStopReceive();if(skylaPending&&skylaPending.scope!==skylaScope()){++skylaReadGeneration;skylaResetPreview();skylaStatus('登入已變更，請重新接收或選擇原始檔。');}},500);
+
 </script>
 <script id="labEightFieldHeaderV35">
 // Both CBC and chemistry share the same eight print header fields. Print-only edits do not modify medical records.
@@ -9689,5 +9713,35 @@ async function loadLastTemperatureMeasurement(){
   }
  }catch(e){if(scope===medicalWeightScope()&&revision===medicalTemperatureRevision)setMedicalTemperatureStatus('上次體溫讀取失敗：'+e.message,true);}
 }
+</script>
+<script id="medicalExchangeNavigationV47">
+/* Keep the mounted medical form while visiting the diagnostic import center. */
+var medicalExchangeReturnContext=null;
+function medicalExchangeScope(){return CURRENT_TENANT_ID&&CURRENT_USER?.id?CURRENT_TENANT_ID+'|'+CURRENT_USER.id:'';}
+function syncMedicalExchangeReturn(){
+ const context=medicalExchangeReturnContext;
+ const valid=!!context&&context.scope===medicalExchangeScope()&&context.petId===currentPetId;
+ const bar=document.getElementById('medicalExchangeReturnBar');
+ bar.hidden=!valid;
+ if(!valid){medicalExchangeReturnContext=null;return;}
+ document.getElementById('medicalExchangeContext').textContent='目前門診：'+context.petName+'。返回時保留病歷、處方與尚未完成的輸入。';
+}
+function goToDiagnosticExchangeFromMedical(){
+ if(!currentPetId||!medicalExchangeScope()){alert('請先選擇目前看診的寵物。');return false;}
+ medicalExchangeReturnContext={scope:medicalExchangeScope(),petId:currentPetId,petName:currentPetName||document.getElementById('cardPetName').textContent,scrollY:window.scrollY};
+ switchTab('diagnostic_exchange');
+ requestAnimationFrame(()=>{if(medicalExchangeReturnContext&&medicalExchangeReturnContext.scope===medicalExchangeScope()&&document.getElementById('diagnostic_exchange').classList.contains('active'))document.getElementById('diagnosticImportCardV47').scrollIntoView({block:'start'});});
+ return true;
+}
+function backToMedicalFromDiagnosticExchange(){
+ const context=medicalExchangeReturnContext;
+ if(!context||context.scope!==medicalExchangeScope()||context.petId!==currentPetId){syncMedicalExchangeReturn();alert('目前看診或登入帳號已變更，請重新從門診開啟檢驗／影像中心。');return false;}
+ switchTab('medical');
+ requestAnimationFrame(()=>{if(context.scope===medicalExchangeScope()&&context.petId===currentPetId&&document.getElementById('medical').classList.contains('active'))window.scrollTo({top:context.scrollY,behavior:'instant'});});
+ return true;
+}
+const medicalExchangeOriginalSwitchTabV47=switchTab;
+switchTab=function(tabId){medicalExchangeOriginalSwitchTabV47(tabId);syncMedicalExchangeReturn();};
+
 </script>
 </body></html>
