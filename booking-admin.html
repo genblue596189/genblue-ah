@@ -1,0 +1,58 @@
+<!doctype html><html lang="zh-Hant"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>院內線上預約管理｜原院備用管理頁 v59</title>
+<style>body{font:15px system-ui;margin:0;background:#f1f6f5;color:#203b36}main{max-width:1000px;margin:20px auto;padding:22px;background:white;border-radius:14px}h1{font-size:23px}h2{font-size:18px}input,textarea,select,button{font:inherit;padding:9px;border:1px solid #b8cbc5;border-radius:7px;box-sizing:border-box}input,textarea{max-width:100%}button{cursor:pointer;background:#176b57;color:white;border:0;margin:4px}button:disabled{opacity:.45}label{display:inline-block;margin:6px}label input{display:block;margin-top:5px}.row{display:flex;flex-wrap:wrap;align-items:end;gap:6px}.card{border:1px solid #d8e6e0;border-radius:9px;padding:14px;margin:12px 0}.small{font-size:13px;color:#5e706a}.msg{white-space:pre-wrap;background:#edf6f2;padding:12px;position:sticky;top:0;z-index:1}.request p{margin:5px 0}.result{display:block;background:#edf6f2;color:#203b36;text-align:left;width:100%;margin:6px 0}#pet-results{max-height:260px;overflow:auto}.notice{line-height:1.7}textarea{width:100%;min-height:65px}a{color:#176b57}details{margin:15px 0}@media(max-width:600px){main{margin:8px;padding:14px}.row input{width:100%}}</style>
+<main><h1>院內線上預約管理 <small>原院備用管理頁 v59</small></h1><p class="notice">這是獨立管理頁，不影響看診頁。核對飼主與寵物後才確認預約；新病患請先回管理系統建立飼主、寵物，再回來確認。</p><div id="message" class="msg" role="status" aria-live="polite">請以本院帳號登入。</div>
+<form id="login" class="row"><label>員工信箱<input id="email" type="email" autocomplete="username" required></label><label>密碼<input id="password" type="password" autocomplete="current-password" required></label><button>登入</button></form>
+<section id="app" hidden><div class="row"><button id="reload">重新讀取</button><button id="logout">登出此頁</button><a id="public-link" target="_blank" rel="noopener">開啟飼主預約頁</a></div>
+<details id="settings" hidden><summary>管理者：院所設定與開放時段</summary><form id="config" class="card"><div class="row"><label>院所名稱<input id="clinic-name" required maxlength="100"></label><label>網址代號<input id="slug" value="genblue-ah" required pattern="[a-z0-9-]{3,60}"></label><label><input id="enabled" type="checkbox">開放線上預約</label></div><label for="notice">飼主提醒文字</label><textarea id="notice" maxlength="1000">預約需由醫院確認；急症請直接聯絡醫院。</textarea><button>儲存院所設定</button></form>
+<form id="slot-form" class="card"><p>新增單一時段（未來30天內；台灣時間）。需要多個時段可依序新增。再次新增相同時段會更新名額並重新開放。</p><div class="row"><label>日期<input id="slot-date" type="date" required></label><label>時間<input id="slot-time" type="time" required></label><label>可受理申請數<input id="capacity" type="number" min="1" max="20" value="1" required></label><button>新增時段</button></div></form><div id="slots"></div><button id="export">下載線上預約資料</button><p class="small">線上申請與時段有獨立下載檔；現有院內備份尚未包含這部分。已確認的預約寫入 appointments，會包含在現有院內備份。</p></details>
+<h2>待確認申請 <span id="pending-count"></span></h2><p class="small">每次顯示最早300筆待確認，以及最近7天最多300筆處理紀錄；處理後重新讀取即可接續下一批。此版本不會寄信或傳 LINE；確認後請由院內聯絡飼主。</p><div id="requests"></div>
+<section id="review" class="card" hidden><h2>核對本院飼主、寵物</h2><p id="review-text"></p><form id="search-form" class="row"><input id="pet-query" placeholder="寵物名、飼主姓名或電話" required maxlength="100"><button>查詢</button></form><div id="pet-results"></div><p id="selected-pet"></p><button id="approve" disabled>核對正確，確認預約</button><button id="cancel-review">關閉核對</button></section>
+<h2>最近處理紀錄</h2><div id="history"></div></section></main>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.117.2/dist/umd/supabase.js"></script><script>
+'use strict';
+const BOOKING_SUPABASE_URL='https://rfprsbftkwtwjqrjcalq.supabase.co',BOOKING_PUBLISHABLE_KEY='sb_publishable_mbbz-W9Mwg-yzcokP8Yk3g_2Gqf1wum';
+let db;
+try {
+ if(!window.supabase)throw Error('登入元件未載入，請重新整理或檢查網路。');
+ db=window.supabase.createClient(BOOKING_SUPABASE_URL,BOOKING_PUBLISHABLE_KEY,{auth:{storageKey:'genblue-online-booking-admin-v1'}});
+} catch(e) {
+ document.getElementById('message').textContent='登入頁初始化失敗：'+e.message;
+ throw e;
+}
+const $=x=>document.getElementById(x);let state=null,review=null,pet=null,busy=false,searchGeneration=0;
+const labelDate=x=>new Intl.DateTimeFormat('zh-TW',{timeZone:'Asia/Taipei',dateStyle:'short',timeStyle:'short',hour12:false}).format(new Date(x));
+function message(x){$('message').textContent=x;}
+function button(text,fn){const b=document.createElement('button');b.type='button';b.textContent=text;b.onclick=fn;return b;}
+async function rpc(action,data={}){const {data:d,error}=await db.rpc('ob_staff',{p_action:action,p_data:data});if(error)throw Error(error.message);return d;}
+async function action(fn){if(busy)return;busy=true;document.querySelectorAll('button').forEach(b=>b.disabled=true);try{await fn();}catch(e){message(e.message);}finally{busy=false;document.querySelectorAll('button').forEach(b=>b.disabled=false);$('approve').disabled=!pet;}}
+function closeReview(){searchGeneration++;review=null;pet=null;$('review').hidden=true;$('pet-results').replaceChildren();$('selected-pet').textContent='';$('approve').disabled=true;}
+async function load(){state=await rpc('list');$('login').hidden=true;$('app').hidden=false;$('settings').hidden=!state.admin;closeReview();
+ if(state.config){$('clinic-name').value=state.config.name;$('slug').value=state.config.slug;$('enabled').checked=state.config.enabled;$('notice').value=state.config.notice;}
+ $('public-link').href='booking.html?clinic='+encodeURIComponent(state.config?.slug||'genblue-ah');
+ $('slots').replaceChildren();for(const s of state.slots){const p=document.createElement('p');p.textContent=labelDate(s.starts_at)+'｜名額 '+s.capacity+'｜'+(s.enabled?'開放':'關閉');if(state.admin&&s.enabled)p.append(button('關閉時段',()=>action(async()=>{await rpc('close_slot',{id:s.id});await load();message('時段已關閉；已送出的申請保留，請個別處理。');})));$('slots').append(p);}
+ $('requests').replaceChildren();$('history').replaceChildren();const pending=state.requests.filter(r=>r.status==='pending');$('pending-count').textContent='（本頁 '+pending.length+'／共 '+state.pending_count+'）';if(!pending.length)$('requests').textContent='目前沒有待確認申請。';
+ for(const r of state.requests){const box=document.createElement('div');box.className='card request';for(const text of [labelDate(r.starts_at)+'｜'+r.name+'｜'+r.phone,'寵物：'+r.pet_name+'（'+r.species+'）','原因：'+(r.reason||'未填'),'申請編號：'+r.id]){const p=document.createElement('p');p.textContent=text;box.append(p);}
+ if(r.status==='pending'){box.append(button('核對寵物並確認',()=>{closeReview();review=r;$('review').hidden=false;$('review-text').textContent=r.name+'／'+r.phone+'／'+r.pet_name+'／'+labelDate(r.starts_at);$('pet-query').value=r.pet_name;$('review').scrollIntoView({behavior:'smooth'});}));box.append(button('拒絕申請',()=>action(async()=>{if(!confirm('拒絕此申請？請另行聯絡飼主。'))return;await rpc('reject',{id:r.id});await load();message('申請已拒絕，名額已釋出。');})));$('requests').append(box);}
+ else{const p=document.createElement('p');p.textContent=r.status==='approved'?'已確認（請聯絡飼主）':'已拒絕';box.append(p);if(r.status==='approved')box.append(button('取消預約',()=>action(async()=>{if(!confirm('取消此已確認預約？已報到的個案請回院內流程處理。'))return;await rpc('reject',{id:r.id});await load();message('預約已取消，請聯絡飼主。');})));$('history').append(box);}}
+}
+$('login').onsubmit=e=>{e.preventDefault();action(async()=>{const {error}=await db.auth.signInWithPassword({email:$('email').value.trim(),password:$('password').value});if(error)throw error;$('password').value='';await load();message('登入成功，資料已更新。');});};
+$('reload').onclick=()=>action(async()=>{await load();message('已重新讀取。');});
+$('logout').onclick=()=>action(async()=>{await db.auth.signOut({scope:'local'});state=null;closeReview();$('app').hidden=true;$('login').hidden=false;message('已登出此頁。');});
+$('config').onsubmit=e=>{e.preventDefault();action(async()=>{await rpc('settings',{name:$('clinic-name').value.trim(),slug:$('slug').value.trim(),enabled:$('enabled').checked,notice:$('notice').value.trim()});await load();message('院所設定已儲存。');});};
+$('slot-form').onsubmit=e=>{e.preventDefault();action(async()=>{const dt=new Date($('slot-date').value+'T'+$('slot-time').value+':00+08:00');await rpc('slot',{starts_at:dt.toISOString(),capacity:Number($('capacity').value)});await load();message('時段已儲存。');});};
+$('cancel-review').onclick=closeReview;
+$('search-form').onsubmit=async e=>{e.preventDefault();if(busy||!review)return;const gen=++searchGeneration;pet=null;$('approve').disabled=true;$('selected-pet').textContent='';$('pet-results').textContent='查詢中…';
+ try{const q=$('pet-query').value.trim().replace(/[\\%_(),.]/g,'');if(!q)throw Error('請輸入姓名或電話');
+ const tenant=state.config?.tenant_id;if(!tenant)throw Error('請管理者先儲存院所設定');
+ const owner=await db.from('owners').select('id').eq('tenant_id',tenant).or('name.ilike.%'+q+'%,mobile.ilike.%'+q+'%,phone.ilike.%'+q+'%').limit(51);if(owner.error)throw owner.error;if(gen!==searchGeneration)return;
+ let query=db.from('pets').select('id,name,species,owner_id,owners!inner(id,name,mobile,phone,owner_code)').eq('tenant_id',tenant).eq('owners.tenant_id',tenant);
+ const ids=owner.data.map(x=>x.id);query=ids.length?query.or('name.ilike.%'+q+'%,owner_id.in.('+ids.join(',')+')'):query.ilike('name','%'+q+'%');
+ const result=await query.order('name').limit(51);if(result.error)throw result.error;if(gen!==searchGeneration)return;$('pet-results').replaceChildren();
+ if(!result.data.length)$('pet-results').textContent='找不到；新病患請先在院內系統建立。';
+ for(const p of result.data.slice(0,50)){const o=p.owners;const text=p.name+'（'+p.species+'）｜'+o.name+'｜'+(o.mobile||o.phone||'無電話')+'｜舊號 '+(o.owner_code||'無');$('pet-results').append(button(text,()=>{pet=p;$('selected-pet').textContent='選擇：'+text;$('approve').disabled=false;}));}
+ if(result.data.length>50||owner.data.length>50){const p=document.createElement('p');p.textContent='結果較多，最多顯示50筆；請增加關鍵字核對。';$('pet-results').append(p);}
+ }catch(e){if(gen===searchGeneration)$('pet-results').textContent=e.message;}};
+$('approve').onclick=()=>action(async()=>{if(!review||!pet)return;if(!confirm('確認將此申請連到 '+pet.owners.name+' 的 '+pet.name+'？'))return;await rpc('approve',{id:review.id,pet_id:pet.id});await load();message('預約已確認並寫入院內預約；請聯絡飼主。到院報到後才會進入候診。');});
+$('export').onclick=()=>action(async()=>{const d=await rpc('export');const url=globalThis.URL.createObjectURL(new Blob([JSON.stringify(d,null,2)],{type:'application/json'}));const a=document.createElement('a');a.href=url;a.download='線上預約資料_'+new Date().toISOString().slice(0,10)+'.json';a.click();setTimeout(()=>globalThis.URL.revokeObjectURL(url),5000);message('線上預約資料已送往瀏覽器下載；請確認下載檔。');});
+(async()=>{try{const {data}=await db.auth.getSession();if(data.session){await load();message('已登入，資料已更新。');}}catch(e){message(e.message);}})();
+</script></html>
