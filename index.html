@@ -1,7 +1,7 @@
 <!DOCTYPE html><html lang="zh-TW"><head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>吉布動物醫院管理系統 genblue設計版權所有 · 院內線上預約整合 v59</title>
+    <title>吉布動物醫院管理系統 genblue設計版權所有 · 院內線上預約整合 v60.2</title>
     <!-- 引入 Supabase JS SDK CDN -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
@@ -602,7 +602,7 @@ body.role-no-appointment #nav-online_booking{display:none!important}
     <div class="main-container">
         <header>
             <div class="header-left"><h3><span id="journalClinicName">吉布動物醫院 · 毛孩工作手帳</span></h3></div>
-            <span class="journal-header-edition">院內線上預約整合 v59</span>
+            <span class="journal-header-edition">院內線上預約整合 v60.2</span>
 <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;"><button type="button" class="btn-secondary" id="clinicRefreshButtonV50" onclick="refreshClinicDataV50()">↻ 更新資料</button><span id="clinicRefreshStatusV50" role="status" aria-live="polite" style="font-size:.78rem;color:#476343;"></span></div>
         <div class="journal-header-search" id="journalHeaderSearchDock"></div></header>
 
@@ -857,6 +857,7 @@ body.role-no-appointment #nav-online_booking{display:none!important}
                             <button class="btn-warning" style="padding: 6px 14px; font-size: 0.85rem; background-color: #0284c7;" onclick="admitCurrentPetToHospital()">🏥 轉入住院觀察 (Admit)</button>
                             <button class="btn-warning" style="padding: 6px 14px; font-size: 0.85rem;" onclick="goToVaccinesFromMedical()">💉 前往疫苗施打登錄</button>
                             <button class="btn-warning" style="padding: 6px 14px; font-size: 0.85rem;" onclick="goToLabManagerFromMedical()">🩸 前往血球/生化檢驗登錄</button>
+<button type="button" class="btn-secondary" style="padding:6px 14px;font-size:.85rem" onclick="goToImagingFromMedicalV61()">🩻 圖片／影片上傳</button>
 <button type="button" id="medicalOpenDiagnosticExchange" class="btn-secondary" style="padding:6px 14px;font-size:.85rem;" onclick="goToDiagnosticExchangeFromMedical()">🔌 檢驗／影像中心（匯入報告）</button>
                             <button class="btn-warning" style="padding: 6px 14px; font-size: 0.85rem;" onclick="goToRapidTestsFromMedical()">🦠 前往快篩檢驗登錄</button><button type="button" onclick="openNewPetForCurrentOwner()">🐾 替此飼主新增寵物</button><button type="button" onclick="goToProductsFromMedical()">🛒 此飼主購買商品</button>
                         </div>
@@ -1448,10 +1449,10 @@ body.role-no-appointment #nav-online_booking{display:none!important}
 
             <div id="backup" class="tab-content">
                 <div class="card" style="max-width:1000px;">
-                    <h2>💾 院內資料備份（管理者專用）</h2>
+                    <h2>💾 院內資料與影像備份（原院 v62｜管理者專用）</h2><p>請在電腦操作。Chrome／Edge 可直接寫入所選 ZIP，單次上限 2 GB；其他瀏覽器使用記憶體下載，上限 512 MB。每次最多 1000 個原始檔，超過限制會停止並告知。備份期間請保持登入與頁面開啟。</p>
                     <p style="color:#475569;line-height:1.7;">備份本院飼主、寵物、新舊病歷、檢查、收費、庫存及相關資料。請在電腦上操作，完成後下載到您的下載資料夾。</p>
-                    <p style="color:#64748b;font-size:.9rem;line-height:1.7;">這是院內資料備份，包含人員權限資料；登入帳號密碼、程式及 Supabase 系統設定另行保存。尚未結帳的疫苗／檢驗費用暫存於此瀏覽器，不包含於此備份；請先完成結帳。目前版本會核對附件為零；如偵測到影像或附件，會停止並提示升級。</p>
-                    <button id="clinicBackupStart" type="button" onclick="startClinicDataBackup()">💾 一鍵備份本院資料</button>
+                    <p style="color:#64748b;font-size:.9rem;line-height:1.7;">這是院內資料備份，包含人員權限資料；登入帳號密碼、程式及 Supabase 系統設定另行保存。尚未結帳的疫苗／檢驗費用暫存於此瀏覽器，不包含於此備份；請先完成結帳。本版包含線上預約，以及圖片、影片原始檔；未完成上傳的本院私人檔案也會保存。程式、登入密碼及 Supabase 設定不包含於此備份。</p>
+                    <button id="clinicBackupStart" type="button" onclick="startClinicDataBackup()">💾 一鍵備份資料＋圖片／影片</button>
                     <progress id="clinicBackupProgress" max="100" hidden="" style="display:block;width:100%;margin:16px 0;"></progress>
                     <p id="clinicBackupStatus" role="status" aria-live="polite" style="line-height:1.7;">尚未開始備份。</p>
                     <a id="clinicBackupDownload" hidden="" style="font-weight:bold;" download="">再次下載本次備份檔</a>
@@ -1460,8 +1461,8 @@ body.role-no-appointment #nav-online_booking{display:none!important}
                     </details>
                     <hr style="border:0;border-top:1px solid #e2e8f0;margin:24px 0;">
                     <h3>檢查備份檔</h3>
-                    <p style="color:#64748b;">選取剛下載的 .json.gz 或 .json，核對校驗碼、筆數及資料關聯。檢查在這台電腦完成，不會上傳或還原到正式資料庫。</p>
-                    <input type="file" accept=".gz,.json" onchange="checkClinicBackupFile(event)" aria-label="選擇要檢查的備份檔">
+                    <p style="color:#64748b;">選取剛下載的 ZIP，核對院內資料、原始檔校驗碼、筆數及關聯；也可檢查舊版 .json.gz 或 .json。檢查在這台電腦完成，不會上傳或還原到正式資料庫。</p>
+                    <input type="file" accept=".zip,.gz,.json" onchange="checkClinicBackupFile(event)" aria-label="選擇要檢查的備份檔">
                     <p id="clinicBackupCheckStatus" role="status" aria-live="polite" style="line-height:1.7;">尚未選擇檔案。</p>
                 </div>
             </div>
@@ -1802,6 +1803,18 @@ body.role-no-appointment #nav-online_booking{display:none!important}
                     </details>
                 </div>
 
+<div class="card" id="im61-card"><h3>🩻 寵物影像｜超音波與 X 光 <small>原院 v61.1</small></h3><p>核對飼主與寵物後上傳。檔案存於院內私人儲存區；上傳本身不會新增費用。</p>
+<div style="display:flex;gap:8px;flex-wrap:wrap;margin:12px 0"><input id="im61-search" maxlength="100" style="flex:1;min-width:200px" placeholder="寵物＋飼主、電話或病歷號" onkeydown="if(event.key==='Enter'){event.preventDefault();searchImagingPetV61()}"><button type="button" id="im61-search-button" onclick="searchImagingPetV61()">搜尋寵物</button><button type="button" id="im61-current" class="btn-secondary" onclick="useCurrentImagingPetV61()">帶入目前門診寵物</button></div>
+<div id="im61-results"></div><p id="im61-pet" style="padding:12px;background:#edf1e5;border-radius:8px;font-weight:bold">尚未選擇寵物</p>
+<form id="im61-form" onsubmit="saveImagingV61(event)"><div class="form-grid">
+<div class="form-group"><label for="im61-modality">檢查種類</label><select id="im61-modality" onchange="imagingDevicesV61()"><option value="ULTRASOUND">超音波</option><option value="XRAY">X 光</option></select></div>
+<div class="form-group"><label for="im61-device">來源儀器（可不填）</label><select id="im61-device"><option value="">未指定儀器</option></select></div>
+<div class="form-group"><label for="im61-date">檢查時間</label><input id="im61-date" type="datetime-local" required></div>
+<div class="form-group"><label for="im61-body">檢查部位（可不填）</label><input id="im61-body" maxlength="200" placeholder="例如腹部、胸腔"></div>
+<div class="form-group span-4"><label for="im61-file">選擇圖片／影片</label><input id="im61-file" type="file" accept=".jpg,.jpeg,.png,.webp,.mp4,.mov,.webm" required><small>每次一個檔案，單檔上限 50 MB。影片能否直接播放取決於原始編碼；無法播放時可下載原檔。此版尚不支援 DICOM。</small></div>
+<div class="form-group span-4"><label for="im61-note">臨床備註</label><textarea id="im61-note" maxlength="5000" rows="2"></textarea></div></div><button type="submit" id="im61-save" class="btn-success">上傳並儲存</button></form>
+<p id="im61-status" role="status" aria-live="polite">請先核對寵物與飼主，再選擇檔案。</p><details style="margin-top:14px"><summary>此寵物影像紀錄（最近 50 筆）</summary><button type="button" class="btn-secondary" onclick="loadImagingListV61()">重新讀取</button><div id="im61-list">請先選擇寵物。</div></details>
+<p style="font-size:.85rem;color:#64748b">上傳後，回門診展開「影像／附件」即可查閱。本版「資料備份」可一起保存圖片、影片原始檔。請保留下載的 ZIP，並完成檔案檢查。</p></div>
                 <div class="card">
                     <h3>資料交換流程</h3>
                     <div class="diagnostic-flow">
@@ -1912,27 +1925,7 @@ body.role-no-appointment #nav-online_booking{display:none!important}
                 </div>
             </div>
 
-            <!-- 13. 檢驗、影像及附件 -->
-            <div id="lab_tests" class="tab-content">
-                <div class="card">
-                    <h2>檢驗、影像及附件</h2>
-                    <div class="form-grid">
-                        <div class="form-group span-2">
-                            <label>檢驗 / 影像類別</label>
-                            <select>
-                                <option>血液生化檢驗</option>
-                                <option>數位 X 光影像</option>
-                                <option>PCR 傳染病檢測</option>
-                                <option>超音波掃描</option>
-                            </select>
-                        </div>
-                        <div class="form-group span-2"><label>關聯寵物晶片/名字</label><input type="text" placeholder="輸入晶片或搜尋寵物"></div>
-                        <div class="form-group span-4"><label>上傳附件檔案</label><input type="file" id="labFile" style="padding: 6px;"></div>
-                    </div>
-                    <button style="margin-top: 15px;" onclick="alert('此頁尚未接通附件儲存，檔案未上傳。請勿視為已存檔。')">確認上傳檔案</button>
-                </div>
-            </div>
-
+<div id="lab_tests" class="tab-content"><div class="card"><h2>檢驗、影像及附件</h2><p>超音波與 X 光圖片、影片已整合至影像上傳入口。</p><button type="button" onclick="switchTab('diagnostic_exchange');document.getElementById('im61-card').scrollIntoView({block:'start'})">開啟影像上傳與查閱 ↗</button></div></div>
             <div id="online_booking" class="tab-content"><h1>院內線上預約管理 <small>原院 v60.2｜30 分鐘預約日曆</small></h1><p class="notice">沿用目前院內登入。核對飼主與寵物後才確認預約；新病患請先回管理系統建立飼主、寵物，再回來確認。</p><div id="ob59-message" class="msg" role="status" aria-live="polite">開啟後將讀取本院線上預約。</div>
 
 <section id="ob59-app" hidden><div class="row"><button id="ob59-reload">重新讀取</button><button type="button" onclick="switchTab('appointments')">回今天的院務</button><a id="ob59-public-link" target="_blank" rel="noopener">開啟飼主預約頁</a></div>
@@ -3947,6 +3940,7 @@ if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',
                 } else {const note=document.createElement('p');note.textContent='附件連結格式無法預覽，請確認原始檔案。';item.appendChild(note);}
             }
             container.appendChild(item);
+            if(nativeStudy)appendPrivateImageAssetsV61(item,record);
         }
         async function loadCurrentPetClinicalHistory(kind) {
             if(!['rapid','cbc','bio','imaging'].includes(kind))return;
@@ -3960,8 +3954,8 @@ if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',
                 const table=kind==='rapid'?'rapid_test_records':kind==='imaging'?'lab_tests':'lab_reports';
                 const rows=await queryCurrentPetHistoryPages(table,petId,tenant,kind);if(!valid()||rows===null)return;
                 let studies=[];
-                // The dedicated imaging schema requires UUID tenant IDs. No clinic-ID guessing or cross-tenant query.
-                const imagingSupported=/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(tenant);
+                // v61: imaging tables use text clinic IDs with tenant-scoped RLS.
+                const imagingSupported=!!tenant;
                 if(kind==='imaging'&&imagingSupported){studies=await queryCurrentPetHistoryPages('imaging_studies',petId,tenant,kind);if(!valid()||studies===null)return;}
                 box.replaceChildren();const identity=document.createElement('p');identity.textContent=currentPetHistoryIdentity(pet);box.appendChild(identity);
                 if(!rows.length&&!studies.length){const empty=document.createElement('p');empty.textContent='此寵物尚無已儲存的'+({rapid:'快篩',cbc:'CBC 血球',bio:'血清生化',imaging:'影像／附件'}[kind])+'紀錄。';box.appendChild(empty);}
@@ -5909,12 +5903,12 @@ async function loadOwnersAndPetsIntegrated() {
         let clinicBackupDownloadUrl = null;
 
         function validateClinicBackupSnapshot(snapshot, expectedTenant) {
-            if (!snapshot || snapshot.format !== 'genblue-clinic-snapshot' || ![1,2].includes(snapshot.format_version)) throw new Error('不是支援的 genblue 醫院資料備份。');
+            if (!snapshot || snapshot.format !== 'genblue-clinic-snapshot' || ![1,2,3].includes(snapshot.format_version)) throw new Error('不是支援的 genblue 醫院資料備份。');
             if (!snapshot.tenant_id || (expectedTenant && snapshot.tenant_id !== expectedTenant)) throw new Error('备份的醫院代碼與目前登入醫院不同。');
             const expectedTables=snapshot.tables && Object.prototype.hasOwnProperty.call(snapshot.tables,'breed_images') ? CLINIC_BACKUP_TABLES : CLINIC_BACKUP_TABLES.filter(name=>name!=='breed_images');
-            if (!snapshot.tables || snapshot.table_count !== expectedTables.length+(snapshot.format_version===2?3:0) ||
+            if (!snapshot.tables || snapshot.table_count !== expectedTables.length+(snapshot.format_version>=2?3:0)+(snapshot.format_version===3?5:0) ||
                 Object.keys(snapshot.tables).sort().join('|') !== [...expectedTables].sort().join('|')) throw new Error('資料表範圍不完整或版本不同。');
-            if (snapshot.attachments?.mode !== 'verified_none_v1' || snapshot.attachments.patient_file_references !== 0 || snapshot.attachments.non_html_storage_objects !== 0) throw new Error('此備份含尚未支援的附件範圍。');
+            if(snapshot.format_version===3)validateStorageBackupV62(snapshot);else if (snapshot.attachments?.mode !== 'verified_none_v1' || snapshot.attachments.patient_file_references !== 0 || snapshot.attachments.non_html_storage_objects !== 0) throw new Error('此備份含尚未支援的附件範圍。');
             let total = 0;
             const indexes = new Map();
             for (const name of expectedTables) {
@@ -5940,7 +5934,8 @@ async function loadOwnersAndPetsIntegrated() {
                 }
                 total += table.row_count;
             }
-            if(snapshot.format_version===2)total+=validateClinicPrivateBackupV53(snapshot);
+            if(snapshot.format_version>=2)total+=validateClinicPrivateBackupV53(snapshot);
+            if(snapshot.format_version===3)total+=validateBookingBackupV62(snapshot);
             if (total !== snapshot.total_rows) throw new Error('總筆數核對不一致。');
             for (const name of expectedTables) {
                 for (const fk of snapshot.tables[name].foreign_keys) {
@@ -6075,7 +6070,7 @@ async function loadOwnersAndPetsIntegrated() {
                 const envelope = JSON.parse(await new Blob(chunks).text());
                 if (envelope.format !== 'genblue-clinic-backup-file' || envelope.format_version !== 1 || typeof envelope.payload_json !== 'string') throw new Error('不是 genblue 的備份檔。');
                 if (await clinicBackupSha256(envelope.payload_json) !== envelope.sha256) throw new Error('備份校驗碼不符，檔案可能不完整或已變更。');
-                const snapshot = JSON.parse(envelope.payload_json);
+                const snapshot = JSON.parse(envelope.payload_json); if(snapshot.format_version===3)throw new Error('含影像的備份請選擇完整 ZIP，不能只核對資料 JSON。');
                 validateClinicBackupSnapshot(snapshot, tenant);
                 if (tenant !== CURRENT_TENANT_ID || CURRENT_PROFILE?.role !== 'admin') throw new Error('登入狀態已改變，請重新檢查。');
                 showClinicBackupSummary(snapshot);showPrivateBackupSummaryV53(snapshot);
@@ -10364,5 +10359,197 @@ window.openOnlineBookingV59=()=>{if(!allowed()){clear();message('此帳號沒有
 db.auth.onAuthStateChange((_event,session)=>{if(!session||activeScope&&session.user.id!==activeScope.split('|')[0])clear();if(session)setTimeout(pollBookingNoticeV62,0);});
 setTimeout(pollBookingNoticeV62,1500);
 })();
+</script>
+<script id="imagingUploadV61">
+/* v61: private patient images/videos; no fee or checkout mutation. */
+const imagingV61={pet:null,draft:null,busy:false,scope:'',searchRevision:0,listRevision:0};
+function imagingScopeV61(){return CURRENT_TENANT_ID&&CURRENT_USER?.id?CURRENT_TENANT_ID+'|'+CURRENT_USER.id:'';}
+function imagingMessageV61(message,error=false){const e=document.getElementById('im61-status');e.textContent=message;e.style.color=error?'#b42318':'#476343';}
+function imagingElementV61(tag,text){const e=document.createElement(tag);if(text!==undefined)e.textContent=text;return e;}
+function imagingLockV61(lock){for(const id of ['im61-search','im61-search-button','im61-current','im61-modality','im61-device','im61-date','im61-body','im61-note','im61-file'])document.getElementById(id).disabled=lock;document.getElementById('im61-results').hidden=lock;}
+function imagingResetV61(){imagingV61.pet=null;imagingV61.draft=null;imagingV61.busy=false;imagingV61.scope=imagingScopeV61();imagingV61.searchRevision++;imagingV61.listRevision++;imagingLockV61(false);document.getElementById('im61-form').reset();document.getElementById('im61-results').replaceChildren();document.getElementById('im61-list').replaceChildren();document.getElementById('im61-pet').textContent='尚未選擇寵物';document.getElementById('im61-save').disabled=false;document.getElementById('im61-save').textContent='上傳並儲存';imagingMessageV61('請先核對寵物與飼主，再選擇檔案。');}
+function imagingLocalNowV61(){const d=new Date();d.setMinutes(d.getMinutes()-d.getTimezoneOffset());return d.toISOString().slice(0,16);}
+async function openImagingV61(){
+ if(imagingV61.scope!==imagingScopeV61())imagingResetV61();
+ if(!imagingV61.draft)document.getElementById('im61-date').value=imagingLocalNowV61();
+ const scope=imagingScopeV61();if(!scope)return;
+ try{const {data,error}=await _supabase.from('diagnostic_devices').select('id,name,device_type').eq('tenant_id',CURRENT_TENANT_ID).eq('is_active',true).in('device_type',['XRAY','ULTRASOUND']);if(error)throw error;if(scope!==imagingScopeV61())return;imagingV61.devices=data||[];imagingDevicesV61();}catch(e){if(scope===imagingScopeV61())imagingMessageV61('儀器清單讀取失敗：'+e.message,true);}
+ if(imagingV61.pet)loadImagingListV61();
+}
+function imagingDevicesV61(){const el=document.getElementById('im61-device'),old=el.value;el.replaceChildren(new Option('未指定儀器',''));for(const d of imagingV61.devices||[])if(d.device_type===document.getElementById('im61-modality').value)el.add(new Option(d.name,d.id));if([...el.options].some(o=>o.value===old))el.value=old;}
+async function searchImagingPetV61(){
+ if(imagingV61.draft||imagingV61.busy)return;
+ const q=document.getElementById('im61-search').value.trim(),scope=imagingScopeV61(),rev=++imagingV61.searchRevision;
+ if(!q){imagingMessageV61('請輸入寵物、飼主、電話或病歷號。',true);return;}
+ try{imagingMessageV61('搜尋中…');const {data,error}=await _supabase.rpc('search_imaging_pets_v61',{p_query:q});if(error)throw error;if(scope!==imagingScopeV61()||rev!==imagingV61.searchRevision)return;const box=document.getElementById('im61-results');box.hidden=false;box.replaceChildren();for(const p of (data||[]).slice(0,30)){const b=imagingElementV61('button',p.name+'（'+(p.species||'未填')+'）｜飼主：'+(p.owner_name||'未填')+'｜'+(p.owner_mobile||'無電話')+'｜新：'+(p.system_code||'未填')+'／舊：'+(p.owner_code||'未填'));b.type='button';b.className='btn-secondary';b.style.cssText='display:block;width:100%;text-align:left;margin:6px 0;';b.onclick=()=>{if(scope===imagingScopeV61())selectImagingPetV61(p);};box.appendChild(b);}imagingMessageV61(data?.length>30?'符合超過 30 筆，請加上飼主姓名或電話縮小範圍。':data?.length?'請點選正確的寵物。':'找不到符合資料。');}catch(e){if(scope===imagingScopeV61()&&rev===imagingV61.searchRevision)imagingMessageV61('搜尋失敗：'+e.message,true);}
+}
+function selectImagingPetV61(p){if(imagingV61.draft||imagingV61.busy)return;imagingV61.pet=p;document.getElementById('im61-pet').textContent='寵物：'+p.name+'（'+(p.species||'未填')+'）｜飼主：'+(p.owner_name||'未填')+'｜新：'+(p.system_code||'未填')+'／舊：'+(p.owner_code||'未填');document.getElementById('im61-results').replaceChildren();document.getElementById('im61-search').value='';imagingMessageV61('已選擇寵物，請選擇檔案並核對檢查時間。');loadImagingListV61();}
+async function useCurrentImagingPetV61(){
+ if(imagingV61.draft||imagingV61.busy){imagingMessageV61('此筆上傳尚未完成，請先完成同一筆存檔。',true);return;}
+ if(!currentPetId){imagingMessageV61('請先從門診選擇寵物，或使用上方搜尋。',true);return;}
+ const scope=imagingScopeV61(),pet=currentPetId,rev=++imagingV61.searchRevision;
+ // 清除上一隻寵物，讀取完成前不能把檔案存到舊個案。
+ imagingV61.pet=null;imagingV61.listRevision++;
+ document.getElementById('im61-results').replaceChildren();
+ document.getElementById('im61-list').replaceChildren();
+ document.getElementById('im61-pet').textContent='正在帶入目前門診寵物與飼主…';
+ imagingMessageV61('正在讀取目前門診寵物資料…');
+ try{const {data,error}=await _supabase.from('pets').select('id,name,species,owners(name,mobile,owner_code,system_code)').eq('tenant_id',CURRENT_TENANT_ID).eq('id',pet).single();if(error)throw error;if(scope!==imagingScopeV61()||pet!==currentPetId||rev!==imagingV61.searchRevision)return;selectImagingPetV61({...data,owner_name:data.owners?.name,owner_mobile:data.owners?.mobile,owner_code:data.owners?.owner_code,system_code:data.owners?.system_code});}catch(e){if(scope===imagingScopeV61()&&rev===imagingV61.searchRevision){document.getElementById('im61-pet').textContent='寵物資料尚未帶入';imagingMessageV61('寵物資料讀取失敗：'+e.message,true);}}
+}
+function goToImagingFromMedicalV61(){if(!currentPetId){alert('請先選擇看診寵物。');return;}if(goToDiagnosticExchangeFromMedical()===false)return;requestAnimationFrame(()=>document.getElementById('im61-card').scrollIntoView({block:'start'}));}
+const imagingOriginalMedicalNavigationV611=goToDiagnosticExchangeFromMedical;
+goToDiagnosticExchangeFromMedical=function(){
+ if(imagingV61.draft||imagingV61.busy){
+  if(imagingV61.draft?.params.p_pet_id!==currentPetId){alert('上一筆影像尚未完成，請先完成存檔，再切換門診寵物。');return false;}
+ }
+ const result=imagingOriginalMedicalNavigationV611();
+ if(result!==false&&!imagingV61.draft&&!imagingV61.busy)useCurrentImagingPetV61();
+ return result;
+};
+const imagingFormatsV61={jpg:['image/jpeg','jpg'],jpeg:['image/jpeg','jpg'],png:['image/png','png'],webp:['image/webp','webp'],mp4:['video/mp4','mp4'],mov:['video/quicktime','mov'],webm:['video/webm','webm']};
+function imagingFileInfoV61(file){const ext=file?.name.split('.').pop().toLowerCase(),format=imagingFormatsV61[ext];if(!format)throw new Error('請選擇 JPG、PNG、WebP、MP4、MOV 或 WebM。');if(!file.size||file.size>50*1024*1024)throw new Error('單一檔案需大於 0 且不超過 50 MB。');if(file.name.length>200)throw new Error('檔名請縮短至 200 字以內。');if(file.type&&file.type!==format[0]&&file.type!=='application/octet-stream')throw new Error('檔案內容類型與副檔名不符。');return {mime:format[0],ext:format[1]};}
+async function saveImagingV61(event){
+ event?.preventDefault();if(imagingV61.busy)return;
+ const scope=imagingScopeV61();if(!scope)return;
+ try{
+ if(!imagingV61.draft){
+ if(!imagingV61.pet)throw new Error('請先選擇寵物。');
+ const form=document.getElementById('im61-form');if(!form.reportValidity())return;
+ const file=document.getElementById('im61-file').files[0];if(!file)throw new Error('請先選擇檔案。');
+ const {mime,ext}=imagingFileInfoV61(file),studyId=crypto.randomUUID(),assetId=crypto.randomUUID(),date=new Date(document.getElementById('im61-date').value);if(Number.isNaN(date.getTime()))throw new Error('請填寫正確檢查時間。');
+ imagingV61.draft={scope,file,uploaded:false,path:CURRENT_TENANT_ID+'/'+imagingV61.pet.id+'/'+studyId+'/'+assetId+'.'+ext,params:{p_study_id:studyId,p_asset_id:assetId,p_pet_id:imagingV61.pet.id,p_device_id:document.getElementById('im61-device').value||null,p_modality:document.getElementById('im61-modality').value,p_study_date:date.toISOString(),p_body_part:document.getElementById('im61-body').value.trim(),p_note:document.getElementById('im61-note').value.trim(),p_filename:file.name,p_mime:mime,p_size:file.size,p_extension:ext}};
+ }
+ const d=imagingV61.draft;if(d.scope!==scope)throw new Error('登入帳號已變更，請重新開啟影像頁。');
+ imagingV61.busy=true;imagingLockV61(true);document.getElementById('im61-save').disabled=true;
+ if(!d.uploaded){imagingMessageV61('正在上傳 '+d.file.name+'（'+(d.file.size/1048576).toFixed(1)+' MB）…請保持頁面開啟。');
+ const {error}=await _supabase.storage.from('clinic-imaging').upload(d.path,d.file,{contentType:d.params.p_mime,upsert:false});
+ if(scope!==imagingScopeV61())return;
+ // 上次請求結果不明但檔案已存在時，沿用固定路徑並交由 RPC 核對。
+ if(error&& !['409','Duplicate'].includes(String(error.statusCode))&&!/already exists|duplicate/i.test(error.message))throw error;
+ d.uploaded=true;
+ }
+ imagingMessageV61('原始檔已上傳，正在儲存寵物影像紀錄…');
+ const {data,error}=await _supabase.rpc('save_imaging_upload_v61',d.params);if(scope!==imagingScopeV61())return;if(error)throw error;if(!data?.saved)throw new Error('伺服器尚未確認存檔完成。');
+ imagingV61.draft=null;imagingLockV61(false);document.getElementById('im61-file').value='';document.getElementById('im61-note').value='';document.getElementById('im61-body').value='';document.getElementById('im61-date').value=imagingLocalNowV61();document.getElementById('im61-save').textContent='上傳並儲存';imagingMessageV61('已儲存，可繼續為同一隻寵物上傳下一個檔案。');
+ loadImagingListV61();refreshOpenCurrentPetHistory('imaging');loadDiagnosticExchangeCenter();
+ }catch(e){if(scope===imagingScopeV61()){imagingMessageV61('尚未確認完成：'+e.message+(imagingV61.draft?'。請按「重試同一筆」；保留此頁，不會重複建立紀錄。':''),true);if(imagingV61.draft)document.getElementById('im61-save').textContent='重試同一筆';}}
+ finally{if(scope===imagingScopeV61()){imagingV61.busy=false;document.getElementById('im61-save').disabled=false;}}
+}
+async function appendPrivateImageAssetsV61(container,study){
+ const scope=imagingScopeV61(),tenant=CURRENT_TENANT_ID;
+ const status=imagingElementV61('p','讀取影像檔案…');container.appendChild(status);
+ try{
+ const {data,error}=await _supabase.from('imaging_assets').select('id,study_id,storage_path,mime_type,original_filename,file_size').eq('tenant_id',tenant).eq('study_id',study.id).order('created_at',{ascending:true});if(error)throw error;if(scope!==imagingScopeV61()||!container.isConnected)return;
+ status.remove();if(!data?.length){container.appendChild(imagingElementV61('p','此檢查尚無附件。'));return;}
+ for(const asset of data){const row=imagingElementV61('div');row.style.cssText='padding:10px 0;';row.appendChild(imagingElementV61('p',(asset.original_filename||'影像附件')+'｜'+((asset.file_size||0)/1048576).toFixed(1)+' MB'));
+ const prefix=tenant+'/'+study.pet_id+'/'+study.id+'/';
+ if(!asset.storage_path?.startsWith(prefix)){row.appendChild(imagingElementV61('p','這是舊版附件路徑，尚未接通私人檔案預覽。'));container.appendChild(row);continue;}
+ const btn=imagingElementV61('button','開啟／重新載入影像');btn.type='button';btn.className='btn-secondary';const preview=imagingElementV61('div');
+ btn.onclick=async()=>{btn.disabled=true;try{const {data:signed,error}=await _supabase.storage.from('clinic-imaging').createSignedUrl(asset.storage_path,3600);if(error)throw error;if(scope!==imagingScopeV61()||!row.isConnected)return;const url=new URL(signed.signedUrl);if(url.protocol!=='https:'||url.origin!==new URL(SUPABASE_URL).origin)throw new Error('檔案網址不符預期');preview.replaceChildren();const media=imagingElementV61(asset.mime_type?.startsWith('video/')?'video':'img');media.src=url.href;media.style.cssText='display:block;max-width:100%;max-height:550px;margin:10px 0;background:#111;';if(media.tagName==='VIDEO'){media.controls=true;media.preload='metadata';media.playsInline=true;}else media.alt='寵物檢查影像';media.onerror=()=>{const p=imagingElementV61('p','瀏覽器無法預覽此編碼，請下載原始檔，用電腦播放器開啟。');preview.appendChild(p);};preview.appendChild(media);const a=imagingElementV61('a','下載原始檔／另開視窗');a.href=url.href;a.target='_blank';a.rel='noopener noreferrer';a.download=asset.original_filename||'';preview.appendChild(a);}catch(e){if(scope===imagingScopeV61()){preview.replaceChildren(imagingElementV61('p','開啟失敗：'+e.message));}}finally{btn.disabled=false;}};
+ row.append(btn,preview);container.appendChild(row);
+ }
+ }catch(e){if(scope===imagingScopeV61()&&container.isConnected)status.textContent='影像附件讀取失敗：'+e.message;}
+}
+async function loadImagingListV61(){
+ const pet=imagingV61.pet,scope=imagingScopeV61(),rev=++imagingV61.listRevision,box=document.getElementById('im61-list');
+ if(!pet){box.textContent='請先選擇寵物。';return;}box.textContent='讀取中…';
+ try{const {data,error}=await _supabase.from('imaging_studies').select('*').eq('tenant_id',CURRENT_TENANT_ID).eq('pet_id',pet.id).order('study_date',{ascending:false}).limit(50);if(error)throw error;if(scope!==imagingScopeV61()||rev!==imagingV61.listRevision)return;box.replaceChildren();if(!data?.length)box.textContent='此寵物尚無影像紀錄。';for(const study of data||[]){const detail=imagingElementV61('details');detail.className='legacy-archive';detail.appendChild(imagingElementV61('summary',(study.modality==='XRAY'?'X 光':'超音波')+'｜'+new Date(study.study_date).toLocaleString('zh-TW')+'｜'+(study.body_part||'未填部位')));const content=imagingElementV61('div');content.style.padding='12px';content.appendChild(imagingElementV61('p','備註：'+(study.clinical_note||'未填')));detail.appendChild(content);let loaded=false;detail.ontoggle=()=>{if(detail.open&&!loaded){loaded=true;appendPrivateImageAssetsV61(content,study);}};box.appendChild(detail);}if(data?.length===50)box.appendChild(imagingElementV61('p','此頁顯示最近 50 筆；門診「影像／附件」可查阅全部紀錄。'));}catch(e){if(scope===imagingScopeV61()&&rev===imagingV61.listRevision)box.textContent='影像紀錄讀取失敗：'+e.message;}
+}
+const imagingPreviousSwitchV61=switchTab;
+switchTab=function(tabId){imagingPreviousSwitchV61(tabId);if(tabId==='diagnostic_exchange'||tabId==='lab_tests')openImagingV61();};
+const imagingPreviousLogoutV61=logoutSupabase;
+logoutSupabase=async function(...args){const result=await imagingPreviousLogoutV61.apply(this,args);imagingResetV61();return result;};
+
+</script>
+<script id="mediaBackupV62">
+/* One clinic snapshot plus private original files. ZIP STORE; no ZIP64 or compression. */
+const backupMimeExtensionsV62={'image/jpeg':'jpg','image/png':'png','image/webp':'webp','video/mp4':'mp4','video/quicktime':'mov','video/webm':'webm'};
+const backupCRCtableV62=Array.from({length:256},(_,n)=>{for(let i=0;i<8;i++)n=n&1?0xedb88320^(n>>>1):n>>>1;return n>>>0;});
+function backupCRCV62(bytes){let n=0xffffffff;for(const b of bytes)n=backupCRCtableV62[(n^b)&255]^(n>>>8);return (n^0xffffffff)>>>0;}
+async function backupHashBytesV62(bytes){return Array.from(new Uint8Array(await crypto.subtle.digest('SHA-256',bytes)),b=>b.toString(16).padStart(2,'0')).join('');}
+function backupScopeV62(){return CURRENT_TENANT_ID+'|'+(CURRENT_USER?.id||'')+'|'+CURRENT_PROFILE?.role;}
+function validateBookingBackupV62(snapshot){
+ const names=['ob_clinics','ob_slots','ob_requests','ob_weekly_v60','ob_closed_days_v60'];
+ if(!snapshot.booking_tables||Object.keys(snapshot.booking_tables).sort().join('|')!==names.sort().join('|'))throw Error('線上預約備份範圍不完整');
+ let total=0;for(const name of names){const t=snapshot.booking_tables[name];if(t.source_schema!=='booking'||!Array.isArray(t.rows)||t.row_count!==t.rows.length||!Array.isArray(t.columns)||!t.columns.length||!Array.isArray(t.constraints))throw Error('線上預約結構不完整');
+ const columns=t.columns.map(x=>x.name).sort().join('|'),pk=t.constraints.find(x=>x.kind==='p')?.definition?.match(/PRIMARY KEY \(([^)]+)\)/),keys=new Set();if(!pk)throw Error('預約資料缺少主鍵');const fields=pk[1].split(',').map(x=>x.trim().replaceAll('"',''));
+ for(const row of t.rows){if(String(row.tenant_id)!==snapshot.tenant_id||Object.keys(row).sort().join('|')!==columns)throw Error('線上預約有其他醫院資料或缺欄位');const key=JSON.stringify(fields.map(k=>row[k]));if(fields.some(k=>row[k]==null)||keys.has(key))throw Error('線上預約主鍵有誤');keys.add(key);}total+=t.row_count;}
+ const b=snapshot.booking_tables,slots=new Set(b.ob_slots.rows.map(x=>x.id)),appointments=new Set(snapshot.tables.appointments.rows.map(x=>x.id));
+ for(const r of b.ob_requests.rows)if(!slots.has(r.slot_id)||(r.appointment_id&&!appointments.has(r.appointment_id)))throw Error('線上預約有找不到對應時段或掛號的關聯');
+ return total;
+}
+function validateStorageBackupV62(snapshot){
+ const a=snapshot.attachments;if(a?.mode!=='private_storage_v62'||!Array.isArray(a.objects)||a.object_count!==a.objects.length||a.object_count>1000)throw Error('影像原始檔清單不完整或超過此版 1000 檔限制');
+ const paths=new Map(),ids=new Set(),pets=new Set(snapshot.tables.pets.rows.map(x=>x.id));let size=0;
+ for(const o of a.objects){if(o.bucket!=='clinic-imaging'||typeof o.path!=='string'||o.path.split('/').length!==4||o.path.split('/')[0]!==snapshot.tenant_id||!pets.has(o.path.split('/')[1])||!Number.isSafeInteger(o.size)||o.size<1||o.size>50*1048576||!backupMimeExtensionsV62[o.mime]||!o.path.endsWith('.'+backupMimeExtensionsV62[o.mime])||typeof o.object_id!=='string'||typeof o.updated_at!=='string'||paths.has(o.path)||ids.has(o.object_id))throw Error('影像檔案清單有大小、格式、重複或跨院錯誤');paths.set(o.path,o);ids.add(o.object_id);size+=o.size;}
+ if(size!==a.total_bytes)throw Error('影像總大小不符');
+ for(const row of snapshot.tables.imaging_assets.rows){const o=paths.get(row.storage_path);if(!o||o.size!==Number(row.file_size)||o.mime!==row.mime_type||!o.linked||row.preview_storage_path)throw Error('影像紀錄缺少對應的原始檔');}
+ return paths;
+}
+class BackupZipWriterV62{
+ constructor(stream){this.stream=stream;this.parts=[];this.entries=[];this.offset=0;this.limit=stream?2*1024*1024*1024:512*1024*1024;}
+ async write(bytes){if(this.offset+bytes.byteLength>this.limit)throw Error(this.stream?'本版 ZIP 超過 2 GB，請分階段升級大型備份。':'此瀏覽器的記憶體備份超過 512 MB，請使用電腦 Chrome／Edge 的直接儲存功能。');if(this.stream)await this.stream.write(bytes);else this.parts.push(bytes);this.offset+=bytes.byteLength;}
+ async add(name,bytes){if(!/^(snapshot\.json|manifest\.json|files\/[0-9]{6}\.(jpg|png|webp|mp4|mov|webm))$/.test(name)||this.entries.some(e=>e.name===name))throw Error('備份 ZIP 路徑有誤');const encoded=new TextEncoder().encode(name),crc=backupCRCV62(bytes),offset=this.offset,h=new Uint8Array(30+encoded.length),d=new DataView(h.buffer);d.setUint32(0,0x04034b50,true);d.setUint16(4,20,true);d.setUint16(6,0x800,true);d.setUint16(12,0x21,true);d.setUint32(14,crc,true);d.setUint32(18,bytes.length,true);d.setUint32(22,bytes.length,true);d.setUint16(26,encoded.length,true);h.set(encoded,30);await this.write(h);await this.write(bytes);this.entries.push({name,encoded,crc,size:bytes.length,offset});}
+ async finish(){const start=this.offset;for(const e of this.entries){const h=new Uint8Array(46+e.encoded.length),d=new DataView(h.buffer);d.setUint32(0,0x02014b50,true);d.setUint16(4,20,true);d.setUint16(6,20,true);d.setUint16(8,0x800,true);d.setUint16(14,0x21,true);d.setUint32(16,e.crc,true);d.setUint32(20,e.size,true);d.setUint32(24,e.size,true);d.setUint16(28,e.encoded.length,true);d.setUint32(42,e.offset,true);h.set(e.encoded,46);await this.write(h);}const size=this.offset-start,h=new Uint8Array(22),d=new DataView(h.buffer);d.setUint32(0,0x06054b50,true);d.setUint16(8,this.entries.length,true);d.setUint16(10,this.entries.length,true);d.setUint32(12,size,true);d.setUint32(16,start,true);await this.write(h);if(this.stream){await this.stream.close();return null;}return new Blob(this.parts,{type:'application/zip'});}
+ async abort(){if(this.stream)try{await this.stream.abort();}catch{}this.parts=[];}
+}
+startClinicDataBackup=async function(){
+ if(clinicBackupBusy)return;if(CURRENT_PROFILE?.role!=='admin'||!CURRENT_TENANT_ID){alert('只有本院管理者可以備份。');return;}
+ const tenant=CURRENT_TENANT_ID,scope=backupScopeV62(),status=document.getElementById('clinicBackupStatus'),button=document.getElementById('clinicBackupStart'),progress=document.getElementById('clinicBackupProgress'),link=document.getElementById('clinicBackupDownload');
+ cancelClinicBackup();clinicBackupBusy=true;button.disabled=true;progress.hidden=false;progress.removeAttribute('value');status.style.color='#475569';status.textContent='請選擇備份檔儲存位置…';
+ const controller=new AbortController();clinicBackupController=controller;let writer;
+ const ensure=()=>{if(controller.signal.aborted||scope!==backupScopeV62())throw Error('備份已取消或登入身分已改變');};
+ const timer=setTimeout(()=>controller.abort(),1800000);
+ try{
+ let handle;if(typeof window.showSaveFilePicker==='function')handle=await window.showSaveFilePicker({suggestedName:'genblue_'+tenant.replace(/[^A-Za-z0-9_-]/g,'_')+'_'+new Date().toISOString().replace(/[^0-9]/g,'').slice(0,14)+'_含影像.zip',types:[{description:'院內資料與影像備份',accept:{'application/zip':['.zip']}}]});
+ ensure();status.textContent='正在取得本院資料、線上預約與原始檔清單…';
+ const {data,error}=await _supabase.rpc('genblue_export_clinic_backup_v62',{p_expected_tenant:tenant}).abortSignal(controller.signal);if(error)throw Error(error.message);ensure();if(typeof data!=='string')throw Error('備份函式版本不符');const snapshot=JSON.parse(data);validateClinicBackupSnapshot(snapshot,tenant);if(snapshot.format_version!==3)throw Error('請安裝 v62 備份 SQL');
+ const files=snapshot.attachments.objects;
+ const estimated=snapshot.attachments.total_bytes+new TextEncoder().encode(data).length+1048576;
+ if(estimated>(handle?2*1024*1024*1024:512*1024*1024))throw Error(handle?'備份超過本版 2 GB 限制。':'備份超過 512 MB，請在電腦 Chrome／Edge 使用直接儲存功能。');
+ writer=new BackupZipWriterV62(handle?await handle.createWritable():null);
+ const snapshotBytes=new TextEncoder().encode(data),manifest={format:'genblue-clinic-media-archive',format_version:1,tenant_id:tenant,snapshot_at:snapshot.snapshot_at,snapshot_sha256:await backupHashBytesV62(snapshotBytes),snapshot_size:snapshotBytes.length,file_count:files.length,files:[]};
+ ensure();await writer.add('snapshot.json',snapshotBytes);
+ let completed=0;for(const [i,obj]of files.entries()){
+ ensure();status.textContent='正在備份圖片／影片 '+(i+1)+'／'+files.length+'（已核對 '+(completed/1048576).toFixed(1)+' MB）…';
+ const {data:signed,error}=await _supabase.storage.from(obj.bucket).createSignedUrl(obj.path,3600);if(error)throw Error(error.message);ensure();const url=new URL(signed.signedUrl);if(url.protocol!=='https:'||url.origin!==new URL(SUPABASE_URL).origin)throw Error('檔案網址不符預期');
+ const response=await fetch(url.href,{signal:controller.signal});if(!response.ok)throw Error('檔案下載失敗：HTTP '+response.status);const bytes=new Uint8Array(await response.arrayBuffer());ensure();if(bytes.length!==obj.size)throw Error('原始檔大小不符，備份停止');
+ const archive_path='files/'+String(i+1).padStart(6,'0')+'.'+backupMimeExtensionsV62[obj.mime],sha256=await backupHashBytesV62(bytes);ensure();await writer.add(archive_path,bytes);manifest.files.push({...obj,archive_path,sha256});completed+=bytes.length;progress.value=10+75*(i+1)/Math.max(files.length,1);
+ }
+ status.textContent='正在再次核對原始檔版本…';
+ const {data:verified,error:verifyError}=await _supabase.rpc('genblue_check_backup_objects_v62',{p_expected_tenant:tenant,p_objects:files}).abortSignal(controller.signal);if(verifyError||verified!==true)throw Error(verifyError?.message||'原始檔版本核對失敗');ensure();
+ await writer.add('manifest.json',new TextEncoder().encode(JSON.stringify(manifest)));ensure();const blob=await writer.finish();ensure();
+ showClinicBackupSummary(snapshot);showPrivateBackupSummaryV53({...snapshot,format_version:2});const row=document.createElement('tr');for(const value of ['圖片／影片原始檔',files.length+' 檔（'+(completed/1048576).toFixed(1)+' MB）']){const td=document.createElement('td');td.textContent=value;row.appendChild(td);}document.getElementById('clinicBackupSummaryBody').appendChild(row);
+ if(blob){clinicBackupDownloadUrl=URL.createObjectURL(blob);link.href=clinicBackupDownloadUrl;link.download='genblue_'+tenant.replace(/[^A-Za-z0-9_-]/g,'_')+'_'+new Date(snapshot.snapshot_at).toISOString().replace(/[^0-9]/g,'').slice(0,14)+'_含影像.zip';link.hidden=false;link.click();}
+ progress.value=100;status.style.color='#059669';status.textContent='備份已'+(blob?'產生並開始下載':'寫入所選檔案')+'：'+snapshot.table_count+' 張表、'+snapshot.total_rows.toLocaleString()+' 筆、'+files.length+' 個原始檔。請用下方「檢查備份檔」核對 ZIP；此版尚未提供自動還原。';
+ }catch(e){await writer?.abort();progress.hidden=true;link.hidden=true;status.style.color='#dc2626';status.textContent='本次備份未完成：'+(controller.signal.aborted||e.name==='AbortError'?'已取消。':e.message)+' 未完成檔案請勿當作有效備份。';}
+ finally{clearTimeout(timer);clinicBackupBusy=false;button.disabled=false;if(clinicBackupController===controller)clinicBackupController=null;}
+};
+async function readZipEntriesV62(file){
+ if(file.size>2*1024*1024*1024||file.size<22)throw Error('ZIP 大小超過此版限制或格式有誤');
+ const tail=new Uint8Array(await file.slice(Math.max(0,file.size-65557)).arrayBuffer()),dv=new DataView(tail.buffer);let end=-1;
+ for(let i=tail.length-22;i>=0;i--)if(dv.getUint32(i,true)===0x06054b50&&i+22+dv.getUint16(i+20,true)===tail.length){end=i;break;}if(end<0)throw Error('找不到完整 ZIP 結尾');
+ const count=dv.getUint16(end+10,true),size=dv.getUint32(end+12,true),offset=dv.getUint32(end+16,true);if(size>2*1048576||count>1002||dv.getUint16(end+4,true)||dv.getUint16(end+6,true)||dv.getUint16(end+8,true)!==count||offset+size!==file.size-tail.length+end)throw Error('不支援多磁碟 ZIP 或結構有誤');
+ const central=new Uint8Array(await file.slice(offset,offset+size).arrayBuffer()),view=new DataView(central.buffer),entries=new Map();let p=0;
+ for(let i=0;i<count;i++){if(p+46>central.length||view.getUint32(p,true)!==0x02014b50)throw Error('ZIP 目錄不完整');const length=view.getUint16(p+28,true),extra=view.getUint16(p+30,true),comment=view.getUint16(p+32,true),name=new TextDecoder('utf-8',{fatal:true}).decode(central.subarray(p+46,p+46+length));if(p+46+length+extra+comment>central.length||entries.has(name)||view.getUint16(p+10,true)!==0||view.getUint16(p+8,true)!==0x800||view.getUint32(p+20,true)!==view.getUint32(p+24,true)||!(/^(snapshot\.json|manifest\.json|files\/[0-9]{6}\.(jpg|png|webp|mp4|mov|webm))$/.test(name)))throw Error('ZIP 具有不支援的內容或重複路徑');if(view.getUint32(p+24,true)>(name==='snapshot.json'?512*1048576:name==='manifest.json'?16*1048576:50*1048576))throw Error('ZIP 內部檔案超過限制');entries.set(name,{offset:view.getUint32(p+42,true),size:view.getUint32(p+24,true),crc:view.getUint32(p+16,true)});p+=46+length+extra+comment;}
+ if(p!==central.length)throw Error('ZIP 目錄有多餘內容');
+ const read=async name=>{const e=entries.get(name);if(!e)throw Error('備份缺少 '+name);if(e.offset+30>offset)throw Error('ZIP 原始檔位置有誤');const h=new Uint8Array(await file.slice(e.offset,e.offset+30).arrayBuffer()),v=new DataView(h.buffer);if(v.getUint32(0,true)!==0x04034b50||v.getUint16(8,true)!==0||v.getUint32(18,true)!==e.size||v.getUint32(14,true)!==e.crc)throw Error('ZIP 檔頭與目錄不一致');const length=v.getUint16(26,true),extra=v.getUint16(28,true),start=e.offset+30+length+extra;if(start+e.size>offset)throw Error('ZIP 原始檔不完整');const filename=new TextDecoder().decode(await file.slice(e.offset+30,e.offset+30+length).arrayBuffer());if(filename!==name)throw Error('ZIP 路徑不一致');const bytes=new Uint8Array(await file.slice(start,start+e.size).arrayBuffer());if(backupCRCV62(bytes)!==e.crc)throw Error(name+' 的 ZIP 校驗碼不符');return bytes;};
+ return {entries,read};
+}
+const previousBackupCheckV62=checkClinicBackupFile;
+checkClinicBackupFile=async function(event){
+ const file=event.target.files?.[0];if(!file)return;if(!/\.zip$/i.test(file.name))return previousBackupCheckV62(event);
+ const status=document.getElementById('clinicBackupCheckStatus'),scope=backupScopeV62();if(CURRENT_PROFILE?.role!=='admin'){status.textContent='請先登入本院管理者';return;}
+ status.style.color='#475569';status.textContent='正在核對 ZIP 與檔案校驗碼…';
+ const ensure=()=>{if(scope!==backupScopeV62())throw Error('登入身分已改變');};
+ try{const zip=await readZipEntriesV62(file);ensure();const manifest=JSON.parse(new TextDecoder().decode(await zip.read('manifest.json')));if(manifest.format!=='genblue-clinic-media-archive'||manifest.format_version!==1||manifest.tenant_id!==CURRENT_TENANT_ID||!Array.isArray(manifest.files)||manifest.file_count!==manifest.files.length||manifest.file_count>1000||zip.entries.size!==manifest.files.length+2)throw Error('備份清單範圍不符');
+ const bytes=await zip.read('snapshot.json');if(bytes.length!==manifest.snapshot_size||await backupHashBytesV62(bytes)!==manifest.snapshot_sha256)throw Error('院內資料校驗碼不符');ensure();const snapshot=JSON.parse(new TextDecoder().decode(bytes));validateClinicBackupSnapshot(snapshot,CURRENT_TENANT_ID);if(snapshot.format_version!==3)throw Error('ZIP 資料版本不符');
+ const objects=snapshot.attachments.objects;if(objects.length!==manifest.files.length)throw Error('影像筆數不一致');let total=0;const seen=new Set();
+ for(let i=0;i<objects.length;i++){ensure();const o=objects[i],m=manifest.files[i];for(const key of ['bucket','path','object_id','updated_at','etag','size','mime','linked'])if(m[key]!==o[key])throw Error('原始檔清單與資料快照不一致');const expected='files/'+String(i+1).padStart(6,'0')+'.'+backupMimeExtensionsV62[m.mime];if(m.archive_path!==expected||seen.has(expected))throw Error('原始檔 ZIP 路徑有誤');seen.add(expected);status.textContent='正在核對原始檔 '+(i+1)+'／'+objects.length+'…';const bytes=await zip.read(expected);if(bytes.length!==m.size||await backupHashBytesV62(bytes)!==m.sha256)throw Error('圖片／影片校驗碼不符：'+expected);total+=bytes.length;}
+ ensure();if(total!==snapshot.attachments.total_bytes)throw Error('原始檔總大小不符');showClinicBackupSummary(snapshot);showPrivateBackupSummaryV53({...snapshot,format_version:2});status.style.color='#059669';status.textContent='備份檔檢查通過：'+snapshot.total_rows.toLocaleString()+' 筆資料、'+objects.length+' 個原始檔，醫院 '+snapshot.tenant_id+'。這是完整性檢查；此份真實資料的隔離還原演練尚待完成。';
+ }catch(e){status.style.color='#dc2626';status.textContent='備份檔檢查失敗：'+e.message;}
+ finally{event.target.value='';}
+};
+
 </script>
 </body></html>
