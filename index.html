@@ -1,7 +1,7 @@
 <!DOCTYPE html><html lang="zh-TW"><head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>吉布動物醫院管理系統 genblue設計版權所有 · 針劑單次用量 v70</title>
+    <title>吉布動物醫院管理系統 genblue設計版權所有</title>
     <!-- 引入 Supabase JS SDK CDN -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
@@ -600,13 +600,13 @@ body.role-no-appointment #nav-online_booking{display:none!important}
         <ul class="nav-links"><li id="nav-appointments" onclick="switchTab('appointments')" class="active">☀　今天的院務<span class="journal-nav-en">A LITTLE DAILY JOURNAL</span></li><li id="nav-online_booking" onclick="switchTab('online_booking')">☏　線上預約 <b id="booking-nav-count-v62" hidden></b><span class="journal-nav-en">BOOKINGS &amp; LITTLE VISITS</span></li><li id="nav-medical" onclick="switchTab('medical')">✎　打開病歷冊<span class="journal-nav-en">CARE &amp; COMPANIONSHIP</span></li><li id="nav-product_checkout" onclick="switchTab('product_checkout')">♧　帶點好物回家<span class="journal-nav-en">THE LITTLE PET SHOP</span></li></ul>
     <details class="journal-more-nav" id="journalMoreNav"><summary>＋ 更多院務與設定</summary><ul class="nav-links-secondary nav-links" style="margin-top: 8px;"><li class="nav-section-label" style="pointer-events:none; cursor:default; margin-top:4px; padding:10px 12px 5px; font-size:0.72rem; font-weight:800; letter-spacing:.08em; color:#94a3b8; background:transparent;">日常工作</li><li id="nav-owners_pets" onclick="switchTab('owners_pets')">🐾 飼主與寵物</li><li id="nav-inpatients" onclick="switchTab('inpatients')">🏥 住院與照護</li><li id="nav-invoices" onclick="switchTab('invoices')">💳 收費與付款</li><li class="nav-section-label" style="pointer-events:none; cursor:default; margin-top:10px; padding:10px 12px 5px; font-size:0.72rem; font-weight:800; letter-spacing:.08em; color:#94a3b8; background:transparent;">醫療支援</li><li id="nav-vaccines" onclick="switchTab('vaccines')">💉 疫苗管理</li><li id="nav-lab_manager" onclick="switchTab('lab_manager')">🧪 血球與生化檢驗</li><li id="nav-diagnostic_exchange" onclick="switchTab('diagnostic_exchange')">🔌 檢驗／影像交換中心</li><li id="nav-rapid_tests" onclick="switchTab('rapid_tests')">🦠 快篩與抗原檢驗</li><li id="nav-lab_tests" onclick="switchTab('lab_tests')">📎 檢驗、影像及附件</li><li class="nav-section-label" style="pointer-events:none; cursor:default; margin-top:10px; padding:10px 12px 5px; font-size:0.72rem; font-weight:800; letter-spacing:.08em; color:#94a3b8; background:transparent;">資料查詢</li><li id="nav-search_center" onclick="switchTab('search_center')">🔍 綜合查詢中心</li><li class="nav-section-label" style="pointer-events:none; cursor:default; margin-top:10px; padding:10px 12px 5px; font-size:0.72rem; font-weight:800; letter-spacing:.08em; color:#94a3b8; background:transparent;">庫存管理</li><li id="nav-medicines" onclick="switchTab('medicines')">💊 藥品專區</li><li id="nav-items" onclick="switchTab('items')">📦 一般商品專區</li><li class="nav-section-label" style="pointer-events:none; cursor:default; margin-top:10px; padding:10px 12px 5px; font-size:0.72rem; font-weight:800; letter-spacing:.08em; color:#94a3b8; background:transparent;">營運管理</li><li id="nav-reports" onclick="switchTab('reports')">📊 財務報表</li><li id="nav-regulatory_reports" onclick="switchTab('regulatory_reports')">📤 用藥申報與管制藥品</li><li id="nav-audit_logs" onclick="switchTab('audit_logs')">📋 操作歷程與稽核</li><li class="nav-section-label" style="pointer-events:none; cursor:default; margin-top:10px; padding:10px 12px 5px; font-size:0.72rem; font-weight:800; letter-spacing:.08em; color:#94a3b8; background:transparent;">系統</li><li id="nav-clinic" onclick="switchTab('clinic')">⚙️ 系統設定及醫院資料</li><li id="nav-backup" onclick="switchTab('backup')">💾 備份與還原</li><li id="nav-doctor_statistics" onclick="switchTab('doctor_statistics')">📊 醫師看診與收入</li><li id="nav-staff_management" onclick="switchTab('staff_management')">👥 人員與權限</li><li id="nav-my_password" onclick="switchTab('my_password')">🔑 修改我的密碼</li><li id="nav-logout" onclick="logoutSupabase()" style="margin-top:20px; color:#dc2626; font-weight:bold; cursor:pointer;">
     🚪 登出系統
-</li><li id="nav-breed_images" onclick="switchTab('breed_images')" style="display: none;">▧ 品種圖片管理</li></ul><div class="tenant-badge" id="currentTenantBadge">醫院代碼 (tenant_id):</div></details><p class="journal-side-note">把每一次照顧，<br>好好記在這裡。</p><div class="journal-side-foot">v31 · 預約搜尋修正<br>genblue 設計版權所有</div></sidebar>
+</li><li id="nav-breed_images" onclick="switchTab('breed_images')" style="display: none;">▧ 品種圖片管理</li></ul><div class="tenant-badge" id="currentTenantBadge">醫院代碼 (tenant_id):</div></details><p class="journal-side-note">把每一次照顧，<br>好好記在這裡。</p><div class="journal-side-foot">genblue 設計版權所有</div></sidebar>
 
     <!-- 主容器 -->
     <div class="main-container">
         <header>
             <div class="header-left"><h3><span id="journalClinicName">吉布動物醫院 · 毛孩工作手帳</span></h3></div>
-            <span class="journal-header-edition">院內線上預約整合 v60.2</span>
+            
 <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;"><button type="button" class="btn-secondary" id="clinicRefreshButtonV50" onclick="refreshClinicDataV50()">↻ 更新資料</button><span id="clinicRefreshStatusV50" role="status" aria-live="polite" style="font-size:.78rem;color:#476343;"></span></div>
         <div class="journal-header-search" id="journalHeaderSearchDock"></div></header>
 
@@ -1448,7 +1448,7 @@ body.role-no-appointment #nav-online_booking{display:none!important}
 
             <div id="backup" class="tab-content">
                 <div class="card" style="max-width:1000px;">
-                    <h2>💾 院內資料與影像備份（原院 v62｜管理者專用）</h2><p>請在電腦操作。Chrome／Edge 可直接寫入所選 ZIP，單次上限 2 GB；其他瀏覽器使用記憶體下載，上限 512 MB。每次最多 1000 個原始檔，超過限制會停止並告知。備份期間請保持登入與頁面開啟。</p>
+                    <h2>💾 院內資料與影像備份（管理者專用）</h2><p>請在電腦操作。Chrome／Edge 可直接寫入所選 ZIP，單次上限 2 GB；其他瀏覽器使用記憶體下載，上限 512 MB。每次最多 1000 個原始檔，超過限制會停止並告知。備份期間請保持登入與頁面開啟。</p>
                     <p style="color:#475569;line-height:1.7;">備份本院飼主、寵物、新舊病歷、檢查、收費、庫存及相關資料。請在電腦上操作，完成後下載到您的下載資料夾。</p>
                     <p style="color:#64748b;font-size:.9rem;line-height:1.7;">這是院內資料備份，包含人員權限資料；登入帳號密碼、程式及 Supabase 系統設定另行保存。尚未結帳的疫苗／檢驗費用暫存於此瀏覽器，不包含於此備份；請先完成結帳。本版包含線上預約，以及圖片、影片原始檔；未完成上傳的本院私人檔案也會保存。程式、登入密碼及 Supabase 設定不包含於此備份。</p>
                     <button id="clinicBackupStart" type="button" onclick="startClinicDataBackup()">💾 一鍵備份資料＋圖片／影片</button>
@@ -1465,10 +1465,10 @@ body.role-no-appointment #nav-online_booking{display:none!important}
                     <p id="clinicBackupCheckStatus" role="status" aria-live="polite" style="line-height:1.7;">尚未選擇檔案。</p>
                 </div>
 <section class="card" style="max-width:1000px;margin-top:20px" id="restoreCenterV63">
-<h2>🛟 還原中心（原院 v63｜管理者專用）</h2>
-<p>先選擇通過檢查的 v62 ZIP，再比對目前資料。此版救回誤刪的飼主、寵物與新舊病歷；已存在或內容不同的資料不會覆寫。</p>
+<h2>🛟 還原中心（管理者專用）</h2>
+<p>先選擇通過檢查的 ZIP 備份檔，再比對目前資料。此版救回誤刪的飼主、寵物與新舊病歷；已存在或內容不同的資料不會覆寫。</p>
 <p style="color:#64748b">圖片／影片、疫苗、檢驗、收費、庫存、病歷修正歷史、人員帳號與整院重建尚未支援。刪除飼主或寵物可能連帶刪除這些紀錄，救回基本資料不代表已全部復原。建議順序：飼主 → 寵物 → 新／舊病歷。還原前請先保存目前的備份。</p>
-<input id="restoreFileV63" type="file" accept=".zip" onchange="loadRestoreArchiveV63(event)" aria-label="選擇要還原的 v62 ZIP">
+<input id="restoreFileV63" type="file" accept=".zip" onchange="loadRestoreArchiveV63(event)" aria-label="選擇要還原的 ZIP 備份檔">
 <p id="restoreFileInfoV63" role="status">尚未載入備份。</p>
 <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:end">
 <label>還原範圍<select id="restoreTableV63" onchange="resetRestoreComparisonV63()"><option value="owners">飼主</option><option value="pets">寵物</option><option value="medical_records">新系統病歷</option><option value="legacy_medical_histories">舊系統歷史病歷</option></select></label>
@@ -1577,7 +1577,7 @@ body.role-no-appointment #nav-online_booking{display:none!important}
                         </div>
                     </div>
                     <h3>收費細項填寫</h3>
-                    <p style="color:#64748b;font-size:.9rem">原院 v70｜針劑按單次用量計算；給藥方式可自訂、可沿用歷史處方；處方藥費按口服藥／針劑合併，由醫師填寫。</p>
+                    <p style="color:#64748b;font-size:.9rem">針劑按單次用量計算；給藥方式可自訂、可沿用歷史處方；處方藥費按口服藥／針劑合併，由醫師填寫。</p>
 <div id="invoiceItemsList" style="margin-top: 10px;">
                         <div class="list-row">
                             <input type="text" value="一般門診診察費" placeholder="項目名稱" class="invoice-name">
@@ -1824,7 +1824,7 @@ body.role-no-appointment #nav-online_booking{display:none!important}
                     </details>
                 </div>
 
-<div class="card" id="im61-card"><h3>🩻 寵物影像｜超音波與 X 光 <small>原院 v61.1</small></h3><p>核對飼主與寵物後上傳。檔案存於院內私人儲存區；上傳本身不會新增費用。</p>
+<div class="card" id="im61-card"><h3>🩻 寵物影像｜超音波與 X 光</h3><p>核對飼主與寵物後上傳。檔案存於院內私人儲存區；上傳本身不會新增費用。</p>
 <div style="display:flex;gap:8px;flex-wrap:wrap;margin:12px 0"><input id="im61-search" maxlength="100" style="flex:1;min-width:200px" placeholder="寵物＋飼主、電話或病歷號" onkeydown="if(event.key==='Enter'){event.preventDefault();searchImagingPetV61()}"><button type="button" id="im61-search-button" onclick="searchImagingPetV61()">搜尋寵物</button><button type="button" id="im61-current" class="btn-secondary" onclick="useCurrentImagingPetV61()">帶入目前門診寵物</button></div>
 <div id="im61-results"></div><p id="im61-pet" style="padding:12px;background:#edf1e5;border-radius:8px;font-weight:bold">尚未選擇寵物</p>
 <form id="im61-form" onsubmit="saveImagingV61(event)"><div class="form-grid">
@@ -1947,7 +1947,7 @@ body.role-no-appointment #nav-online_booking{display:none!important}
             </div>
 
 <div id="lab_tests" class="tab-content"><div class="card"><h2>檢驗、影像及附件</h2><p>超音波與 X 光圖片、影片已整合至影像上傳入口。</p><button type="button" onclick="switchTab('diagnostic_exchange');document.getElementById('im61-card').scrollIntoView({block:'start'})">開啟影像上傳與查閱 ↗</button></div></div>
-            <div id="online_booking" class="tab-content"><h1>院內線上預約管理 <small>原院 v60.2｜30 分鐘預約日曆</small></h1><p class="notice">沿用目前院內登入。核對飼主與寵物後才確認預約；新病患請先回管理系統建立飼主、寵物，再回來確認。</p><div id="ob59-message" class="msg" role="status" aria-live="polite">開啟後將讀取本院線上預約。</div>
+            <div id="online_booking" class="tab-content"><h1>院內線上預約管理 <small>30 分鐘預約日曆</small></h1><p class="notice">沿用目前院內登入。核對飼主與寵物後才確認預約；新病患請先回管理系統建立飼主、寵物，再回來確認。</p><div id="ob59-message" class="msg" role="status" aria-live="polite">開啟後將讀取本院線上預約。</div>
 
 <section id="ob59-app" hidden><div class="row"><button id="ob59-reload">重新讀取</button><button type="button" onclick="switchTab('appointments')">回今天的院務</button><a id="ob59-public-link" target="_blank" rel="noopener">開啟飼主預約頁</a></div>
 <details id="ob59-settings" hidden><summary>管理者：院所設定與開放時段</summary><form id="ob59-config" class="card"><div class="row"><label>院所名稱<input id="ob59-clinic-name" required maxlength="100"></label><label>網址代號<input id="ob59-slug" value="genblue-ah" required pattern="[a-z0-9-]{3,60}"></label><label><input id="ob59-enabled" type="checkbox">開放線上預約</label></div><label for="ob59-notice">飼主提醒文字</label><textarea id="ob59-notice" maxlength="1000">預約需由醫院確認；急症請直接聯絡醫院。</textarea><button>儲存院所設定</button></form>
