@@ -1,7 +1,7 @@
 <!DOCTYPE html><html lang="zh-TW"><head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>吉布動物醫院管理系統 genblue設計版權所有 · 口服磨粉顆數計算 v69</title>
+    <title>吉布動物醫院管理系統 genblue設計版權所有 · 針劑單次用量 v70</title>
     <!-- 引入 Supabase JS SDK CDN -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
@@ -534,7 +534,11 @@ body.role-no-appointment #nav-online_booking{display:none!important}
 #online_booking [hidden]{display:none!important}
 @media(max-width:650px){#online_booking .calendar-grid-v60{grid-template-columns:repeat(7,115px)}}
 </style>
-<style>#booking-home-alert-v62{display:block;width:100%;margin:0 0 14px;padding:14px 18px;border:1px solid #dfa65d;border-radius:12px;background:#fff0d9;color:#754611;font:inherit;text-align:left;cursor:pointer}#booking-home-alert-v62[hidden],#booking-nav-count-v62[hidden]{display:none!important}#booking-light-v62{color:#e18414;margin-right:8px}#booking-home-alert-v62.has-pending #booking-light-v62{animation:bookingGlowV62 1.8s ease-in-out infinite}#booking-nav-count-v62{background:#c16e0c;color:white;border-radius:12px;padding:2px 8px}@keyframes bookingGlowV62{50%{opacity:.3}}@media(prefers-reduced-motion:reduce){#booking-light-v62{animation:none!important}}</style></head>
+<style>#booking-home-alert-v62{display:block;width:100%;margin:0 0 14px;padding:14px 18px;border:1px solid #dfa65d;border-radius:12px;background:#fff0d9;color:#754611;font:inherit;text-align:left;cursor:pointer}#booking-home-alert-v62[hidden],#booking-nav-count-v62[hidden]{display:none!important}#booking-light-v62{color:#e18414;margin-right:8px}#booking-home-alert-v62.has-pending #booking-light-v62{animation:bookingGlowV62 1.8s ease-in-out infinite}#booking-nav-count-v62{background:#c16e0c;color:white;border-radius:12px;padding:2px 8px}@keyframes bookingGlowV62{50%{opacity:.3}}@media(prefers-reduced-motion:reduce){#booking-light-v62{animation:none!important}}</style><style>
+/* Keep the form layout while excluding oral-course fields for injections. */
+.injection-inactive-v70:disabled{background:#f1f5f9!important;color:#94a3b8!important;border-color:#e2e8f0!important;cursor:not-allowed;opacity:1}
+</style>
+</head>
 <body>
     <!-- Supabase 登入畫面 -->
 <div id="authScreen" style="
@@ -1573,7 +1577,7 @@ body.role-no-appointment #nav-online_booking{display:none!important}
                         </div>
                     </div>
                     <h3>收費細項填寫</h3>
-                    <p style="color:#64748b;font-size:.9rem">原院 v68｜給藥方式可自訂、可沿用歷史處方；處方藥費按口服藥／針劑合併，由醫師填寫。</p>
+                    <p style="color:#64748b;font-size:.9rem">原院 v70｜針劑按單次用量計算；給藥方式可自訂、可沿用歷史處方；處方藥費按口服藥／針劑合併，由醫師填寫。</p>
 <div id="invoiceItemsList" style="margin-top: 10px;">
                         <div class="list-row">
                             <input type="text" value="一般門診診察費" placeholder="項目名稱" class="invoice-name">
@@ -6705,8 +6709,23 @@ async function loadOwnersAndPetsIntegrated() {
         }
 
         let preservePrescriptionRouteForVisit=false;
+let injectionEntryModeV70=false,oralEntrySettingsV70=null;
+function syncInjectionEntryV70(route){
+ const injection=route?.kind==='injection';
+ const frequency=document.getElementById('medFrequencyDetail'),days=document.getElementById('medDays'),note=document.getElementById('medPrescribeNote');
+ if(injection&&!injectionEntryModeV70)oralEntrySettingsV70={frequency:frequency.value,days:days.value,note:note.value};
+ if(injection){frequency.value='1';days.value='1';note.value='';}
+ else if(injectionEntryModeV70&&oralEntrySettingsV70){frequency.value=oralEntrySettingsV70.frequency;days.value=oralEntrySettingsV70.days;note.value=oralEntrySettingsV70.note;}
+ injectionEntryModeV70=injection;
+ for(const control of [frequency,days,note]){
+  control.disabled=injection;
+  control.classList.toggle('injection-inactive-v70',injection);
+  if(injection)control.title='院內針劑按單次用量計算，不使用口服療程設定';else control.removeAttribute('title');
+ }
+}
         function resetPrescriptionSharedSettingsForVisit(){
             preservePrescriptionRouteForVisit=false;
+            injectionEntryModeV70=false;oralEntrySettingsV70=null;syncInjectionEntryV70(null);
             document.getElementById('medRouteDetailSelect').value='';
             document.getElementById('labelRecDoseTitle').innerText='建議劑量 (mg/kg)';
             document.getElementById('medFrequencyDetail').value='2';
@@ -6750,6 +6769,7 @@ function prescriptionCalculationRouteV68(){
 }
 function onRouteDetailChanged(){
  const route=prescriptionCalculationRouteV68();
+ syncInjectionEntryV70(route);
  const label=document.getElementById('prescribeQuantityLabelV69');if(label)label.textContent=route?.preparedFromSolid?'原藥開立顆數（磨粉前）':'實際開立數量';
  document.getElementById('labelRecDoseTitle').textContent=route?.calc==='tablet'?'建議劑量 (mg/kg)':route?.calc==='ratio'?'建議劑量比率 (ml/kg)':'使用劑量（手動輸入，含單位）';
  runDetailedMathCalculation();
@@ -6769,11 +6789,12 @@ function runDetailedMathCalculation(){
  const stop=text=>{result.value=text;qty.value='';};
  const med=loadedMedicinesMap[document.getElementById('medSelectDropdown').value];if(!med){stop('請先選藥品');return;}
  const route=prescriptionCalculationRouteV68();if(!route||route.calc==='manual'){stop(route?'此方式請手動填寫實際開立數量':'請先選給藥方式');return;}
- const dose=Number(document.getElementById('medCustomRecDose').value),frequency=Number(document.getElementById('medFrequencyDetail').value),days=Number(document.getElementById('medDays').value),weight=Number(currentPetWeight);
+ const injection=route.kind==='injection';
+ const dose=Number(document.getElementById('medCustomRecDose').value),frequency=injection?1:Number(document.getElementById('medFrequencyDetail').value),days=injection?1:Number(document.getElementById('medDays').value),weight=Number(currentPetWeight);
  if(frequency===0){stop('PRN 請手動確認實際開立數量');return;}
  if(![dose,frequency,days,weight].every(n=>Number.isFinite(n)&&n>0)||!Number.isInteger(days)){stop('請填寫有效的體重、劑量、頻率及整數天數');return;}
  const total=dose*weight*frequency*days;
- if(route.calc==='ratio'){setCalculatedPrescriptionTotal(total,'ml');return;}
+ if(route.calc==='ratio'){setCalculatedPrescriptionTotal(total,'ml',injection?'建議單次用量':'建議總需');return;}
  const mgPerUnit=medicineStrengthPerUnitV68(med);if(!mgPerUnit){stop('請確認每顆含量，例如 250mg/顆；無法自動換算');return;}
  setCalculatedPrescriptionTotal(total/mgPerUnit,'顆');
  if(route.preview&&qty.value)result.value+='（加入前請選給藥方式）';
@@ -6807,7 +6828,7 @@ function runDetailedMathCalculation(){
             const customDose = doseText + (route.calc==='tablet'?' mg/kg':route.calc==='ratio'?' ml/kg':'');
             const qty = document.getElementById('medPrescribeQty').value;
             if (!Number.isFinite(Number(qty)) || Number(qty) <= 0) { alert('實際開立數量須大於零'); return; }
-            const note = document.getElementById('medPrescribeNote').value || '';
+            const note = route.kind==='injection'?'':document.getElementById('medPrescribeNote').value || '';
 
             const badgeColor = routeDetail.includes('注射') ? '#b45309' : '#0369a1';
 
