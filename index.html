@@ -1,7 +1,7 @@
 <!DOCTYPE html><html lang="zh-TW"><head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>吉布動物醫院管理系統 genblue設計版權所有 · 院內線上預約整合 v64</title>
+    <title>吉布動物醫院管理系統 genblue設計版權所有 · 口服磨粉顆數計算 v69</title>
     <!-- 引入 Supabase JS SDK CDN -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
@@ -946,7 +946,7 @@ body.role-no-appointment #nav-online_booking{display:none!important}
                         </div>
 
                         <div class="form-grid" style="margin-bottom: 0;">
-                            <div class="form-group"><label>實際開立數量</label><input type="number" id="medPrescribeQty" value="1" step="0.1"></div>
+                            <div class="form-group"><label id="prescribeQuantityLabelV69">實際開立數量</label><input type="number" id="medPrescribeQty" value="1" step="0.1"></div>
                             <div class="form-group span-3"><label>用法與頻率說明</label><input type="text" id="medPrescribeNote" value="一天兩次，連續5天，飯後服用"></div>
                             <div class="form-group span-4" style="justify-content: flex-end;"><button onclick="addDetailedPrescriptionItem()">+ 加入本次精細處方清單</button></div>
                         </div>
@@ -1573,7 +1573,7 @@ body.role-no-appointment #nav-online_booking{display:none!important}
                         </div>
                     </div>
                     <h3>收費細項填寫</h3>
-                    <p style="color:#64748b;font-size:.9rem">原院 v67｜給藥方式可自訂、可沿用歷史處方；處方藥費按口服藥／針劑合併，由醫師填寫。</p>
+                    <p style="color:#64748b;font-size:.9rem">原院 v68｜給藥方式可自訂、可沿用歷史處方；處方藥費按口服藥／針劑合併，由醫師填寫。</p>
 <div id="invoiceItemsList" style="margin-top: 10px;">
                         <div class="list-row">
                             <input type="text" value="一般門診診察費" placeholder="項目名稱" class="invoice-name">
@@ -6701,12 +6701,6 @@ async function loadOwnersAndPetsIntegrated() {
             markMedicalWeightDraft();
             currentPetWeight = roundPetWeight(document.getElementById('medicalPetWeightInput').value) || 0;
             medicalStateCache.weight = currentPetWeight;
-            onMedicineSelectedForDoseCalculation();
-        }
-
-        function onRouteDetailChanged() {
-            const route=prescriptionRouteV66();
-            document.getElementById('labelRecDoseTitle').textContent=route?.calc==='tablet'?'建議劑量 (mg/kg)':route?.calc==='ratio'?'建議劑量比率 (ml/kg)':'使用劑量（手動輸入，含單位）';
             runDetailedMathCalculation();
         }
 
@@ -6720,32 +6714,6 @@ async function loadOwnersAndPetsIntegrated() {
             document.getElementById('medPrescribeNote').value='一天兩次，連續5天，飯後服用';
         }
 
-        function onMedicineSelectedForDoseCalculation() {
-            const dropdown = document.getElementById('medSelectDropdown');
-            const selectedMedId = dropdown.value;
-            const useDoseDisplay = document.getElementById('medUseDoseDisplay');
-            const routeDetailSelect = document.getElementById('medRouteDetailSelect');
-            
-            if (!selectedMedId || !loadedMedicinesMap[selectedMedId]) {
-                useDoseDisplay.value = "";
-                return;
-            }
-
-            const med = loadedMedicinesMap[selectedMedId];
-            useDoseDisplay.value = med.usage_dose || '';
-
-            if (!preservePrescriptionRouteForVisit) routeDetailSelect.value='';
-            onRouteDetailChanged();
-
-            let defaultVal = 10;
-            if (med.recommended_dose) {
-                const match = med.recommended_dose.match(/([\d.]+)/);
-                if (match) defaultVal = parseFloat(match[1]);
-            }
-            document.getElementById('medCustomRecDose').value = defaultVal;
-            runDetailedMathCalculation();
-        }
-
         function setCalculatedPrescriptionTotal(total,unit,prefix='建議總需') {
             const result=document.getElementById('calculatedDoseResult'),qty=document.getElementById('medPrescribeQty');
             if(!Number.isFinite(total)||total<0){result.value='請檢查計算欄位';qty.value='';return;}
@@ -6753,20 +6721,64 @@ async function loadOwnersAndPetsIntegrated() {
             if(total>0&&rounded===0){result.value='總量少於 0.1 '+unit+'，請手動確認開立數量';qty.value='';return;}
             result.value=prefix+' '+rounded.toFixed(1)+' '+unit;qty.value=String(rounded);
         }
-        function runDetailedMathCalculation() {
-            const customRecDose=parseFloat(document.getElementById('medCustomRecDose').value)||0;
-            const freqVal=parseFloat(document.getElementById('medFrequencyDetail').value)||2;
-            const days=parseInt(document.getElementById('medDays').value)||5;
-            const routeDetail=document.getElementById('medRouteDetailSelect').value;
-            const route=prescriptionRouteV66();
-            if(!route||route.calc==='manual'){document.getElementById('calculatedDoseResult').value=route?'此方式請手動填寫實際開立數量':'請先選給藥方式';document.getElementById('medPrescribeQty').value='';return;}
-            const totalDose=customRecDose*currentPetWeight*(freqVal>0?freqVal:1)*days;
-            if(route.calc==='ratio'){setCalculatedPrescriptionTotal(totalDose,'ml');return;}
-            const selectedMedId=document.getElementById('medSelectDropdown').value,med=loadedMedicinesMap[selectedMedId];
-            const useMatch=med?.usage_dose?.match(/([\d.]+)\s*mg/i),mgPerUnit=useMatch?parseFloat(useMatch[1]):0;
-            if(mgPerUnit>0&&currentPetWeight>0){setCalculatedPrescriptionTotal(totalDose/mgPerUnit,'顆');return;}
-            setCalculatedPrescriptionTotal(totalDose/250,'單位','估算總需');
-        }
+function medicineStrengthPerUnitV68(med){
+ const text=String(med?.usage_dose||med?.strength||'').normalize('NFKC').trim();
+ if(!text||/\b(?:ml|dl|l|kg)\b|毫升|公升|公斤|%/i.test(text))return null;
+ const pattern=/(\d+(?:\.\d+)?|\.\d+)\s*(mg|mcg|μg|ug|g|毫克|微克|公克)(?![a-z])/gi;
+ const hits=[...text.matchAll(pattern)];if(hits.length!==1||/-\s*\d|\d\s*[,，]\s*\d/.test(text))return null;
+ const hit=hits[0],tail=text.slice(hit.index+hit[0].length).trim();
+ if(tail&&!/^(?:\/\s*(?:1\s*)?(?:顆|錠|粒|膠囊|tablet|tab|capsule|cap)|每(?:顆|錠|粒|膠囊))$/i.test(tail))return null;
+ const before=text.slice(0,hit.index).trim();if(before&&!/^(?:每(?:顆|錠|粒|膠囊)(?:含)?|含量[:：]?)$/.test(before))return null;
+ const mass=Number(hit[1]),unit=hit[2].toLowerCase(),factor=['g','公克'].includes(unit)?1000:['mcg','μg','ug','微克'].includes(unit)?.001:1;
+ return mass>0&&Number.isFinite(mass)?mass*factor:null;
+}
+function inferredMedicineRouteV68(med){
+ const exact=prescriptionRoutesV66.find(r=>r.name===String(med?.route||'').trim());if(exact)return exact.name;
+ if(!/^(口服|oral)$/i.test(String(med?.route||'').trim()))return '';
+ const form=String(med?.dosage_form||'').trim(),unit=String(med?.unit||'').trim(),strength=String(med?.usage_dose||'').normalize('NFKC');
+ const capsule=/膠囊|capsule/i.test(form)||/^(膠囊|capsule|cap)$/i.test(unit)||/\/\s*(?:1\s*)?膠囊\s*$/.test(strength);
+ const tablet=/錠|tablet/i.test(form)||/^(錠|錠劑|tablet|tab)$/i.test(unit)||/\/\s*(?:1\s*)?錠\s*$/.test(strength);
+ if(capsule&&!tablet)return '口服膠囊';if(tablet&&!capsule)return '口服錠劑';
+ return '';
+}
+function prescriptionCalculationRouteV68(){
+ const actual=prescriptionRouteV66();if(actual)return actual;
+ const med=loadedMedicinesMap[document.getElementById('medSelectDropdown').value];
+ const solid=/(顆|錠|粒|膠囊|tablet|capsule)/i.test(String(med?.unit||'')+' '+String(med?.dosage_form||'')+' '+String(med?.usage_dose||''));
+ if(/^(口服|oral)$/i.test(String(med?.route||'').trim())&&solid&&medicineStrengthPerUnitV68(med))return {calc:'tablet',preview:true};
+ return null;
+}
+function onRouteDetailChanged(){
+ const route=prescriptionCalculationRouteV68();
+ const label=document.getElementById('prescribeQuantityLabelV69');if(label)label.textContent=route?.preparedFromSolid?'原藥開立顆數（磨粉前）':'實際開立數量';
+ document.getElementById('labelRecDoseTitle').textContent=route?.calc==='tablet'?'建議劑量 (mg/kg)':route?.calc==='ratio'?'建議劑量比率 (ml/kg)':'使用劑量（手動輸入，含單位）';
+ runDetailedMathCalculation();
+}
+function onMedicineSelectedForDoseCalculation(){
+ const selectedMedId=document.getElementById('medSelectDropdown').value,med=loadedMedicinesMap[selectedMedId];
+ const display=document.getElementById('medUseDoseDisplay'),select=document.getElementById('medRouteDetailSelect');
+ if(!med){display.value='';document.getElementById('calculatedDoseResult').value='請先選藥品';document.getElementById('medPrescribeQty').value='';return;}
+ display.value=med.usage_dose||med.strength||'';
+ if(!preservePrescriptionRouteForVisit)select.value=inferredMedicineRouteV68(med);
+ let defaultVal=10;const match=String(med.recommended_dose||'').match(/(?:\d+(?:\.\d+)?|\.\d+)/);if(match)defaultVal=Number(match[0]);
+ document.getElementById('medCustomRecDose').value=defaultVal;
+ onRouteDetailChanged();
+}
+function runDetailedMathCalculation(){
+ const result=document.getElementById('calculatedDoseResult'),qty=document.getElementById('medPrescribeQty');
+ const stop=text=>{result.value=text;qty.value='';};
+ const med=loadedMedicinesMap[document.getElementById('medSelectDropdown').value];if(!med){stop('請先選藥品');return;}
+ const route=prescriptionCalculationRouteV68();if(!route||route.calc==='manual'){stop(route?'此方式請手動填寫實際開立數量':'請先選給藥方式');return;}
+ const dose=Number(document.getElementById('medCustomRecDose').value),frequency=Number(document.getElementById('medFrequencyDetail').value),days=Number(document.getElementById('medDays').value),weight=Number(currentPetWeight);
+ if(frequency===0){stop('PRN 請手動確認實際開立數量');return;}
+ if(![dose,frequency,days,weight].every(n=>Number.isFinite(n)&&n>0)||!Number.isInteger(days)){stop('請填寫有效的體重、劑量、頻率及整數天數');return;}
+ const total=dose*weight*frequency*days;
+ if(route.calc==='ratio'){setCalculatedPrescriptionTotal(total,'ml');return;}
+ const mgPerUnit=medicineStrengthPerUnitV68(med);if(!mgPerUnit){stop('請確認每顆含量，例如 250mg/顆；無法自動換算');return;}
+ setCalculatedPrescriptionTotal(total/mgPerUnit,'顆');
+ if(route.preview&&qty.value)result.value+='（加入前請選給藥方式）';
+ if(route.preparedFromSolid&&qty.value)result.value+='（原藥顆數，供磨粉配製）';
+}
 
         function resetPrescriptionEntryAfterAdd() {
             const search = document.getElementById('prescriptionMedicineSearch');
@@ -10686,7 +10698,12 @@ function renderPrescriptionRoutesV66(custom=[]){
  const map=new Map(prescriptionRouteDefaultsV66.map(x=>[x.name,x]));for(const x of safe)if(!map.has(x.name))map.set(x.name,{name:x.name,kind:x.kind,calc:'manual'});
  prescriptionRoutesV66=[...map.values()];const select=document.getElementById('medRouteDetailSelect');select.replaceChildren(new Option('-- 請選擇實際給藥方式 --',''));for(const r of prescriptionRoutesV66)select.add(new Option(r.name,r.name));if(map.has(previous))select.value=previous;
 }
-function prescriptionRouteV66(){return prescriptionRoutesV66.find(x=>x.name===document.getElementById('medRouteDetailSelect').value);}
+function prescriptionRouteV66(){
+ const route=prescriptionRoutesV66.find(x=>x.name===document.getElementById('medRouteDetailSelect').value);
+ const med=loadedMedicinesMap[document.getElementById('medSelectDropdown').value];
+ if(route&&['口服液','口服懸浮液'].includes(route.name)&&medicineStrengthPerUnitV68(med))return {...route,calc:'tablet',preparedFromSolid:true};
+ return route;
+}
 function prescriptionKindV66(name){return prescriptionRoutesV66.find(x=>x.name===String(name||'').match(/^\[([^\]]+)\]/)?.[1])?.kind||'';}
 function openPrescriptionRouteAddV66(){if(!medicalEditAllowedV53()){alert('此帳號沒有處方編輯權限。');return;}document.getElementById('routeAddStatusV66').textContent='新增後同院共用；自訂方式請手填劑量與數量。';document.getElementById('routeAddModalV66').style.display='flex';document.getElementById('routeAddNameV66').focus();}
 async function savePrescriptionRouteV66(){
