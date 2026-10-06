@@ -895,7 +895,7 @@ body.role-no-appointment #nav-online_booking{display:none!important}
                     <div class="history-box"><h4>本次疫苗與檢驗待收費</h4><div id="clinicalServiceChargeSummary">尚無待收費項目。</div><p style="font-size:.85rem;color:#64748b;">待收費項目暫存於此瀏覽器，前往收費時自動帶入；請在同一瀏覽器完成結帳。</p></div>
                     <!-- 精細化處方開立區塊 -->
                     <div class="search-add-box">
-                        <h3>處方用藥與針劑開立（多劑型專業細化）</h3>
+                        <h3>處方用藥與針劑開立（多劑型專業細化）</h3><button type="button" class="btn-secondary" onclick="openPrescriptionCopyV65()">💊 沿用上次處方</button><span id="prescriptionCopyFeedbackV65" role="status" style="margin-left:10px;color:#0369a1;font-size:.85rem"></span>
                         <div class="form-grid" style="margin-bottom: 10px;">
                             <div class="form-group span-2">
                                 <label for="prescriptionMedicineSearch">搜尋並選擇藥品</label>
@@ -910,13 +910,8 @@ body.role-no-appointment #nav-online_booking{display:none!important}
                             <div class="form-group">
                                 <label>給藥途徑與劑型細分</label>
                                 <select id="medRouteDetailSelect" onchange="preservePrescriptionRouteForVisit=true;onRouteDetailChanged()">
-                                    <option value="口服錠劑/膠囊" selected="">口服錠劑 / 膠囊 (Oral)</option>
-                                    <option value="口服液/懸浮液">口服液 / 懸浮液 (Liquid)</option>
-                                    <option value="外用滴劑">外用滴劑 (Spot-on)</option>
-                                    <option value="眼藥水/耳藥膏">眼藥水 / 耳藥膏 (Drops/Ointment)</option>
-                                    <option value="皮下/肌肉注射">皮下 / 肌肉注射 (SC/IM)</option>
-                                    <option value="靜脈注射">靜脈注射 (IV)</option>
-                                </select>
+                                    <option value="">-- 請選擇實際給藥方式 --</option>
+                                </select><button type="button" class="btn-secondary" onclick="openPrescriptionRouteAddV66()" style="margin-top:6px">＋ 新增給藥方式</button>
                             </div>
                             <div class="form-group">
                                 <label>每單位規格含量</label>
@@ -942,7 +937,7 @@ body.role-no-appointment #nav-online_booking{display:none!important}
                             </div>
                             <div class="form-group">
                                 <label>天數 (Days)</label>
-                                <input type="number" id="medDays" value="3" min="1" oninput="runDetailedMathCalculation()">
+                                <input type="number" id="medDays" value="5" min="1" oninput="runDetailedMathCalculation()">
                             </div>
                             <div class="form-group">
                                 <label>自動計算結果 (總量)</label>
@@ -952,7 +947,7 @@ body.role-no-appointment #nav-online_booking{display:none!important}
 
                         <div class="form-grid" style="margin-bottom: 0;">
                             <div class="form-group"><label>實際開立數量</label><input type="number" id="medPrescribeQty" value="1" step="0.1"></div>
-                            <div class="form-group span-3"><label>用法與頻率說明</label><input type="text" id="medPrescribeNote" value="一天兩次，連續3天，飯後服用"></div>
+                            <div class="form-group span-3"><label>用法與頻率說明</label><input type="text" id="medPrescribeNote" value="一天兩次，連續5天，飯後服用"></div>
                             <div class="form-group span-4" style="justify-content: flex-end;"><button onclick="addDetailedPrescriptionItem()">+ 加入本次精細處方清單</button></div>
                         </div>
                     </div>
@@ -1554,9 +1549,9 @@ body.role-no-appointment #nav-online_booking{display:none!important}
                     <div style="background: #f1f5f9; padding: 15px; border-radius: var(--radius); margin-bottom: 15px;">
                         <h4 style="margin-bottom: 8px; color: var(--primary-dark); font-size: 0.95rem;">💡 快速套用常用醫療套餐 / 健檢組合包</h4>
                         <div style="display: flex; gap: 10px; flex-wrap: wrap;">
-                            <button class="btn-secondary" style="padding: 6px 12px; font-size: 0.85rem;" onclick="applyInvoicePackage('一般健康健檢包', [ {name:'一般門診診察費', qty:1, price:500}, {name:'全血球 CBC 檢驗', qty:1, price:800}, {name:'血液生化檢驗', qty:1, price:1200} ])">🩺 基礎健康健檢包 (NT$ 2,500)</button>
-                            <button class="btn-secondary" style="padding: 6px 12px; font-size: 0.85rem;" onclick="applyInvoicePackage('血液+X光篩檢包', [ {name:'一般門診診察費', qty:1, price:500}, {name:'數位 X 光影像檢查', qty:2, price:600}, {name:'血液生化檢驗', qty:1, price:1200} ])">🩻 血液與X光篩檢包 (NT$ 2,900)</button>
-                            <button class="btn-secondary" style="padding: 6px 12px; font-size: 0.85rem;" onclick="applyInvoicePackage('疫苗施打專案', [ {name:'一般門診診察費', qty:1, price:500}, {name:'犬/貓綜合疫苗施打', qty:1, price:1000} ])">💉 疫苗施打專案 (NT$ 1,500)</button>
+                            <button class="btn-secondary" style="padding: 6px 12px; font-size: 0.85rem;" onclick="applyInvoicePackage('一般健康健檢包', [ {name:'一般門診診察費', qty:1, price:250}, {name:'全血球 CBC 檢驗', qty:1, price:800}, {name:'血液生化檢驗', qty:1, price:1200} ])">🩺 基礎健康健檢包 (NT$ 2,250)</button>
+                            <button class="btn-secondary" style="padding: 6px 12px; font-size: 0.85rem;" onclick="applyInvoicePackage('血液+X光篩檢包', [ {name:'一般門診診察費', qty:1, price:250}, {name:'數位 X 光影像檢查', qty:2, price:600}, {name:'血液生化檢驗', qty:1, price:1200} ])">🩻 血液與X光篩檢包 (NT$ 2,650)</button>
+                            <button class="btn-secondary" style="padding: 6px 12px; font-size: 0.85rem;" onclick="applyInvoicePackage('疫苗施打專案', [ {name:'一般門診診察費', qty:1, price:250}, {name:'犬/貓綜合疫苗施打', qty:1, price:1000} ])">💉 疫苗施打專案 (NT$ 1,250)</button>
                         </div>
                     </div>
 
@@ -1578,20 +1573,20 @@ body.role-no-appointment #nav-online_booking{display:none!important}
                         </div>
                     </div>
                     <h3>收費細項填寫</h3>
-                    <p style="color:#64748b;font-size:.9rem">原院 v64｜處方藥費按口服藥／針劑合併，由醫師填寫。</p>
+                    <p style="color:#64748b;font-size:.9rem">原院 v67｜給藥方式可自訂、可沿用歷史處方；處方藥費按口服藥／針劑合併，由醫師填寫。</p>
 <div id="invoiceItemsList" style="margin-top: 10px;">
                         <div class="list-row">
                             <input type="text" value="一般門診診察費" placeholder="項目名稱" class="invoice-name">
                             <input type="number" value="1" placeholder="數量" class="invoice-qty" style="flex: 0.5;" oninput="calculateInvoiceTotal()">
-                            <input type="number" value="500" placeholder="金額" class="invoice-price" oninput="calculateInvoiceTotal()">
+                            <input type="number" value="250" placeholder="金額" class="invoice-price" oninput="calculateInvoiceTotal()">
                             <button class="btn-danger" onclick="this.parentElement.remove(); calculateInvoiceTotal();" style="padding: 9px 12px;">刪除</button>
                         </div>
                     </div>
                     <button class="btn-secondary" style="margin-bottom: 15px; margin-top: 10px;" onclick="addInvoiceRow()">+ 增加收費細項</button>
                     <div class="total-display">
-                        <div class="sub-display"><span>小計金額: NT$ <span id="invoiceSubTotal">500</span></span></div>
+                        <div class="sub-display"><span>小計金額: NT$ <span id="invoiceSubTotal">250</span></span></div>
                         <div class="sub-display"><span>- 折扣金額: NT$ <input type="number" id="invoiceDiscount" value="0" style="width: 80px; padding: 4px; text-align: right;" oninput="calculateInvoiceTotal()"></span></div>
-                        <div>折扣後總計: NT$ <span id="invoiceTotalAmount">500</span></div>
+                        <div>折扣後總計: NT$ <span id="invoiceTotalAmount">250</span></div>
                     </div>
                     <br>
                     <div style="margin: 15px 0; display: flex; align-items: center; gap: 8px;">
@@ -3527,6 +3522,7 @@ if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',
                 clinicSettings.address = '';
             }
 
+            renderPrescriptionRoutesV66(data?.prescription_routes||[]);
             document.getElementById('clinicNameSet').value = clinicSettings.name;
             document.getElementById('clinicDirectorSet').value = clinicSettings.director;
             document.getElementById('clinicPhoneSet').value = clinicSettings.phone;
@@ -6504,7 +6500,7 @@ async function loadOwnersAndPetsIntegrated() {
             diagnosticDiv.innerHTML = `
                 <input type="text" value="一般門診診察費" placeholder="項目名稱" class="invoice-name">
                 <input type="number" value="1" placeholder="數量" class="invoice-qty" style="flex: 0.5;" oninput="calculateInvoiceTotal()">
-                <input type="number" value="500" placeholder="金額" class="invoice-price" oninput="calculateInvoiceTotal()">
+                <input type="number" value="250" placeholder="金額" class="invoice-price" oninput="calculateInvoiceTotal()">
                 <button class="btn-danger" onclick="this.parentElement.remove(); calculateInvoiceTotal();" style="padding: 9px 12px;">刪除</button>
             `;
             invoiceListContainer.appendChild(diagnosticDiv);
@@ -6671,6 +6667,7 @@ async function loadOwnersAndPetsIntegrated() {
                 prescriptions.push({
                     medicine_name: row.querySelector('input[type="text"]').value,
                     medicine_id: row.dataset.medicineId || '',
+                    billing_kind: row.dataset.billingKind || '',
                     custom_dose: row.querySelector('.prescribe-custom-dose').value,
                     quantity: row.querySelector('.prescribe-qty').value,
                     instruction: row.querySelector('.prescribe-note').value
@@ -6695,17 +6692,7 @@ async function loadOwnersAndPetsIntegrated() {
             container.innerHTML = "";
             if (medicalStateCache.prescriptions && medicalStateCache.prescriptions.length > 0) {
                 medicalStateCache.prescriptions.forEach(p => {
-                    const div = document.createElement('div');
-                    div.className = 'list-row prescription-item-row';
-                    div.dataset.medicineId = p.medicine_id || '';
-                    div.innerHTML = `
-                        <input type="text" value="${p.medicine_name}" style="flex: 2; background: #fff;" readonly title="藥品名稱">
-                        <input type="text" value="${p.custom_dose}" class="prescribe-custom-dose" style="flex: 1.2;" placeholder="使用劑量" title="使用劑量">
-                        <input type="number" value="${p.quantity}" class="prescribe-qty" step="0.1" style="flex: 0.8;" placeholder="數量" title="數量">
-                        <input type="text" value="${p.instruction}" class="prescribe-note" style="flex: 2;" placeholder="用法說明" title="用法">
-                        <button class="btn-danger" onclick="this.parentElement.remove();" style="padding: 9px 12px;">刪除</button>
-                    `;
-                    container.appendChild(div);
+                    container.appendChild(makePrescriptionDraftRowV65(p));
                 });
             }
         }
@@ -6718,24 +6705,19 @@ async function loadOwnersAndPetsIntegrated() {
         }
 
         function onRouteDetailChanged() {
-            const routeDetail = document.getElementById('medRouteDetailSelect').value;
-            const labelTitle = document.getElementById('labelRecDoseTitle');
-            if (routeDetail.includes('注射') || routeDetail.includes('外用滴劑') || routeDetail.includes('眼藥水')) {
-                labelTitle.innerText = "建議劑量比率 (ml/kg 或 滴/kg)";
-            } else {
-                labelTitle.innerText = "建議劑量 (mg/kg)";
-            }
+            const route=prescriptionRouteV66();
+            document.getElementById('labelRecDoseTitle').textContent=route?.calc==='tablet'?'建議劑量 (mg/kg)':route?.calc==='ratio'?'建議劑量比率 (ml/kg)':'使用劑量（手動輸入，含單位）';
             runDetailedMathCalculation();
         }
 
         let preservePrescriptionRouteForVisit=false;
         function resetPrescriptionSharedSettingsForVisit(){
             preservePrescriptionRouteForVisit=false;
-            document.getElementById('medRouteDetailSelect').value='口服錠劑/膠囊';
+            document.getElementById('medRouteDetailSelect').value='';
             document.getElementById('labelRecDoseTitle').innerText='建議劑量 (mg/kg)';
             document.getElementById('medFrequencyDetail').value='2';
-            document.getElementById('medDays').value='3';
-            document.getElementById('medPrescribeNote').value='一天兩次，連續3天，飯後服用';
+            document.getElementById('medDays').value='5';
+            document.getElementById('medPrescribeNote').value='一天兩次，連續5天，飯後服用';
         }
 
         function onMedicineSelectedForDoseCalculation() {
@@ -6752,13 +6734,7 @@ async function loadOwnersAndPetsIntegrated() {
             const med = loadedMedicinesMap[selectedMedId];
             useDoseDisplay.value = med.usage_dose || '';
 
-            if (!preservePrescriptionRouteForVisit) {
-            if (med.route === '針劑') {
-                routeDetailSelect.value = '皮下/肌肉注射';
-            } else {
-                routeDetailSelect.value = '口服錠劑/膠囊';
-            }
-            }
+            if (!preservePrescriptionRouteForVisit) routeDetailSelect.value='';
             onRouteDetailChanged();
 
             let defaultVal = 10;
@@ -6780,12 +6756,12 @@ async function loadOwnersAndPetsIntegrated() {
         function runDetailedMathCalculation() {
             const customRecDose=parseFloat(document.getElementById('medCustomRecDose').value)||0;
             const freqVal=parseFloat(document.getElementById('medFrequencyDetail').value)||2;
-            const days=parseInt(document.getElementById('medDays').value)||3;
+            const days=parseInt(document.getElementById('medDays').value)||5;
             const routeDetail=document.getElementById('medRouteDetailSelect').value;
+            const route=prescriptionRouteV66();
+            if(!route||route.calc==='manual'){document.getElementById('calculatedDoseResult').value=route?'此方式請手動填寫實際開立數量':'請先選給藥方式';document.getElementById('medPrescribeQty').value='';return;}
             const totalDose=customRecDose*currentPetWeight*(freqVal>0?freqVal:1)*days;
-            if(routeDetail.includes('注射')||routeDetail.includes('外用滴劑')||routeDetail.includes('眼藥水')) {
-                setCalculatedPrescriptionTotal(totalDose,'ml/單位');return;
-            }
+            if(route.calc==='ratio'){setCalculatedPrescriptionTotal(totalDose,'ml');return;}
             const selectedMedId=document.getElementById('medSelectDropdown').value,med=loadedMedicinesMap[selectedMedId];
             const useMatch=med?.usage_dose?.match(/([\d.]+)\s*mg/i),mgPerUnit=useMatch?parseFloat(useMatch[1]):0;
             if(mgPerUnit>0&&currentPetWeight>0){setCalculatedPrescriptionTotal(totalDose/mgPerUnit,'顆');return;}
@@ -6814,7 +6790,9 @@ async function loadOwnersAndPetsIntegrated() {
             
             const medName = selectedOpt.dataset.name || selectedOpt.text;
             const routeDetail = document.getElementById('medRouteDetailSelect').value;
-            const customDose = document.getElementById('medCustomRecDose').value + ' 單位';
+            const route=prescriptionRouteV66();if(!route){alert('請選擇實際給藥方式。');return;}
+            const doseText=document.getElementById('medCustomRecDose').value.trim();if(!doseText){alert('請填寫使用劑量。');return;}
+            const customDose = doseText + (route.calc==='tablet'?' mg/kg':route.calc==='ratio'?' ml/kg':'');
             const qty = document.getElementById('medPrescribeQty').value;
             if (!Number.isFinite(Number(qty)) || Number(qty) <= 0) { alert('實際開立數量須大於零'); return; }
             const note = document.getElementById('medPrescribeNote').value || '';
@@ -6822,16 +6800,7 @@ async function loadOwnersAndPetsIntegrated() {
             const badgeColor = routeDetail.includes('注射') ? '#b45309' : '#0369a1';
 
             const container = document.getElementById('prescriptionItemsContainer');
-            const div = document.createElement('div');
-            div.className = 'list-row prescription-item-row';
-            div.dataset.medicineId = selectedOpt.value;
-            div.innerHTML = `
-                <input type="text" value="[${routeDetail}] ${medName}" style="flex: 2; background: #fff; color: ${badgeColor}; font-weight: bold;" readonly title="藥品與劑型">
-                <input type="text" value="${customDose}" class="prescribe-custom-dose" style="flex: 1.2;" placeholder="劑量" title="使用劑量">
-                <input type="number" value="${qty}" class="prescribe-qty" step="0.1" style="flex: 0.8;" placeholder="數量" title="數量">
-                <input type="text" value="${note}" class="prescribe-note" style="flex: 2;" placeholder="用法說明" title="用法">
-                <button class="btn-danger" onclick="this.parentElement.remove();" style="padding: 9px 12px;">刪除</button>
-            `;
+            const div=makePrescriptionDraftRowV65({medicine_id:selectedOpt.value,medicine_name:'['+routeDetail+'] '+medName,custom_dose:customDose,quantity:qty,instruction:note,billing_kind:route.kind});
             container.appendChild(div);
             resetPrescriptionEntryAfterAdd();
         }
@@ -6842,6 +6811,8 @@ async function loadOwnersAndPetsIntegrated() {
         let legacyArchiveLoading = false;
 
         function resetLegacyMedicalArchive() {
+            closePrescriptionCopyV65();
+            document.getElementById('prescriptionCopyFeedbackV65').textContent='';
             resetCurrentPetClinicalHistories();
             legacyArchiveRequest++;
             legacyArchiveLoaded = false;
@@ -6929,6 +6900,7 @@ async function loadAllMedicalRecords(petId,options={}){
   const actions=document.createElement('div');actions.style.cssText='display:flex;flex-wrap:wrap;gap:6px';
   const add=(label,callback)=>{const button=document.createElement('button');button.type='button';button.className='btn-secondary';button.style.cssText='padding:3px 8px;font-size:.75rem';button.textContent=label;button.addEventListener('click',callback);actions.append(button);};
   if(medicalEditAllowedV53())add('修正病歷文字',()=>openMedicalEditV53(record.id));
+  if(medicalEditAllowedV53()&&Array.isArray(record.prescription_details)&&record.prescription_details.length)add('複製這次處方',()=>openPrescriptionCopyV65(record.id));
   add('詳細內容',()=>openMedicalDetailModal(record));add('📄 處方箋',()=>reprintPrescription(date,record.chief_complaint||'',encodeURIComponent(JSON.stringify(record.prescription_details||[]))));
   head.append(time,actions);section.append(head);const chief=document.createElement('p');chief.textContent='主訴：'+(record.chief_complaint||'');chief.style.whiteSpace='pre-wrap';section.append(chief);
   section.append(medicalPrescriptionListV53(record.prescription_details,false));
@@ -7212,6 +7184,7 @@ function openMedicalDetailModal(record){
                 prescriptions.push({
                     medicine_name: row.querySelector('input[type="text"]').value,
                     medicine_id: row.dataset.medicineId || '',
+                    billing_kind: row.dataset.billingKind || '',
                     custom_dose: row.querySelector('.prescribe-custom-dose').value,
                     quantity: row.querySelector('.prescribe-qty').value,
                     instruction: row.querySelector('.prescribe-note').value
@@ -7245,7 +7218,7 @@ function openMedicalDetailModal(record){
             diagnosticDiv.innerHTML = `
                 <input type="text" value="一般門診診察費" placeholder="項目名稱" class="invoice-name">
                 <input type="number" value="1" placeholder="數量" class="invoice-qty" style="flex: 0.5;" oninput="calculateInvoiceTotal()">
-                <input type="number" value="500" placeholder="金額" class="invoice-price" oninput="calculateInvoiceTotal()">
+                <input type="number" value="250" placeholder="金額" class="invoice-price" oninput="calculateInvoiceTotal()">
                 <button class="btn-danger" onclick="this.parentElement.remove(); calculateInvoiceTotal();" style="padding: 9px 12px;">刪除</button>
             `;
             invoiceListContainer.appendChild(diagnosticDiv);
@@ -10617,7 +10590,7 @@ function restoreRawSpansV63(text){let pos=0;const spans={};for(const n of Object
 const medicationGroupLabelsV64={oral:'口服藥',injection:'針劑',other:'其他用藥'};
 let clinicalMedicationGroupsV64=null;
 function prepareMedicationGroupsV64(prescriptions){
- const groups=new Map();for(const p of prescriptions){const medicine=loadedMedicinesMap[p.medicine_id],qty=Number(p.quantity);if(!medicine||!Number.isFinite(qty)||qty<=0)throw Error('請確認每筆處方都已選取藥品，且實際開立數量大於0');const route=p.medicine_name?.match(/^\[([^\]]+)\]/)?.[1]||medicine.route||'',kind=route.includes('注射')||route==='針劑'?'injection':route.includes('口服')?'oral':'other';if(!groups.has(kind))groups.set(kind,{kind,drugs:[]});groups.get(kind).drugs.push({medicine_id:p.medicine_id,quantity:qty,item_name:p.medicine_name+' ['+p.custom_dose+'] ('+p.instruction+')',label:p.medicine_name});}
+ const groups=new Map();for(const p of prescriptions){const medicine=loadedMedicinesMap[p.medicine_id],qty=Number(p.quantity);if(!medicine||!Number.isFinite(qty)||qty<=0)throw Error('請確認每筆處方都已選取藥品，且實際開立數量大於0');const route=p.medicine_name?.match(/^\[([^\]]+)\]/)?.[1]||medicine.route||'',kind=['oral','injection','other'].includes(p.billing_kind)?p.billing_kind:(route.includes('注射')||route==='針劑'?'injection':route.includes('口服')?'oral':'other');if(!groups.has(kind))groups.set(kind,{kind,drugs:[]});groups.get(kind).drugs.push({medicine_id:p.medicine_id,quantity:qty,item_name:p.medicine_name+' ['+p.custom_dose+'] ('+p.instruction+')',label:p.medicine_name});}
  if(prescriptions.length>200)throw Error('一次最多200筆處方');return ['oral','injection','other'].filter(k=>groups.has(k)).map(k=>groups.get(k));
 }
 function appendMedicationGroupsV64(groups){
@@ -10633,6 +10606,100 @@ function collectMedicationFeesV64(){
 const previousReceiptMedicationV64=openReceiptModal;
 openReceiptModal=function(invoice,owner,pet,items){return previousReceiptMedicationV64(invoice,owner,pet,(items||[]).filter(x=>x.receipt_visible_v64!==false));};
 const previousLogoutMedicationV64=logoutSupabase;logoutSupabase=function(...args){clinicalMedicationGroupsV64=null;return previousLogoutMedicationV64.apply(this,args);};
+
+</script>
+<div id="prescriptionCopyModalV65" class="modal-overlay" role="dialog" aria-modal="true" aria-labelledby="prescriptionCopyTitleV65"><div style="background:#fff;padding:24px;border-radius:12px;width:1000px;max-width:95vw;max-height:85vh;overflow:auto"><h3 id="prescriptionCopyTitleV65">沿用歷史處方</h3><p id="prescriptionCopyStatusV65" role="status"></p><div id="prescriptionCopyBodyV65" style="overflow-x:auto"></div><p style="color:#64748b;font-size:.85rem">勾選後加入本次清單，保留目前已開用藥。複製只帶入草稿；本次藥費另填，儲存與扣庫存依原流程。</p><button id="prescriptionCopyApplyV65" type="button" class="btn-success" onclick="applyPrescriptionCopyV65()" disabled>加入勾選用藥</button> <button type="button" class="btn-secondary" onclick="closePrescriptionCopyV65()">取消</button></div></div>
+<script>
+// v65: read historical prescriptions into the current draft only.
+let prescriptionCopyRequestV65=0,prescriptionCopyStateV65=null;
+function prescriptionCopyScopeV65(){return JSON.stringify([CURRENT_TENANT_ID,CURRENT_USER?.id,currentPetId,currentAppointmentId]);}
+function closePrescriptionCopyV65(){prescriptionCopyRequestV65++;prescriptionCopyStateV65=null;document.getElementById('prescriptionCopyModalV65').style.display='none';}
+function makePrescriptionDraftRowV65(p){
+ const row=document.createElement('div');row.className='list-row prescription-item-row';row.dataset.medicineId=p.medicine_id||'';row.dataset.billingKind=p.billing_kind||prescriptionKindV66(p.medicine_name);
+ for(const [value,type,cls,style,title] of [[p.medicine_name,'text','','flex:2;background:#fff','藥品與劑型'],[p.custom_dose,'text','prescribe-custom-dose','flex:1.2','使用劑量'],[p.quantity,'number','prescribe-qty','flex:.8','數量'],[p.instruction,'text','prescribe-note','flex:2','用法說明']]){
+  const input=document.createElement('input');input.type=type;input.value=value??'';input.className=cls;input.style.cssText=style;input.title=title;if(!cls)input.readOnly=true;if(type==='number'){input.step='0.1';input.min='0.1';}row.append(input);
+ }
+ const remove=document.createElement('button');remove.type='button';remove.className='btn-danger';remove.textContent='刪除';remove.addEventListener('click',()=>row.remove());row.append(remove);return row;
+}
+async function openPrescriptionCopyV65(recordId=null){
+ if(!medicalEditAllowedV53()){alert('此帳號沒有處方編輯權限。');return;}
+ if(!currentPetId||!CURRENT_USER){alert('請先選擇本次看診寵物。');return;}
+ const request=++prescriptionCopyRequestV65,scope=prescriptionCopyScopeV65(),petId=currentPetId,tenant=CURRENT_TENANT_ID;
+ prescriptionCopyStateV65=null;
+ const modal=document.getElementById('prescriptionCopyModalV65'),body=document.getElementById('prescriptionCopyBodyV65'),status=document.getElementById('prescriptionCopyStatusV65'),apply=document.getElementById('prescriptionCopyApplyV65');
+ body.replaceChildren();apply.disabled=true;status.textContent='正在讀取此寵物的歷史處方…';modal.style.display='flex';
+ const valid=()=>request===prescriptionCopyRequestV65&&scope===prescriptionCopyScopeV65();
+ try{
+  let query=_supabase.from('medical_records').select('id,pet_id,tenant_id,created_at,prescription_details').eq('tenant_id',tenant).eq('pet_id',petId);
+  if(recordId)query=query.eq('id',recordId);
+  const {data,error}=await query.not('prescription_details','is',null).not('prescription_details','eq','[]').order('created_at',{ascending:false}).order('id',{ascending:false}).limit(1);if(!valid())return;if(error)throw error;
+  const record=(data||[]).find(r=>Array.isArray(r.prescription_details)&&r.prescription_details.length);
+  if(!record){status.textContent=recordId?'這次病歷沒有可複製的處方。':'此寵物尚無可複製的歷史處方。';return;}
+  const entries=record.prescription_details.map(p=>({...p}));
+  const ids=[...new Set(entries.map(p=>p.medicine_id).filter(Boolean))];
+  const names=[...new Set(entries.filter(p=>!p.medicine_id).map(p=>String(p.medicine_name||'').replace(/^\[[^\]]+\]\s*/,'')))].filter(Boolean);
+  const results=await Promise.all([ids.length?_supabase.from('medicines').select('*').eq('tenant_id',tenant).in('id',ids):Promise.resolve({data:[]}),names.length?_supabase.from('medicines').select('*').eq('tenant_id',tenant).in('name',names):Promise.resolve({data:[]})]);
+  if(!valid())return;for(const r of results)if(r.error)throw r.error;
+  const medicines=[...new Map([...results[0].data,...results[1].data].map(m=>[m.id,m])).values()],byId=new Map(medicines.map(m=>[m.id,m]));
+  const table=document.createElement('table');table.style.cssText='width:100%;font-size:.9rem';
+  const head=document.createElement('tr');for(const label of ['選取','藥品／劑型','原劑量','原數量','用法','核對']){const th=document.createElement('th');th.textContent=label;head.append(th);}table.append(head);
+  const choices=[];
+  for(const p of entries){
+   const name=String(p.medicine_name||'').replace(/^\[[^\]]+\]\s*/,'');let med=p.medicine_id?byId.get(p.medicine_id):null;
+   if(!p.medicine_id){const matches=medicines.filter(m=>m.name===name);if(matches.length===1)med=matches[0];}
+   let reason='可複製';if(!med)reason='藥品不存在或無法唯一對應，請重新選藥';else if(!String(p.medicine_name||'').trim())reason='缺藥品名稱';else if(!Number.isFinite(Number(p.quantity))||Number(p.quantity)<=0)reason='原數量無效，請重新開立';
+   const eligible=reason==='可複製';if(eligible&&!p.medicine_id)reason='依唯一相同藥名對應，請核對規格';
+   const row=document.createElement('tr'),cell=document.createElement('td'),checkbox=document.createElement('input');checkbox.type='checkbox';checkbox.checked=eligible;checkbox.disabled=!eligible;cell.append(checkbox);row.append(cell);
+   for(const value of [p.medicine_name,p.custom_dose,p.quantity,p.instruction,reason]){const td=document.createElement('td');td.textContent=value??'';td.style.whiteSpace='pre-wrap';row.append(td);}table.append(row);
+   choices.push({p,med,checkbox,eligible});
+  }
+  body.append(table);prescriptionCopyStateV65={request,scope,record,choices};
+  status.textContent='來源：'+new Date(record.created_at).toLocaleString('zh-TW')+'｜'+currentPetName+'。照原劑量與數量帶入，不按本次體重自動重算；請確認療程與本次體重。';
+  apply.disabled=!choices.some(c=>c.eligible);
+ }catch(error){if(!valid())return;status.textContent='處方讀取失敗：'+(error.message||String(error))+'。關閉後可重試。';}
+}
+function applyPrescriptionCopyV65(){
+ const state=prescriptionCopyStateV65;if(!state||state.scope!==prescriptionCopyScopeV65()||state.request!==prescriptionCopyRequestV65){closePrescriptionCopyV65();alert('看診對象已變更，請重新選擇處方。');return;}
+ if(!medicalEditAllowedV53()){closePrescriptionCopyV65();alert('此帳號沒有處方編輯權限。');return;}
+ const selected=state.choices.filter(c=>c.eligible&&c.checkbox.checked);if(!selected.length){alert('請至少勾選一筆用藥。');return;}
+ const container=document.getElementById('prescriptionItemsContainer'),fragment=document.createDocumentFragment();
+ for(const c of selected){const p={...c.p,medicine_id:c.med.id};loadedMedicinesMap[c.med.id]=c.med;fragment.append(makePrescriptionDraftRowV65(p));}
+ container.append(fragment);collectCurrentMedicalState();closePrescriptionCopyV65();
+ document.getElementById('prescriptionCopyFeedbackV65').textContent='已加入 '+selected.length+' 筆歷史用藥，請核對後儲存本次病歷。';container.scrollIntoView({block:'nearest',behavior:'smooth'});
+}
+
+</script>
+<div id="routeAddModalV66" class="modal-overlay" role="dialog" aria-modal="true" aria-labelledby="routeAddTitleV66"><div style="background:#fff;padding:24px;border-radius:12px;max-width:90vw;width:460px"><h3 id="routeAddTitleV66">新增給藥方式</h3><label for="routeAddNameV66">方式名稱（例如：鼻腔滴入）</label><input id="routeAddNameV66" type="text" maxlength="30" style="width:100%;margin:8px 0"><label for="routeAddKindV66">結帳分類</label><select id="routeAddKindV66"><option value="other">其他用藥（含霧化／外用）</option><option value="oral">口服藥</option><option value="injection">針劑</option></select><p id="routeAddStatusV66" role="status"></p><button id="routeAddSaveV66" type="button" class="btn-success" onclick="savePrescriptionRouteV66()">儲存並選用</button> <button type="button" class="btn-secondary" onclick="document.getElementById('routeAddModalV66').style.display='none'">關閉</button></div></div>
+<script id="prescriptionRoutesV66">
+const prescriptionRouteDefaultsV66=[
+ {name:'口服錠劑',kind:'oral',calc:'tablet'},{name:'口服膠囊',kind:'oral',calc:'tablet'},
+ {name:'口服液',kind:'oral',calc:'manual'},{name:'口服懸浮液',kind:'oral',calc:'manual'},
+ {name:'皮下注射',kind:'injection',calc:'ratio'},{name:'肌肉注射',kind:'injection',calc:'ratio'},{name:'靜脈注射',kind:'injection',calc:'ratio'},
+ {name:'外用滴劑',kind:'other',calc:'manual'},{name:'外用藥膏',kind:'other',calc:'manual'},
+ {name:'眼藥水',kind:'other',calc:'manual'},{name:'眼藥膏',kind:'other',calc:'manual'},{name:'耳藥水',kind:'other',calc:'manual'},{name:'耳藥膏',kind:'other',calc:'manual'},
+ {name:'霧化吸入',kind:'other',calc:'manual'}
+];
+let prescriptionRoutesV66=[...prescriptionRouteDefaultsV66],prescriptionRouteSavingV66=false;
+function renderPrescriptionRoutesV66(custom=[]){
+ const previous=document.getElementById('medRouteDetailSelect').value;
+ const safe=Array.isArray(custom)?custom.filter(x=>x&&typeof x.name==='string'&&['oral','injection','other'].includes(x.kind)):[];
+ const map=new Map(prescriptionRouteDefaultsV66.map(x=>[x.name,x]));for(const x of safe)if(!map.has(x.name))map.set(x.name,{name:x.name,kind:x.kind,calc:'manual'});
+ prescriptionRoutesV66=[...map.values()];const select=document.getElementById('medRouteDetailSelect');select.replaceChildren(new Option('-- 請選擇實際給藥方式 --',''));for(const r of prescriptionRoutesV66)select.add(new Option(r.name,r.name));if(map.has(previous))select.value=previous;
+}
+function prescriptionRouteV66(){return prescriptionRoutesV66.find(x=>x.name===document.getElementById('medRouteDetailSelect').value);}
+function prescriptionKindV66(name){return prescriptionRoutesV66.find(x=>x.name===String(name||'').match(/^\[([^\]]+)\]/)?.[1])?.kind||'';}
+function openPrescriptionRouteAddV66(){if(!medicalEditAllowedV53()){alert('此帳號沒有處方編輯權限。');return;}document.getElementById('routeAddStatusV66').textContent='新增後同院共用；自訂方式請手填劑量與數量。';document.getElementById('routeAddModalV66').style.display='flex';document.getElementById('routeAddNameV66').focus();}
+async function savePrescriptionRouteV66(){
+ if(prescriptionRouteSavingV66)return;if(!medicalEditAllowedV53()){alert('此帳號沒有處方編輯權限。');return;}
+ const name=document.getElementById('routeAddNameV66').value.trim(),kind=document.getElementById('routeAddKindV66').value,status=document.getElementById('routeAddStatusV66');
+ if(!name||name.length>30||/[\[\]\r\n]/.test(name)){status.textContent='名稱請填 1～30 字，不含中括號或換行。';return;}
+ if(prescriptionRoutesV66.some(x=>x.name===name)){status.textContent='此方式已存在，直接在下拉選單選用即可。';return;}
+ const tenant=CURRENT_TENANT_ID,user=CURRENT_USER?.id;prescriptionRouteSavingV66=true;document.getElementById('routeAddSaveV66').disabled=true;status.textContent='儲存中…';
+ try{const {data,error}=await _supabase.rpc('add_prescription_route_v66',{p_name:name,p_kind:kind});if(tenant!==CURRENT_TENANT_ID||user!==CURRENT_USER?.id)return;if(error)throw error;if(!Array.isArray(data))throw Error('儲存回應不完整，請重新載入核對。');renderPrescriptionRoutesV66(data);status.textContent='已儲存，其他醫師重新載入後可選用。';document.getElementById('routeAddNameV66').value='';if(document.getElementById('routeAddModalV66').style.display==='flex'){document.getElementById('medRouteDetailSelect').value=name;preservePrescriptionRouteForVisit=true;onRouteDetailChanged();}}
+ catch(error){if(tenant===CURRENT_TENANT_ID&&user===CURRENT_USER?.id)status.textContent='未儲存：'+(error.message||error)+'。請確認已執行 v66 SQL，或稍後重试。';}
+ finally{prescriptionRouteSavingV66=false;document.getElementById('routeAddSaveV66').disabled=false;}
+}
+renderPrescriptionRoutesV66();
 
 </script>
 </body></html>
