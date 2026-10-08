@@ -929,7 +929,7 @@ body.role-no-appointment #nav-online_booking{display:none!important}
                             <button class="btn-warning" style="padding: 6px 14px; font-size: 0.85rem; background-color: #0284c7;" onclick="admitCurrentPetToHospital()">🏥 轉入住院觀察 (Admit)</button>
                             <button class="btn-warning" style="padding: 6px 14px; font-size: 0.85rem;" onclick="goToVaccinesFromMedical()">💉 前往疫苗施打登錄</button>
                             <button class="btn-warning" style="padding: 6px 14px; font-size: 0.85rem;" onclick="goToLabManagerFromMedical()">🩸 前往血球/生化檢驗登錄</button>
-<button type="button" class="btn-secondary" style="padding:6px 14px;font-size:.85rem" onclick="goToImagingFromMedicalV61()">🩻 圖片／影片上傳</button>
+<button type="button" class="btn-secondary" style="padding:6px 14px;font-size:.85rem" onclick="goToImagingFromMedicalV61()">🩻 既有影像／QR 分享／上傳</button>
 <button type="button" id="medicalOpenDiagnosticExchange" class="btn-secondary" style="padding:6px 14px;font-size:.85rem;" onclick="goToDiagnosticExchangeFromMedical()">🔌 檢驗／影像中心（匯入報告）</button>
                             <button class="btn-warning" style="padding: 6px 14px; font-size: 0.85rem;" onclick="goToRapidTestsFromMedical()">🦠 前往快篩檢驗登錄</button><button type="button" onclick="openNewPetForCurrentOwner()">🐾 替此飼主新增寵物</button><button type="button" onclick="goToProductsFromMedical()">🛒 此飼主購買商品</button>
                         </div>
@@ -13765,13 +13765,13 @@ function imShareStatusV76(text,error=false){const e=document.getElementById('im7
 function imShareClearV76(){imShareV76.revision++;imShareV76.scope=imShareScopeV76();imShareV76.pet='';imShareV76.assets=[];imShareV76.pending=null;imShareV76.current=null;imShareV76.busy=false;for(const id of ['im76-assets','im76-history'])document.getElementById(id).replaceChildren();document.getElementById('im76-qr-modal').hidden=true;document.getElementById('im76-qr-image').removeAttribute('src');document.getElementById('im76-link').value='';document.getElementById('im76-create').disabled=false;for(const el of document.querySelectorAll('#im76-days,#im76-load'))el.disabled=false;document.getElementById('im76-copy-status').textContent='';imShareStatusV76('先選擇寵物，再按「讀取可分享的 X 光」。');}
 function imShareEnsureV76(){if(imShareV76.scope!==imShareScopeV76())imShareClearV76();return imShareScopeV76();}
 function imShareDateV76(value){const d=new Date(value);return Number.isFinite(d.getTime())?d.toLocaleString('zh-TW'):'日期未填';}
-async function imShareLoadV76(){
+async function imShareLoadV76(studyId=null){
  const scope=imShareEnsureV76(),pet=imagingV61.pet;
  if(!imShareAllowedV76()||!pet){imShareStatusV76('請先選擇寵物，並確認有看診權限。',true);return;}
  if(imShareV76.busy)return;
  const rev=++imShareV76.revision;imShareV76.assets=[];imShareV76.pending=null;const box=document.getElementById('im76-assets');box.replaceChildren();imShareStatusV76('正在讀取 X 光影像…');
  try{
-  const studies=await _supabase.from('imaging_studies').select('id,pet_id,tenant_id,study_date,body_part,modality').eq('tenant_id',CURRENT_TENANT_ID).eq('pet_id',pet.id).eq('modality','XRAY').order('study_date',{ascending:false}).limit(50);
+  let studyQuery=_supabase.from('imaging_studies').select('id,pet_id,tenant_id,study_date,body_part,modality').eq('tenant_id',CURRENT_TENANT_ID).eq('pet_id',pet.id).eq('modality','XRAY');if(studyId)studyQuery=studyQuery.eq('id',studyId);const studies=await studyQuery.order('study_date',{ascending:false}).limit(50);
   if(studies.error)throw studies.error;if(scope!==imShareScopeV76()||rev!==imShareV76.revision)return;
   const byStudy=new Map((studies.data||[]).filter(s=>s.pet_id===pet.id&&s.tenant_id===CURRENT_TENANT_ID&&s.modality==='XRAY').map(s=>[s.id,s]));
   if(!byStudy.size){imShareStatusV76('此寵物尚無 X 光。請先選 X 光並上傳 JPG／PNG。');await imShareHistoryV76(scope,rev);return;}
@@ -13828,6 +13828,67 @@ const imShareLogoutOriginalV76=logoutSupabase;logoutSupabase=async function(...a
 _supabase.auth.onAuthStateChange(()=>{if(imShareV76.scope!==imShareScopeV76())imShareClearV76();});
 
 const imShareCurrentOriginalV76=useCurrentImagingPetV61;useCurrentImagingPetV61=async function(...args){imShareClearV76();const result=await imShareCurrentOriginalV76.apply(this,args);imShareEnsureV76();return result;};
+
+</script>
+<script id="medicalImageShareV762">
+/* v76.2: load persisted images when selecting a pet, including old studies. */
+let imagingShareLoadPromiseV762=null;
+let imagingShareTargetV762=null;
+const imagingShareSelectOriginalV762=selectImagingPetV61;
+selectImagingPetV61=function(p){
+ const result=imagingShareSelectOriginalV762.apply(this,arguments);
+ if(imagingV61.pet?.id===p.id&&!imagingV61.draft&&!imagingV61.busy){
+  const target=imagingShareTargetV762;
+  const study=target&&target.scope===imagingScopeV61()&&target.pet===p.id?target.study:null;
+  imagingShareTargetV762=null;
+  const load=imShareLoadV76(study),revision=imShareV76.revision;
+  imagingShareLoadPromiseV762=load.then(()=>{
+   if(study&&revision===imShareV76.revision&&imagingV61.pet?.id===p.id&&target.scope===imagingScopeV61()){
+    [...document.querySelectorAll('#im76-assets .im76-select')].forEach((check,i)=>check.checked=i<20);
+    if(imShareV76.assets.length)imShareStatusV76('已帶入這次檢查的 X 光，請確認勾選，再建立 QR Code；不必重新上傳。');
+   }
+  });
+ }
+ return result;
+};
+useCurrentImagingPetV61=async function(studyId=null){
+ if(imagingV61.draft||imagingV61.busy){imagingMessageV61('此筆上傳尚未完成，請先完成同一筆存檔。',true);return false;}
+ if(!currentPetId){imagingMessageV61('請先從門診選擇寵物，或使用上方搜尋。',true);return false;}
+ if(imagingV61.scope!==imagingScopeV61())imagingResetV61();
+ const scope=imagingScopeV61(),pet=currentPetId,rev=++imagingV61.searchRevision;
+ imagingV61.pet=null;imagingV61.listRevision++;imShareClearV76();
+ document.getElementById('im61-results').replaceChildren();document.getElementById('im61-list').replaceChildren();
+ document.getElementById('im61-pet').textContent='正在帶入門診寵物與既有影像…';
+ try{
+  const {data,error}=await _supabase.from('pets').select('id,name,species,owners(name,mobile,owner_code,system_code)').eq('tenant_id',CURRENT_TENANT_ID).eq('id',pet).single();
+  if(scope!==imagingScopeV61()||pet!==currentPetId||rev!==imagingV61.searchRevision)return false;
+  if(error||!data||data.id!==pet)throw error||Error('找不到此寵物資料。');
+  imagingShareTargetV762=studyId?{scope,pet,study:studyId}:null;
+  selectImagingPetV61({...data,owner_name:data.owners?.name,owner_mobile:data.owners?.mobile,owner_code:data.owners?.owner_code,system_code:data.owners?.system_code});
+  await imagingShareLoadPromiseV762;
+  if(scope!==imagingScopeV61()||pet!==currentPetId||rev!==imagingV61.searchRevision)return false;
+  imagingMessageV61('已帶入門診寵物。下方可使用既有 X 光建立分享，不必重新上傳。');return true;
+ }catch(e){if(scope===imagingScopeV61()&&rev===imagingV61.searchRevision)imagingMessageV61('既有影像帶入失敗：'+e.message,true);return false;}
+};
+goToImagingFromMedicalV61=async function(studyId=null,expectedPet=currentPetId){
+ if(!currentPetId||expectedPet!==currentPetId){alert('目前寵物已變更，請重新開啟影像紀錄。');return false;}
+ if(imagingV61.draft||imagingV61.busy){alert('上一筆影像上傳尚未完成，請先完成存檔。');return false;}
+ if(imagingV61.scope!==imagingScopeV61())imagingResetV61();
+ const scope=imagingScopeV61();
+ if(imagingOriginalMedicalNavigationV611()===false)return false;
+ const loaded=await useCurrentImagingPetV61(studyId);
+ if(loaded&&scope===imagingScopeV61()&&expectedPet===currentPetId){document.getElementById('im76-panel').scrollIntoView({block:'start'});return true;}
+ return false;
+};
+const imagingShareAppendOriginalV762=appendPatientImageRecord;
+appendPatientImageRecord=function(container,record,nativeStudy=false){
+ imagingShareAppendOriginalV762.apply(this,arguments);
+ if(nativeStudy&&record.modality==='XRAY'&&record.pet_id===currentPetId&&record.tenant_id===CURRENT_TENANT_ID){
+  const item=container.lastElementChild,scope=imagingScopeV61(),pet=currentPetId;
+  const button=imagingElementV61('button','📱 使用這次 X 光建立 QR Code');button.type='button';button.className='btn-secondary';button.style.marginTop='10px';
+  button.onclick=()=>{if(scope===imagingScopeV61()&&pet===currentPetId)goToImagingFromMedicalV61(record.id,pet);};item.appendChild(button);
+ }
+};
 
 </script>
 </body></html>
