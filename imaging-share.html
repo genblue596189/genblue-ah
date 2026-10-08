@@ -1,0 +1,39 @@
+<!doctype html><html lang="zh-Hant"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="referrer" content="no-referrer"><meta name="robots" content="noindex,nofollow,noarchive"><title>X 光影像分享</title><style>
+*{box-sizing:border-box}body{margin:0;background:#f6f7f2;color:#273a30;font:16px/1.65 system-ui,-apple-system,"Microsoft JhengHei",sans-serif}main{max-width:1100px;margin:auto;padding:24px 16px}header{margin-bottom:18px}h1{font-size:26px;margin:0 0 6px}p{margin:8px 0}button{border:1px solid #b8cbbb;border-radius:9px;background:white;color:#274532;padding:10px 16px;font:inherit;cursor:pointer}button:disabled{opacity:.5;cursor:default}button.active{background:#325d45;color:white}#status{padding:14px;background:#e8eee1;border-radius:10px}#viewer[hidden], [hidden]{display:none!important}.tools,#choices{display:flex;flex-wrap:wrap;gap:8px;margin:12px 0}.stage{overflow:auto;background:#101410;border-radius:12px;max-height:75vh;min-height:180px;text-align:center}#xray{display:block;max-width:none;width:100%;height:auto;margin:auto}#info{color:#56665a}footer{font-size:14px;color:#687669;margin-top:22px}input[type=range]{width:150px}label{display:flex;gap:8px;align-items:center}@media(max-width:600px){main{padding:18px 12px}h1{font-size:23px}.tools button{flex:1;padding:9px;font-size:15px}}
+</style></head><body><main><header><h1>X 光影像分享</h1><p id="patient"></p><p id="expiry"></p></header><p id="status" role="status" aria-live="polite">正在讀取分享影像…</p><section id="viewer" hidden><div id="choices" aria-label="選擇影像"></div><p id="info"></p><div class="tools"><button id="prev" type="button">上一張</button><button id="next" type="button">下一張</button><button id="reload" type="button">重新載入</button><button id="download" type="button">下載影像</button><label>放大 <input id="zoom" type="range" min="100" max="400" value="100" step="25" aria-label="影像放大比例"></label></div><div class="stage" id="stage"><img id="xray" alt="X 光影像" referrerpolicy="no-referrer"></div></section><button type="button" id="retry" hidden>重試讀取</button><footer>此頁只顯示醫院選定分享的 X 光影像。持有連結的人可以查看，請妥善保管；需要醫療說明請聯絡醫院。</footer></main>
+<script id="imagingShareViewerV76">
+const PROJECT_URL='https://rfprsbftkwtwjqrjcalq.supabase.co';
+const ENDPOINT=PROJECT_URL+'/functions/v1/imaging-share-v76';
+const TOKEN=location.hash.slice(1),$=id=>document.getElementById(id);
+let shared=null,index=0,loadedAt=0,busy=false,expiryTimer=null,downloadBusy=false;
+function status(text){$('status').textContent=text;}
+function scheduleExpiry(){if(expiryTimer)clearTimeout(expiryTimer);if(!shared)return;const remaining=new Date(shared.expires_at)-new Date();if(remaining<=0){fail('這份分享已到期。',false);return;}expiryTimer=setTimeout(scheduleExpiry,Math.min(2147483647,remaining));}
+function reset(){shared=null;$('viewer').hidden=true;$('xray').removeAttribute('src');$('choices').replaceChildren();$('patient').textContent='';$('expiry').textContent='';if(expiryTimer)clearTimeout(expiryTimer);}
+function fail(text,retry=true){reset();status(text);$('retry').hidden=!retry;}
+function dateText(v){const d=new Date(v);return Number.isFinite(d.getTime())?d.toLocaleString('zh-TW'):'未填日期';}
+function validImage(a){try{const u=new URL(a.url);return ['image/jpeg','image/png'].includes(a.mime)&&u.protocol==='https:'&&u.origin===new URL(PROJECT_URL).origin;}catch{return false;}}
+async function load(keepIndex=true){
+ if(busy)return false;if(!/^[0-9a-f]{64}$/.test(TOKEN)){fail('連結不完整，請重新掃描醫院提供的 QR Code。',false);return false;}
+ busy=true;$('retry').hidden=true;status('正在讀取分享影像…');
+ try{
+  const response=await fetch(ENDPOINT,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({token:TOKEN}),cache:'no-store',referrerPolicy:'no-referrer'});
+  let data;try{data=await response.json();}catch{throw Error('分享服務尚未啟用，請聯絡醫院。');}
+  if(!response.ok){fail(data.error||'這份分享不存在、已到期或已停止。',response.status>=500);return false;}
+  if(!data||!Array.isArray(data.images)||!data.images.length||data.images.length>20||!data.images.every(validImage)||!Number.isFinite(new Date(data.expires_at).getTime()))throw Error('影像資料不完整，請聯絡醫院。');
+  if(new Date(data.expires_at)<=new Date()){fail('這份分享已到期。',false);return false;}
+  shared=data;loadedAt=Date.now();index=keepIndex?Math.min(index,data.images.length-1):0;
+  $('patient').textContent='寵物：'+data.pet_name+'｜共 '+data.images.length+' 張 X 光';$('expiry').textContent='分享到期：'+dateText(data.expires_at);
+  $('choices').replaceChildren();data.images.forEach((a,i)=>{const b=document.createElement('button');b.type='button';b.textContent=a.label;b.onclick=()=>choose(i);$('choices').appendChild(b);});
+  $('viewer').hidden=false;show();scheduleExpiry();return true;
+ }catch(e){fail(e.message||'網路連線失敗，請稍後再試。');return false;}
+ finally{busy=false;}
+}
+function show(){if(!shared)return;const a=shared.images[index];$('info').textContent=a.label+'｜'+dateText(a.study_date)+'｜'+(a.body_part||'未填部位');$('zoom').value='100';$('xray').style.width='100%';$('xray').src=a.url;$('xray').alt=a.label;[...$('choices').children].forEach((b,i)=>b.classList.toggle('active',i===index));$('prev').disabled=index===0;$('next').disabled=index===shared.images.length-1;status('影像載入中…');}
+async function choose(i){if(!shared||busy)return;index=Math.max(0,Math.min(i,shared.images.length-1));if(Date.now()-loadedAt>45000)await load();else show();}
+$('xray').onload=()=>status('可使用放大滑桿查看細節，也可下載影像。');
+$('xray').onerror=()=>status('影像暫時無法開啟，請按「重新載入」。');
+$('zoom').oninput=()=>{$('xray').style.width=$('zoom').value+'%';};
+$('prev').onclick=()=>choose(index-1);$('next').onclick=()=>choose(index+1);$('reload').onclick=()=>load();$('retry').onclick=()=>load();
+$('download').onclick=async()=>{if(!shared||busy||downloadBusy)return;downloadBusy=true;$('download').disabled=true;try{if(!await load())return;const a=shared.images[index],response=await fetch(a.url,{cache:'no-store',referrerPolicy:'no-referrer'});if(!response.ok)throw Error('下載失敗，請重新載入後再試。');const blob=await response.blob();if(!['image/jpeg','image/png'].includes(blob.type))throw Error('影像檔案類型不正確，請聯絡醫院。');const url=URL.createObjectURL(blob),link=document.createElement('a');link.href=url;link.download='X光影像_'+(index+1)+(a.mime==='image/png'?'.png':'.jpg');document.body.appendChild(link);link.click();link.remove();setTimeout(()=>URL.revokeObjectURL(url),60000);status('已送出下載，請查看手機或電腦的下載檔案。');}catch(e){status(e.message);}finally{downloadBusy=false;$('download').disabled=false;}};
+load(false);
+</script></body></html>
