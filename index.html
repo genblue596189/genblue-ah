@@ -6162,7 +6162,7 @@ async function loadOwnersAndPetsIntegrated() {
         }
 
         // 一鍵資料備份 v1：完整原始 JSON 以文字保存，避免數值精度改變。
-        const CLINIC_BACKUP_TABLES = ["appointments", "audit_logs", "breed_images", "breeds", "categories", "clinic_settings", "clinic_trials", "controlled_drug_counts", "diagnostic_devices", "diagnostic_import_jobs", "diagnostic_results", "imaging_assets", "imaging_share_tokens", "imaging_studies", "inpatients", "inventory_movements", "invoice_items", "invoices", "item_categories", "items", "lab_reports", "lab_tests", "legacy_medical_histories", "medical_records", "medicines", "owner_code_counters", "owners", "pets", "rapid_test_records", "rapid_types", "regulated_drug_transactions", "regulated_lots", "regulatory_report_batch_transactions", "regulatory_report_batches", "report_export_profiles", "user_profiles", "vaccination_records", "vaccine_types"];
+        const CLINIC_BACKUP_TABLES = ["appointments", "audit_logs", "breed_images", "breeds", "categories", "clinic_settings", "clinic_trials", "controlled_drug_counts", "diagnostic_devices", "diagnostic_import_jobs", "diagnostic_results", "imaging_assets", "imaging_share_tokens", "imaging_shares_v76", "imaging_studies", "inpatients", "inventory_movements", "invoice_items", "invoices", "item_categories", "items", "lab_reports", "lab_tests", "legacy_medical_histories", "medical_records", "medicines", "owner_code_counters", "owners", "pets", "rapid_test_records", "rapid_types", "regulated_drug_transactions", "regulated_lots", "regulatory_report_batch_transactions", "regulatory_report_batches", "report_export_profiles", "user_profiles", "vaccination_records", "vaccine_types"];
         let clinicBackupBusy = false;
         let clinicBackupController = null;
         let clinicBackupDownloadUrl = null;
@@ -6170,7 +6170,8 @@ async function loadOwnersAndPetsIntegrated() {
         function validateClinicBackupSnapshot(snapshot, expectedTenant) {
             if (!snapshot || snapshot.format !== 'genblue-clinic-snapshot' || ![1,2,3].includes(snapshot.format_version)) throw new Error('不是支援的 genblue 醫院資料備份。');
             if (!snapshot.tenant_id || (expectedTenant && snapshot.tenant_id !== expectedTenant)) throw new Error('备份的醫院代碼與目前登入醫院不同。');
-            const expectedTables=snapshot.tables && Object.prototype.hasOwnProperty.call(snapshot.tables,'breed_images') ? CLINIC_BACKUP_TABLES : CLINIC_BACKUP_TABLES.filter(name=>name!=='breed_images');
+            // v76.4: accept earlier archives while retaining the exact known-table check.
+            const expectedTables=CLINIC_BACKUP_TABLES.filter(name=>!['breed_images','imaging_shares_v76'].includes(name)||Object.prototype.hasOwnProperty.call(snapshot.tables||{},name));
             if (!snapshot.tables || snapshot.table_count !== expectedTables.length+(snapshot.format_version>=2?3:0)+(snapshot.format_version===3?5:0) ||
                 Object.keys(snapshot.tables).sort().join('|') !== [...expectedTables].sort().join('|')) throw new Error('資料表範圍不完整或版本不同。');
             if(snapshot.format_version===3)validateStorageBackupV62(snapshot);else if (snapshot.attachments?.mode !== 'verified_none_v1' || snapshot.attachments.patient_file_references !== 0 || snapshot.attachments.non_html_storage_objects !== 0) throw new Error('此備份含尚未支援的附件範圍。');
@@ -7058,7 +7059,7 @@ function runDetailedMathCalculation(){
             const routeDetail = document.getElementById('medRouteDetailSelect').value;
             const route=prescriptionRouteV66();if(!route){alert('請選擇實際給藥方式。');return;}
             const doseText=document.getElementById('medCustomRecDose').value.trim();if(!doseText){alert('請填寫使用劑量。');return;}
-            const customDose = doseText + (route.calc==='tablet'?' mg/kg':route.calc==='ratio'?' ml/kg':'');
+            const customDose = formatPrescriptionDoseV763(doseText,route);
             const qty = document.getElementById('medPrescribeQty').value;
             if (!Number.isFinite(Number(qty)) || Number(qty) <= 0) { alert('實際開立數量須大於零'); return; }
             const note = route.kind==='injection'?'':document.getElementById('medPrescribeNote').value || '';
@@ -10735,7 +10736,7 @@ startClinicDataBackup=async function(options={}){
  try{
  let handle;if(!options.scheduledArchiveV72&&typeof window.showSaveFilePicker==='function')handle=await window.showSaveFilePicker({suggestedName:'genblue_'+tenant.replace(/[^A-Za-z0-9_-]/g,'_')+'_'+new Date().toISOString().replace(/[^0-9]/g,'').slice(0,14)+'_含影像.zip',types:[{description:'院內資料與影像備份',accept:{'application/zip':['.zip']}}]});
  ensure();setStage('正在取得本院資料、線上預約與原始檔清單…');
- const {data,error}=await _supabase.rpc('genblue_export_clinic_backup_v62',{p_expected_tenant:tenant}).abortSignal(controller.signal);if(error)throw Error(error.message);ensure();if(typeof data!=='string')throw Error('備份函式版本不符');const snapshot=JSON.parse(data);validateClinicBackupSnapshot(snapshot,tenant);if(snapshot.format_version!==3)throw Error('請安裝 v62 備份 SQL');
+ const {data,error}=await _supabase.rpc('genblue_export_clinic_backup_v62',{p_expected_tenant:tenant}).abortSignal(controller.signal);if(error)throw Error(error.message);ensure();if(typeof data!=='string')throw Error('備份函式版本不符');const snapshot=JSON.parse(data);validateClinicBackupSnapshot(snapshot,tenant);if(snapshot.format_version!==3)throw Error('請安裝 v62 備份 SQL');if(!snapshot.tables.imaging_shares_v76)throw Error('請先執行 v76.4 備份範圍更新 SQL，納入影像 QR 分享資料後再備份');
  const files=snapshot.attachments.objects;
  const estimated=snapshot.attachments.total_bytes+new TextEncoder().encode(data).length+1048576;
  if(estimated>(handle?2*1024*1024*1024:512*1024*1024))throw Error(handle?'備份超過本版 2 GB 限制。':'備份超過 512 MB，請在電腦 Chrome／Edge 使用直接儲存功能。');
@@ -10917,7 +10918,7 @@ function applyPrescriptionCopyV65(){
 const prescriptionRouteDefaultsV66=[
  {name:'口服錠劑',kind:'oral',calc:'tablet'},{name:'口服膠囊',kind:'oral',calc:'tablet'},
  {name:'口服液',kind:'oral',calc:'manual'},{name:'口服懸浮液',kind:'oral',calc:'manual'},
- {name:'皮下注射',kind:'injection',calc:'ratio'},{name:'肌肉注射',kind:'injection',calc:'ratio'},{name:'靜脈注射',kind:'injection',calc:'ratio'},
+ {name:'皮下/肌肉注射',kind:'injection',calc:'ratio'},{name:'皮下／肌肉注射',kind:'injection',calc:'ratio'},{name:'皮下注射',kind:'injection',calc:'ratio'},{name:'肌肉注射',kind:'injection',calc:'ratio'},{name:'靜脈注射',kind:'injection',calc:'ratio'},
  {name:'外用滴劑',kind:'other',calc:'manual'},{name:'外用藥膏',kind:'other',calc:'manual'},
  {name:'眼藥水',kind:'other',calc:'manual'},{name:'眼藥膏',kind:'other',calc:'manual'},{name:'耳藥水',kind:'other',calc:'manual'},{name:'耳藥膏',kind:'other',calc:'manual'},
  {name:'霧化吸入',kind:'other',calc:'manual'}
@@ -13821,7 +13822,7 @@ async function imShareCreateV76(){
 async function imShareRevokeV76(id,scope){if(scope!==imShareScopeV76()||!imShareAllowedV76()||!confirm('停止這份影像分享？飼主將無法重新開啟。'))return;try{const {error}=await _supabase.rpc('manage_imaging_share_v76',{p_action:'revoke',p_data:{id}});if(scope!==imShareScopeV76())return;if(error)throw error;if(imShareV76.current?.id===id){document.getElementById('im76-qr-modal').hidden=true;imShareV76.current=null;}imShareStatusV76('已停止分享。已開啟或下載的影像不會從飼主裝置消失。');await imShareHistoryV76(scope);}catch(e){if(scope===imShareScopeV76())imShareStatusV76('停止分享失敗：'+e.message,true);}}
 async function imShareCopyV76(){const s=imShareV76.current;if(!s||s.scope!==imShareScopeV76())return;try{await navigator.clipboard.writeText(s.link);document.getElementById('im76-copy-status').textContent='已複製連結';}catch{document.getElementById('im76-link').select();document.getElementById('im76-copy-status').textContent='請按 Ctrl+C 複製連結';}}
 function imShareDownloadV76(){const s=imShareV76.current;if(!s||s.scope!==imShareScopeV76())return;const a=imagingElementV61('a');a.href=s.png;a.download='X光影像_QRCode.png';a.click();}
-function imSharePrintV76(){const s=imShareV76.current;if(!s||s.scope!==imShareScopeV76())return;const frame=document.createElement('iframe');frame.style.cssText='position:fixed;width:0;height:0;border:0';document.body.appendChild(frame);const doc=frame.contentDocument;doc.open();doc.write('<!doctype html><html lang="zh-Hant"><head><meta charset="utf-8"><title>X 光影像分享</title><style>body{font-family:sans-serif;text-align:center;padding:30px}img{width:280px;height:280px}p{font-size:18px;overflow-wrap:anywhere}</style></head><body></body></html>');doc.close();const h=doc.createElement('h1');h.textContent='X 光影像分享';const p=doc.createElement('p');p.textContent=s.petName+'｜'+s.image_count+' 張｜到期 '+imShareDateV76(s.expires_at);const img=doc.createElement('img');img.alt='影像分享 QR Code';img.onload=()=>{frame.contentWindow.focus();frame.contentWindow.print();};img.src=s.png;const tip=doc.createElement('p');tip.textContent='請用手機相機掃描 QR Code 查看影像。';doc.body.append(h,p,img,tip);frame.contentWindow.onafterprint=()=>frame.remove();setTimeout(()=>frame.remove(),120000);}
+function imSharePrintV76(){const s=imShareV76.current;if(!s||s.scope!==imShareScopeV76())return;const frame=document.createElement('iframe');frame.style.cssText='position:fixed;width:0;height:0;border:0';document.body.appendChild(frame);const doc=frame.contentDocument;doc.open();doc.write('<!doctype html><html lang="zh-Hant"><head><meta charset="utf-8"><title>X 光影像分享</title><style>body{font-family:sans-serif;text-align:center;padding:30px}img{width:280px;height:280px}p{font-size:18px;overflow-wrap:anywhere}</style><\/head><body><\/body><\/html>');doc.close();const h=doc.createElement('h1');h.textContent='X 光影像分享';const p=doc.createElement('p');p.textContent=s.petName+'｜'+s.image_count+' 張｜到期 '+imShareDateV76(s.expires_at);const img=doc.createElement('img');img.alt='影像分享 QR Code';img.onload=()=>{frame.contentWindow.focus();frame.contentWindow.print();};img.src=s.png;const tip=doc.createElement('p');tip.textContent='請用手機相機掃描 QR Code 查看影像。';doc.body.append(h,p,img,tip);frame.contentWindow.onafterprint=()=>frame.remove();setTimeout(()=>frame.remove(),120000);}
 const imShareSelectOriginalV76=selectImagingPetV61;selectImagingPetV61=function(...args){const result=imShareSelectOriginalV76.apply(this,args);imShareEnsureV76();return result;};
 const imShareResetOriginalV76=imagingResetV61;imagingResetV61=function(...args){const result=imShareResetOriginalV76.apply(this,args);imShareClearV76();return result;};
 const imShareLogoutOriginalV76=logoutSupabase;logoutSupabase=async function(...args){imShareClearV76();return imShareLogoutOriginalV76.apply(this,args);};
@@ -13889,6 +13890,17 @@ appendPatientImageRecord=function(container,record,nativeStudy=false){
   button.onclick=()=>{if(scope===imagingScopeV61()&&pet===currentPetId)goToImagingFromMedicalV61(record.id,pet);};item.appendChild(button);
  }
 };
+
+</script>
+<script id="prescriptionDoseUnitV763">
+/* v76.3: explicit dose units for configured calculation routes. */
+function formatPrescriptionDoseV763(text,route){
+ const value=String(text??'').trim();
+ if(!/^(?:\d+(?:\.\d+)?|\.\d+)$/.test(value))return value;
+ if(route?.calc==='ratio')return /ml\s*\/\s*kg$/i.test(value)?value:value+' ml/kg';
+ if(route?.calc==='tablet')return /mg\s*\/\s*kg$/i.test(value)?value:value+' mg/kg';
+ return value;
+}
 
 </script>
 </body></html>
