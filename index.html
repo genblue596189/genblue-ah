@@ -806,7 +806,7 @@ body.role-no-appointment #nav-online_booking{display:none!important}
             </div>
 
             <!-- 1. 飼主與寵物整合管理 -->
-            <div id="owners_pets" class="tab-content">
+            <div id="owners_pets" class="tab-content"><section id="med792-context" class="card" hidden style="border:2px solid #8aaa71"><h3>由目前門診帶入的寵物</h3><p id="med792-patient"></p><div style="display:flex;gap:10px;align-items:end;flex-wrap:wrap"><label>晶片號碼（選填）<input id="med792-chip" type="text" maxlength="30" placeholder="輸入晶片號碼" style="display:block" onkeydown="if(event.key==='Enter'){event.preventDefault();saveMedicalPetChipV792();}"></label><button id="med792-save" type="button" onclick="saveMedicalPetChipV792()">儲存晶片號碼</button><button type="button" class="btn-secondary" onclick="backToMedicalFromPetEditV792()">← 返回原門診</button></div><p id="med792-status" role="status" aria-live="polite"></p></section>
                 <div class="card">
                     <h2>飼主與寵物關聯整合管理</h2>
                     
@@ -907,7 +907,7 @@ body.role-no-appointment #nav-online_booking{display:none!important}
             <div id="medical" class="tab-content"><div class="journal-page-heading"><div><div class="journal-eyebrow">ONE PET, ONE LITTLE STORY</div><h1>打開這位毛孩的病歷冊</h1></div><button type="button" class="journal-quiet" onclick="returnToWaitingWithoutSaveV75_4()">← 回候診（不儲存）</button></div>
                 <div class="card journal-book"><aside class="journal-book-left"><div class="journal-eyebrow">這次照顧的小夥伴</div><div id="medicalPetProfileCard" style="background: #e0f2fe; border: 1px solid #bae6fd; padding: 15px; border-radius: var(--radius); margin-bottom: 15px; display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 10px; font-size: 0.9rem; color: #0369a1;"><div id="journalMedicalAvatar" aria-label="品種示意"></div>
                         <div><b>🐾 名字：</b><span id="cardPetName">-</span></div>
-                        <div><b>🏷️ 晶片：</b><span id="cardPetChip">-</span></div>
+                        <div><b>🏷️ 晶片：</b><span id="cardPetChip">-</span></div><button id="med792-open" type="button" class="btn-secondary" onclick="goToOwnerPetFromMedicalV792()">修改寵物資料／晶片</button>
                         <div><b>⏳ 年紀：</b><span id="cardPetAge">-</span></div>
                         <div><b>⚧ 性別/結紮：</b><span id="cardPetGender">-</span></div>
                         <div><b>🐈 種類/品種：</b><span id="cardPetBreed">-</span></div>
@@ -1703,7 +1703,8 @@ body.role-no-appointment #nav-online_booking{display:none!important}
                             <button class="btn-danger" onclick="this.parentElement.remove(); calculateInvoiceTotal();" style="padding: 9px 12px;">刪除</button>
                         </div>
                     </div>
-                    <button class="btn-secondary" style="margin-bottom: 15px; margin-top: 10px;" onclick="addInvoiceRow()">+ 增加收費細項</button>
+                    <button class="btn-secondary" style="margin-bottom: 15px; margin-top: 10px;" onclick="addInvoiceRow()">+ 增加收費細項</button><button type="button" class="btn-secondary" style="margin:10px 0 15px 8px" onclick="billingPresetOpenV80()">☑ 選取常用收費項目</button>
+<details id="bp80-panel" ontoggle="if(this.open&&!billingPresetsV80.scope&&!billingPresetsV80.loading)billingPresetLoadV80()" style="border:1px solid #cbd8bf;border-radius:10px;padding:14px;margin-bottom:16px;background:#f7f9f3"><summary style="font-weight:bold;cursor:pointer">常用收費清單</summary><p>勾選後加入本次帳單，數量及金額仍可修改。檢驗、影像、快篩與疫苗費用沿用原本帶入流程。</p><div style="display:flex;gap:10px;flex-wrap:wrap;margin:12px 0"><input id="bp80-query" placeholder="項目名稱／代碼，Enter 搜尋" style="flex:1;min-width:180px" onkeydown="if(event.key==='Enter'){event.preventDefault();billingPresetRenderV80();}"><select id="bp80-category" style="max-width:180px" onchange="billingPresetRenderV80()"><option value="">全部分類</option></select><button type="button" class="btn-secondary" onclick="billingPresetRenderV80()">搜尋</button><button type="button" class="btn-secondary" onclick="billingPresetLoadV80()">重新讀取</button></div><div id="bp80-list" style="max-height:340px;overflow:auto">按「選取常用收費項目」讀取院內清單。</div><button type="button" style="margin-top:12px" onclick="billingPresetApplyV80()">加入勾選項目</button><p id="bp80-status" role="status" aria-live="polite"></p><details id="bp80-settings" hidden><summary>設定常用收費清單（管理者）</summary><fieldset id="bp80-settings-fields" style="border:0;padding:0;margin:12px 0"><p>填入院內常用的名稱與單價，儲存後各台電腦可共用。下方刪除項目只會修改常用清單，已建立帳單的明細保留。</p><div style="overflow:auto"><div id="bp80-editor" style="min-width:620px"></div></div><div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:12px"><button type="button" class="btn-secondary" onclick="billingPresetEditorRowV80()">＋ 新增常用項目</button><button type="button" class="btn-secondary" onclick="billingPresetImportInvoiceV80()">從目前手動收費明細帶入</button><button id="bp80-save" type="button" onclick="billingPresetSaveV80()">儲存常用清單</button></div></fieldset></details></details>
                     <div class="total-display">
                         <div class="sub-display"><span>小計金額: NT$ <span id="invoiceSubTotal">250</span></span></div>
                         <div class="sub-display"><span>- 折扣金額: NT$ <input type="number" id="invoiceDiscount" value="0" style="width: 80px; padding: 4px; text-align: right;" oninput="calculateInvoiceTotal()"></span></div>
@@ -1949,10 +1950,10 @@ body.role-no-appointment #nav-online_booking{display:none!important}
 <div class="form-group"><label for="im61-device">來源儀器（可不填）</label><select id="im61-device"><option value="">未指定儀器</option></select></div>
 <div class="form-group"><label for="im61-date">檢查時間</label><input id="im61-date" type="datetime-local" required></div>
 <div class="form-group"><label for="im61-body">檢查部位（可不填）</label><input id="im61-body" maxlength="200" placeholder="例如腹部、胸腔"></div>
-<div class="form-group span-4"><label for="im61-file">選擇圖片／影片</label><input id="im61-file" type="file" accept=".jpg,.jpeg,.png,.webp,.mp4,.mov,.webm" required><small>每次一個檔案，單檔上限 50 MB。影片能否直接播放取決於原始編碼；無法播放時可下載原檔。此版尚不支援 DICOM。</small></div>
+<div class="form-group span-4"><label for="im61-file">選擇圖片／影片／DICOM</label><button type="button" class="btn-secondary" id="im791-open-dicom" onclick="openDicomViewerV791()">DICOM 測量</button><input id="im61-file" type="file" accept=".jpg,.jpeg,.png,.webp,.mp4,.mov,.webm,.dcm,.dicom" required><small>每次一個檔案，單檔上限 50 MB。影片能否直接播放取決於原始編碼；無法播放時可下載原檔。DICOM 支援未壓縮、單張灰階 X 光，會自動轉為 PNG 分享；原始 DICOM 請保留在院內電腦。</small></div>
 <div class="form-group span-4"><label for="im61-note">臨床備註</label><textarea id="im61-note" maxlength="5000" rows="2"></textarea></div></div><button type="submit" id="im61-save" class="btn-success">上傳並儲存</button></form>
-<p id="im61-status" role="status" aria-live="polite">請先核對寵物與飼主，再選擇檔案。</p><details style="margin-top:14px"><summary>此寵物影像紀錄（最近 50 筆）</summary><button type="button" class="btn-secondary" onclick="loadImagingListV61()">重新讀取</button><div id="im61-list">請先選擇寵物。</div></details>
-<section id="im76-panel" style="margin-top:20px;padding:16px;border:1px solid #d4dfca;border-radius:10px;background:#f7f8f1"><h4>📱 X 光影像分享與 QR Code</h4><p>先上傳 JPG／PNG，再勾選要給飼主的影像。手機掃描後可查看、放大與下載。</p><button type="button" id="im76-load" class="btn-secondary" onclick="imShareLoadV76()">讀取可分享的 X 光</button><div id="im76-assets" style="max-height:300px;overflow:auto;margin:12px 0"></div><div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center"><label for="im76-days">分享期限</label><select id="im76-days" style="width:auto" onchange="imShareV76.pending=null"><option value="1">1 天</option><option value="7" selected>7 天</option><option value="30">30 天</option></select><button type="button" id="im76-create" onclick="imShareCreateV76()">建立影像分享與 QR Code</button></div><p id="im76-status" role="status" aria-live="polite">先選擇寵物，再按「讀取可分享的 X 光」。</p><details><summary>已建立的分享與停止分享</summary><div id="im76-history"></div><p style="font-size:.85rem">新分享建立後請下載或列印 QR Code；重新整理後可查期限、停止分享，或重新建立一份。持有連結的人可查看，請提供給正確飼主。</p></details></section>
+<div id="im79-cleanup" hidden style="padding:12px;border:1px solid #d59e56;margin:12px 0"><span id="im79-cleanup-label"></span> <button type="button" class="btn-secondary" onclick="retryImagingDeleteV79()">重試待完成刪除</button></div><p id="im61-status" role="status" aria-live="polite">請先核對寵物與飼主，再選擇檔案。</p><details style="margin-top:14px"><summary>此寵物影像紀錄（最近 50 筆）</summary><button type="button" class="btn-secondary" onclick="loadImagingListV61()">重新讀取</button><div id="im61-list">請先選擇寵物。</div></details>
+<section id="im76-panel" style="margin-top:20px;padding:16px;border:1px solid #d4dfca;border-radius:10px;background:#f7f8f1"><h4>📱 X 光影像分享與 QR Code</h4><p>先上傳 JPG／PNG／DICOM（自動轉 PNG），再勾選要給飼主的影像。手機掃描後可查看、放大與下載。</p><button type="button" id="im76-load" class="btn-secondary" onclick="imShareLoadV76()">更新可分享的 X 光</button><div id="im76-assets" style="max-height:300px;overflow:auto;margin:12px 0"></div><div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center"><label for="im76-days">分享期限</label><select id="im76-days" style="width:auto" onchange="imShareV76.pending=null"><option value="1">1 天</option><option value="7" selected>7 天</option><option value="30">30 天</option></select><button type="button" id="im76-create" onclick="imShareCreateV76()">建立影像分享與 QR Code</button></div><p id="im76-status" role="status" aria-live="polite">先選擇寵物，再按「讀取可分享的 X 光」。</p><details><summary>已建立的分享與停止分享</summary><div id="im76-history"></div><p style="font-size:.85rem">新分享建立後請下載或列印 QR Code；重新整理後可查期限、停止分享，或重新建立一份。持有連結的人可查看，請提供給正確飼主。</p></details></section>
 <p style="font-size:.85rem;color:#64748b">上傳後，回門診展開「影像／附件」即可查閱。本版「資料備份」可一起保存圖片、影片原始檔。請保留下載的 ZIP，並完成檔案檢查。</p></div>
                 <div class="card">
                     <h3>資料交換流程</h3>
@@ -10664,6 +10665,7 @@ async function saveImagingV61(event){
  const {data,error}=await _supabase.rpc('save_imaging_upload_v61',d.params);if(scope!==imagingScopeV61())return;if(error)throw error;if(!data?.saved)throw new Error('伺服器尚未確認存檔完成。');
  imagingV61.draft=null;imagingLockV61(false);document.getElementById('im61-file').value='';document.getElementById('im61-note').value='';document.getElementById('im61-body').value='';document.getElementById('im61-date').value=imagingLocalNowV61();document.getElementById('im61-save').textContent='上傳並儲存';imagingMessageV61('已儲存，可繼續為同一隻寵物上傳下一個檔案。');
  loadImagingListV61();refreshOpenCurrentPetHistory('imaging');loadDiagnosticExchangeCenter();
+ if(d.params.p_modality==='XRAY')await imShareRefreshAfterUploadV781(scope,d.params.p_pet_id,d.params.p_asset_id,d.params.p_study_id);
  }catch(e){if(scope===imagingScopeV61()){imagingMessageV61('尚未確認完成：'+e.message+(imagingV61.draft?'。請按「重試同一筆」；保留此頁，不會重複建立紀錄。':''),true);if(imagingV61.draft)document.getElementById('im61-save').textContent='重試同一筆';}}
  finally{if(scope===imagingScopeV61()){imagingV61.busy=false;document.getElementById('im61-save').disabled=false;}}
 }
@@ -10678,7 +10680,7 @@ async function appendPrivateImageAssetsV61(container,study){
  if(!asset.storage_path?.startsWith(prefix)){row.appendChild(imagingElementV61('p','這是舊版附件路徑，尚未接通私人檔案預覽。'));container.appendChild(row);continue;}
  const btn=imagingElementV61('button','開啟／重新載入影像');btn.type='button';btn.className='btn-secondary';const preview=imagingElementV61('div');
  btn.onclick=async()=>{btn.disabled=true;try{const {data:signed,error}=await _supabase.storage.from('clinic-imaging').createSignedUrl(asset.storage_path,3600);if(error)throw error;if(scope!==imagingScopeV61()||!row.isConnected)return;const url=new URL(signed.signedUrl);if(url.protocol!=='https:'||url.origin!==new URL(SUPABASE_URL).origin)throw new Error('檔案網址不符預期');preview.replaceChildren();const media=imagingElementV61(asset.mime_type?.startsWith('video/')?'video':'img');media.src=url.href;media.style.cssText='display:block;max-width:100%;max-height:550px;margin:10px 0;background:#111;';if(media.tagName==='VIDEO'){media.controls=true;media.preload='metadata';media.playsInline=true;}else media.alt='寵物檢查影像';media.onerror=()=>{const p=imagingElementV61('p','瀏覽器無法預覽此編碼，請下載原始檔，用電腦播放器開啟。');preview.appendChild(p);};preview.appendChild(media);const a=imagingElementV61('a','下載原始檔／另開視窗');a.href=url.href;a.target='_blank';a.rel='noopener noreferrer';a.download=asset.original_filename||'';preview.appendChild(a);}catch(e){if(scope===imagingScopeV61()){preview.replaceChildren(imagingElementV61('p','開啟失敗：'+e.message));}}finally{btn.disabled=false;}};
- row.append(btn,preview);container.appendChild(row);
+ row.append(btn,preview);if(imShareAllowedV76())row.appendChild(imagingDeleteButtonV79(asset,study));container.appendChild(row);
  }
  }catch(e){if(scope===imagingScopeV61()&&container.isConnected)status.textContent='影像附件讀取失敗：'+e.message;}
 }
@@ -13766,7 +13768,7 @@ function imShareStatusV76(text,error=false){const e=document.getElementById('im7
 function imShareClearV76(){imShareV76.revision++;imShareV76.scope=imShareScopeV76();imShareV76.pet='';imShareV76.assets=[];imShareV76.pending=null;imShareV76.current=null;imShareV76.busy=false;for(const id of ['im76-assets','im76-history'])document.getElementById(id).replaceChildren();document.getElementById('im76-qr-modal').hidden=true;document.getElementById('im76-qr-image').removeAttribute('src');document.getElementById('im76-link').value='';document.getElementById('im76-create').disabled=false;for(const el of document.querySelectorAll('#im76-days,#im76-load'))el.disabled=false;document.getElementById('im76-copy-status').textContent='';imShareStatusV76('先選擇寵物，再按「讀取可分享的 X 光」。');}
 function imShareEnsureV76(){if(imShareV76.scope!==imShareScopeV76())imShareClearV76();return imShareScopeV76();}
 function imShareDateV76(value){const d=new Date(value);return Number.isFinite(d.getTime())?d.toLocaleString('zh-TW'):'日期未填';}
-async function imShareLoadV76(studyId=null){
+async function imShareLoadV76(studyId=null,extraStudyId=null){
  const scope=imShareEnsureV76(),pet=imagingV61.pet;
  if(!imShareAllowedV76()||!pet){imShareStatusV76('請先選擇寵物，並確認有看診權限。',true);return;}
  if(imShareV76.busy)return;
@@ -13775,13 +13777,19 @@ async function imShareLoadV76(studyId=null){
   let studyQuery=_supabase.from('imaging_studies').select('id,pet_id,tenant_id,study_date,body_part,modality').eq('tenant_id',CURRENT_TENANT_ID).eq('pet_id',pet.id).eq('modality','XRAY');if(studyId)studyQuery=studyQuery.eq('id',studyId);const studies=await studyQuery.order('study_date',{ascending:false}).limit(50);
   if(studies.error)throw studies.error;if(scope!==imShareScopeV76()||rev!==imShareV76.revision)return;
   const byStudy=new Map((studies.data||[]).filter(s=>s.pet_id===pet.id&&s.tenant_id===CURRENT_TENANT_ID&&s.modality==='XRAY').map(s=>[s.id,s]));
+  // Include a just-uploaded backdated study even when it is outside the latest 50.
+  if(extraStudyId&&!byStudy.has(extraStudyId)){
+   const extra=await _supabase.from('imaging_studies').select('id,pet_id,tenant_id,study_date,body_part,modality').eq('tenant_id',CURRENT_TENANT_ID).eq('pet_id',pet.id).eq('modality','XRAY').eq('id',extraStudyId).maybeSingle();
+   if(extra.error)throw extra.error;if(scope!==imShareScopeV76()||rev!==imShareV76.revision)return;
+   const study=extra.data;if(study&&study.pet_id===pet.id&&study.tenant_id===CURRENT_TENANT_ID&&study.modality==='XRAY')byStudy.set(study.id,study);
+  }
   if(!byStudy.size){imShareStatusV76('此寵物尚無 X 光。請先選 X 光並上傳 JPG／PNG。');await imShareHistoryV76(scope,rev);return;}
-  const assets=await _supabase.from('imaging_assets').select('id,study_id,tenant_id,storage_path,mime_type,original_filename,file_size').eq('tenant_id',CURRENT_TENANT_ID).in('study_id',[...byStudy.keys()]).in('mime_type',['image/jpeg','image/png']).order('created_at',{ascending:true}).limit(1001);
+  const assets=await _supabase.from('imaging_assets').select('id,study_id,tenant_id,storage_path,mime_type,original_filename,file_size').eq('tenant_id',CURRENT_TENANT_ID).in('study_id',[...byStudy.keys()]).in('mime_type',['image/jpeg','image/png']).order('created_at',{ascending:false}).limit(1001);
   if(assets.error)throw assets.error;if(scope!==imShareScopeV76()||rev!==imShareV76.revision)return;
   const list=(assets.data||[]).filter(a=>{const s=byStudy.get(a.study_id);return s&&a.tenant_id===CURRENT_TENANT_ID&&['image/jpeg','image/png'].includes(a.mime_type)&&a.storage_path?.startsWith(CURRENT_TENANT_ID+'/'+pet.id+'/'+s.id+'/')&&a.file_size>0&&a.file_size<=52428800;}).slice(0,1000);
   imShareV76.assets=list;imShareV76.pet=pet.id;
-  for(const a of list){const s=byStudy.get(a.study_id),label=imagingElementV61('label'),check=imagingElementV61('input');check.type='checkbox';check.value=a.id;check.className='im76-select';check.style.width='auto';check.onchange=()=>{imShareV76.pending=null;};label.style.cssText='display:flex;gap:10px;align-items:center;padding:10px;border-bottom:1px solid #dfe6d7';label.append(check,imagingElementV61('span',imShareDateV76(s.study_date)+'｜'+(s.body_part||'未填部位')+'｜'+(a.original_filename||'X 光影像')));box.appendChild(label);}
-  imShareStatusV76(list.length?'請勾選本次要給飼主的影像，最多 20 張。'+(assets.data?.length>1000?'此處只顯示前 1000 張。':''):'沒有可分享的 JPG／PNG X 光附件。');await imShareHistoryV76(scope,rev);
+  for(const a of list){const s=byStudy.get(a.study_id),label=imagingElementV61('label'),check=imagingElementV61('input');check.type='checkbox';check.value=a.id;check.className='im76-select';check.style.width='auto';check.onchange=()=>{imShareV76.pending=null;};label.style.cssText='display:flex;gap:10px;align-items:center;padding:10px;border-bottom:1px solid #dfe6d7';label.append(check,imagingElementV61('span',imShareDateV76(s.study_date)+'｜'+(s.body_part||'未填部位')+'｜'+(a.original_filename||'X 光影像')));if(imShareAllowedV76())label.appendChild(imagingDeleteButtonV79(a,s));box.appendChild(label);}
+  imShareStatusV76(list.length?'請勾選本次要給飼主的影像，最多 20 張。'+(assets.data?.length>1000?'此處顯示最新 1000 張。':''):'沒有可分享的 JPG／PNG X 光附件。');await imShareHistoryV76(scope,rev);
  }catch(e){if(scope===imShareScopeV76()&&rev===imShareV76.revision)imShareStatusV76('讀取失敗：'+e.message,true);}
 }
 async function imShareHistoryV76(scope=imShareScopeV76(),rev=imShareV76.revision){
@@ -13901,6 +13909,323 @@ function formatPrescriptionDoseV763(text,route){
  if(route?.calc==='tablet')return /mg\s*\/\s*kg$/i.test(value)?value:value+' mg/kg';
  return value;
 }
+
+</script>
+<script id="dicomImportV77">
+/* v77: uncompressed Explicit VR Little Endian, single-frame grayscale DICOM. */
+function parseDicomV77(buffer){
+ const v=new DataView(buffer),bytes=new Uint8Array(buffer),long=new Set(['OB','OD','OF','OL','OV','OW','SQ','UC','UR','UT','UN','SV','UV']);
+ const str=(p,n)=>new TextDecoder('ascii').decode(bytes.subarray(p,p+n)).replace(/\0/g,'').trim();
+ if(buffer.byteLength<132||str(128,4)!=='DICM')throw Error('不是支援的 DICOM Part 10 檔案。');
+ let p=132,pixel=null,syntax='',tags=new Map();
+ while(p+8<=buffer.byteLength){
+  const g=v.getUint16(p,true),e=v.getUint16(p+2,true),vr=str(p+4,2),wide=long.has(vr),h=wide?12:8;
+  if(!/^[A-Z]{2}$/.test(vr)||p+h>buffer.byteLength)throw Error('DICOM 元素格式不符。');
+  const n=wide?v.getUint32(p+8,true):v.getUint16(p+6,true),start=p+h;
+  if(n===0xffffffff)throw Error('此 DICOM 使用壓縮影像或未定長度序列，此版尚未支援。');
+  if(start+n>buffer.byteLength)throw Error('DICOM 檔案不完整。');
+  if(g===2&&e===16){syntax=str(start,n);if(syntax!=='1.2.840.10008.1.2.1')throw Error('此版支援未壓縮 Explicit VR Little Endian DICOM；此檔編碼尚未支援。');}
+  if(g===0x28)tags.set(e,{vr,start,n});
+  if(g===0x7fe0&&e===0x10){pixel={start,n};break;}
+  p=start+n;
+ }
+ const num=(e,fallback)=>{const t=tags.get(e);if(!t)return fallback;if(t.vr==='US'&&t.n===2)return v.getUint16(t.start,true);if(t.vr==='SS'&&t.n===2)return v.getInt16(t.start,true);return Number(str(t.start,t.n).split('\\')[0]);};
+ const text=e=>{const t=tags.get(e);return t?str(t.start,t.n):'';};
+ const rows=num(16),cols=num(17),bits=num(256),stored=num(257),high=num(258),signed=num(259),samples=num(2),frames=num(8,1),photo=text(4),slope=num(1053,1),intercept=num(1052,0);
+ if(syntax!=='1.2.840.10008.1.2.1'||!pixel)throw Error('找不到支援的 DICOM 像素資料。');
+ if(frames!==1||samples!==1||!['MONOCHROME1','MONOCHROME2'].includes(photo))throw Error('此版只支援單張灰階 X 光；彩色或多張影像尚未支援。');
+ if(!Number.isInteger(rows)||!Number.isInteger(cols)||rows<1||cols<1||rows*cols>16000000||![8,16].includes(bits)||!Number.isInteger(stored)||stored<1||stored>bits||high!==stored-1||![0,1].includes(signed)||!Number.isFinite(slope)||slope===0||!Number.isFinite(intercept))throw Error('DICOM 像素規格尚未支援。');
+ if(tags.has(0x3000)||tags.has(0x3010)||tags.has(0x2000)||tags.has(0x1220))throw Error('此檔含灰階／色彩查表，此版尚未支援。');
+ const voi=text(0x1056);if(voi&&voi!=='LINEAR')throw Error('此檔的灰階轉換尚未支援。');
+ const count=rows*cols,required=count*(bits/8);if(pixel.n!==required+(required%2))throw Error('DICOM 像素長度不符。');
+ const values=new Float32Array(count),mask=2**stored-1,sign=2**(stored-1),range=2**stored;
+ let lo=Infinity,hi=-Infinity;
+ for(let i=0;i<count;i++){let x=(bits===8?bytes[pixel.start+i]:v.getUint16(pixel.start+i*2,true))&mask;if(signed&&x>=sign)x-=range;x=x*slope+intercept;values[i]=x;lo=Math.min(lo,x);hi=Math.max(hi,x);}
+ let center=num(1050,NaN),width=num(1051,NaN);const windowed=Number.isFinite(center)&&Number.isFinite(width)&&width>=1;
+ const rgba=new Uint8ClampedArray(count*4);
+ for(let i=0;i<count;i++){const x=values[i];let y;
+  if(windowed)y=width===1?(x>center-.5?255:0):((x-(center-.5))/(width-1)+.5)*255;
+  else y=hi>lo?(x-lo)/(hi-lo)*255:0;
+  y=Math.max(0,Math.min(255,y));if(photo==='MONOCHROME1')y=255-y;
+  const j=i*4;rgba[j]=rgba[j+1]=rgba[j+2]=Math.round(y);rgba[j+3]=255;
+ }
+ return {rows,cols,rgba,stored,photo};
+}
+async function convertDicomV77(file){
+ if(!file.size||file.size>50*1024*1024)throw Error('DICOM 單檔上限 50 MB。');
+ const d=parseDicomV77(await file.arrayBuffer()),canvas=document.createElement('canvas');canvas.width=d.cols;canvas.height=d.rows;
+ const ctx=canvas.getContext('2d');if(!ctx)throw Error('瀏覽器無法轉換影像。');ctx.putImageData(new ImageData(d.rgba,d.cols,d.rows),0,0);
+ const blob=await new Promise(resolve=>canvas.toBlob(resolve,'image/png'));canvas.width=canvas.height=0;
+ if(!blob||blob.size>50*1024*1024)throw Error('轉換 PNG 失敗或超過 50 MB。');
+ return new File([blob],file.name.replace(/\.(dcm|dicom)$/i,'')+'_QR.png',{type:'image/png'});
+}
+const saveImagingOriginalV77=saveImagingV61;
+saveImagingV61=async function(event){
+ event?.preventDefault();if(imagingV61.busy)return;
+ const input=document.getElementById('im61-file'),file=input.files[0];
+ if(imagingV61.draft||!file||!/\.(dcm|dicom)$/i.test(file.name))return saveImagingOriginalV77(event);
+ if(!imagingV61.pet){imagingMessageV61('請先選擇寵物。',true);return;}
+ if(!document.getElementById('im61-form').reportValidity())return;
+ if(document.getElementById('im61-modality').value!=='XRAY'){imagingMessageV61('DICOM 分享請先選擇「X 光」。',true);return;}
+ const scope=imagingScopeV61();imagingV61.busy=true;imagingLockV61(true);document.getElementById('im61-save').disabled=true;
+ let ready=false;
+ try{
+  imagingMessageV61('正在將 DICOM 轉成手機可查看的 PNG…請保持頁面開啟。');
+  const converted=await convertDicomV77(file);if(scope!==imagingScopeV61())return;
+  const transfer=new DataTransfer();transfer.items.add(converted);input.files=transfer.files;ready=true;
+ }catch(e){if(scope===imagingScopeV61())imagingMessageV61('DICOM 尚未上傳：'+e.message,true);}
+ finally{if(scope===imagingScopeV61()){imagingV61.busy=false;imagingLockV61(false);document.getElementById('im61-save').disabled=false;}}
+ if(ready&&scope===imagingScopeV61())return saveImagingOriginalV77(event);
+};
+
+</script>
+<script id="imagingRefreshV781">
+/* v78.1: refresh share candidates only after the server confirms an upload. */
+async function imShareRefreshAfterUploadV781(scope,petId,assetId,studyId){
+ if(scope!==imagingScopeV61()||imagingV61.pet?.id!==petId)return;
+ const shareScope=imShareScopeV76();
+ if(imShareV76.busy){imagingMessageV61('影像已儲存。分享建立完成後，按「更新可分享的 X 光」即可讀取新圖。');return;}
+ const selected=new Set([...document.querySelectorAll('#im76-assets .im76-select:checked')].map(el=>el.value));
+ try{
+  const load=imShareLoadV76(null,studyId),revision=imShareV76.revision;await load;
+  if(scope!==imagingScopeV61()||shareScope!==imShareScopeV76()||revision!==imShareV76.revision||imagingV61.pet?.id!==petId)return;
+  const checks=[...document.querySelectorAll('#im76-assets .im76-select')];
+  let count=0;for(const check of checks){check.checked=selected.has(check.value)&&count<20;if(check.checked)count++;}
+  const added=checks.find(check=>check.value===assetId);
+  if(added){if(!added.checked&&count<20)added.checked=true;imShareV76.pending=null;imShareStatusV76(added.checked?'新圖片已出現在清單並勾選，請確認後建立 QR Code。':'新圖片已出現在清單；已勾選 20 張，請調整後再建立 QR Code。');}
+  else imagingMessageV61('影像已儲存。分享清單未讀到新圖，請按「更新可分享的 X 光」重試；不用重新登入。');
+ }catch(e){if(scope===imagingScopeV61()&&shareScope===imShareScopeV76())imagingMessageV61('影像已儲存，分享清單更新失敗：'+e.message+'。請按「更新可分享的 X 光」重試。',true);}
+}
+
+</script>
+<script id="imagingDeleteV79">
+/* v79: scoped deletion, persistent cleanup retry, Storage API for physical files. */
+let imagingDeleteBusyV79=false;
+function imagingDeleteKeyV79(){return 'genblue-imaging-delete-v79:'+CURRENT_TENANT_ID+':'+CURRENT_USER?.id;}
+function imagingDeleteTasksV79(){const data=JSON.parse(localStorage.getItem(imagingDeleteKeyV79())||'[]');if(!Array.isArray(data))throw Error('待清理紀錄格式不符');return data;}
+function imagingDeleteWriteV79(tasks){localStorage.setItem(imagingDeleteKeyV79(),JSON.stringify(tasks));}
+function imagingDeleteBadgeV79(){const el=document.getElementById('im79-cleanup');if(!el)return;try{const count=imShareAllowedV76()?imagingDeleteTasksV79().length:0;el.hidden=!count;document.getElementById('im79-cleanup-label').textContent='有 '+count+' 筆影像刪除待完成。';}catch{el.hidden=false;document.getElementById('im79-cleanup-label').textContent='無法讀取待清理紀錄，請保留此頁。';}}
+function imagingDeleteParamsV79(task,action){return {p_action:action,p_asset_id:task.assetId,p_study_id:task.studyId,p_pet_id:task.petId,p_expected_path:task.path};}
+async function imagingDeleteCompleteV79(task,scope){
+ if(scope!==imagingScopeV61())throw Error('登入帳號已變更，請登入原帳號後重試');
+ const prefix=CURRENT_TENANT_ID+'/'+task.petId+'/'+task.studyId+'/'+task.assetId+'.';
+ if(!task.path?.startsWith(prefix)||!['jpg','png','webp','mp4','mov','webm'].includes(task.path.slice(prefix.length)))throw Error('附件路徑不符');
+ const {data,error}=await _supabase.rpc('delete_imaging_asset_v79',imagingDeleteParamsV79(task,'delete'));if(error)throw error;
+ if(scope!==imagingScopeV61())throw Error('登入帳號已變更，請登入原帳號後重試');
+ if(!data?.deleted||data.asset_id!==task.assetId||data.pet_id!==task.petId||data.storage_path!==task.path)throw Error('伺服器尚未確認附件刪除');
+ const removed=await _supabase.storage.from('clinic-imaging').remove([task.path]);if(removed.error)throw Error('影像紀錄已刪除，雲端檔案待清理：'+removed.error.message);
+ if(scope!==imagingScopeV61())throw Error('登入帳號已變更，請登入原帳號後重試');
+ // Storage DELETE can silently skip a policy-filtered object. Confirm absence via listing.
+ const slash=task.path.lastIndexOf('/'),folder=task.path.slice(0,slash),name=task.path.slice(slash+1);
+ const listed=await _supabase.storage.from('clinic-imaging').list(folder,{search:name,limit:100});if(listed.error)throw Error('檔案清理結果尚未確認：'+listed.error.message);
+ if((listed.data||[]).some(obj=>obj.name===name))throw Error('雲端檔案尚未清除，請重試清理');
+ if(scope!==imagingScopeV61())throw Error('登入帳號已變更，請登入原帳號後重試');
+ imagingDeleteWriteV79(imagingDeleteTasksV79().filter(x=>x.assetId!==task.assetId));imagingDeleteBadgeV79();
+}
+async function imagingDeleteRefreshV79(scope,petId){
+ if(scope!==imagingScopeV61())return;
+ if(imagingV61.pet?.id===petId){loadImagingListV61();imShareV76.pending=null;imShareV76.current=null;document.getElementById('im76-qr-modal').hidden=true;await imShareLoadV76();}
+ if(scope===imagingScopeV61())refreshOpenCurrentPetHistory('imaging');
+}
+async function deleteImagingAssetV79(asset){
+ if(!imShareAllowedV76()||imagingDeleteBusyV79||imagingV61.busy||imagingV61.draft||imShareV76.busy){imagingMessageV61('請先完成目前的影像上傳或分享操作。',true);return;}
+ const scope=imagingScopeV61();imagingDeleteBusyV79=true;imagingV61.busy=true;imagingLockV61(true);document.getElementById('im61-save').disabled=true;
+ try{
+  const prepared=await _supabase.rpc('delete_imaging_asset_v79',imagingDeleteParamsV79(asset,'prepare'));if(prepared.error)throw prepared.error;if(scope!==imagingScopeV61())return;
+  const data=prepared.data;if(data?.asset_id!==asset.assetId||data.pet_id!==asset.petId||data.storage_path!==asset.path)throw Error('附件資料已變更，請更新清單');
+  if(!confirm('刪除「'+(data.filename||asset.name||'影像附件')+'」？\n會刪除這個雲端附件，並停止所有包含它的 QR 分享（目前有效 '+data.active_shares+' 份）。\n保留檢查紀錄；已下載到其他裝置的副本不會消失。'))return;
+  if(scope!==imagingScopeV61())return;
+  // Persist before metadata deletion, so a lost response remains retryable after reload.
+  const tasks=imagingDeleteTasksV79();if(!tasks.some(x=>x.assetId===asset.assetId))imagingDeleteWriteV79([...tasks,asset]);imagingDeleteBadgeV79();
+  imagingMessageV61('正在刪除影像附件與雲端檔案…');await imagingDeleteCompleteV79(asset,scope);
+  imagingMessageV61('影像附件與雲端檔案已刪除，相關 QR 分享已停止。');
+ }catch(e){if(scope===imagingScopeV61())imagingMessageV61('刪除尚未全部完成：'+e.message+'。若下方有待完成提示，請按「重試待完成刪除」。',true);}
+ finally{if(scope===imagingScopeV61()){imagingV61.busy=false;imagingLockV61(false);document.getElementById('im61-save').disabled=false;imagingDeleteBadgeV79();}imagingDeleteBusyV79=false;try{await imagingDeleteRefreshV79(scope,asset.petId);}catch(e){if(scope===imagingScopeV61())imagingMessageV61('請更新影像清單：'+e.message,true);}}
+}
+async function retryImagingDeleteV79(){
+ if(!imShareAllowedV76()||imagingDeleteBusyV79||imagingV61.busy||imagingV61.draft||imShareV76.busy)return;
+ const scope=imagingScopeV61();imagingDeleteBusyV79=true;imagingV61.busy=true;imagingLockV61(true);document.getElementById('im61-save').disabled=true;
+ try{for(const task of imagingDeleteTasksV79()){if(scope!==imagingScopeV61())return;await imagingDeleteCompleteV79(task,scope);}imagingMessageV61('待完成刪除已全部處理。');}
+ catch(e){if(scope===imagingScopeV61())imagingMessageV61('仍有刪除待完成：'+e.message,true);}
+ finally{if(scope===imagingScopeV61()){imagingV61.busy=false;imagingLockV61(false);document.getElementById('im61-save').disabled=false;imagingDeleteBadgeV79();}imagingDeleteBusyV79=false;try{await imagingDeleteRefreshV79(scope,imagingV61.pet?.id);}catch(e){if(scope===imagingScopeV61())imagingMessageV61('請更新影像清單：'+e.message,true);}}
+}
+function imagingDeleteButtonV79(asset,study){const b=imagingElementV61('button','刪除附件');b.type='button';b.className='btn-danger';const scope=imagingScopeV61();b.onclick=e=>{e?.preventDefault();e?.stopPropagation();if(scope===imagingScopeV61())deleteImagingAssetV79({assetId:asset.id,studyId:study.id,petId:study.pet_id,name:asset.original_filename,path:asset.storage_path});};return b;}
+const imagingDeleteSwitchV79=switchTab;switchTab=function(...args){const result=imagingDeleteSwitchV79.apply(this,args);imagingDeleteBadgeV79();return result;};
+_supabase.auth.onAuthStateChange(()=>imagingDeleteBadgeV79());imagingDeleteBadgeV79();
+
+</script>
+<div id="im791-dicom-modal" hidden style="position:fixed;inset:0;background:#101820;z-index:12000" role="dialog" aria-modal="true" aria-label="DICOM 測量"><div style="height:64px;display:flex;align-items:center;justify-content:space-between;gap:12px;padding:10px 16px;background:#203444;color:#fff"><span>院內 DICOM 測量｜暫時關閉會保留標記</span><div style="display:flex;gap:8px"><button type="button" class="btn-secondary" onclick="importSelectedDicomV791()">重新帶入目前檔案</button><button id="im791-close-dicom" type="button" onclick="closeDicomViewerV791()">返回院務</button></div></div><iframe id="im791-dicom-frame" title="DICOM 影像測量" style="display:block;width:100%;height:calc(100% - 64px);border:0;background:#111923"></iframe></div>
+<script id="dicomEmbeddedV791">
+/* v79.1: self-contained DICOM viewer in an in-page dialog. */
+const dicomEmbeddedHtmlV791="\u003c!doctype html>\n\u003chtml lang=\"zh-Hant\">\u003chead>\u003cmeta charset=\"utf-8\">\u003cmeta name=\"viewport\" content=\"width=device-width, initial-scale=1\">\u003ctitle>genblue AH｜DICOM 測量試用 v78\u003c/title>\n\u003cstyle>\n*{box-sizing:border-box}body{margin:0;background:#111923;color:#edf4f4;font:16px system-ui,sans-serif}main{max-width:1450px;margin:auto;padding:20px}h1{font-size:24px;margin:0 0 10px}p{line-height:1.6}header p{color:#aab8c5;margin:8px 0}button,input{font:inherit}button{padding:9px 13px;border:1px solid #45576a;border-radius:7px;background:#243344;color:#edf4f4;cursor:pointer}button:hover{background:#354a60}button:disabled{opacity:.4;cursor:default}button[aria-pressed=true],.primary{background:#176d5c;border-color:#4db99c}.toolbar{display:flex;gap:8px;flex-wrap:wrap;margin:12px 0;align-items:center}label{display:inline-flex;gap:8px;align-items:center}input{background:#1d2937;border:1px solid #516376;border-radius:5px;padding:8px;color:#fff}input[type=number]{width:115px}input[type=file]{max-width:100%}.workspace{display:grid;grid-template-columns:minmax(0,1fr) 270px;gap:16px}#viewport{width:100%;height:65vh;min-height:400px;display:block;background:#080d12;border:1px solid #425468;border-radius:8px;touch-action:none}aside{padding:15px;background:#1b2836;border-radius:8px}aside h2{font-size:18px;margin-top:0}#measurements{list-style:none;padding:0}#measurements li{padding:9px 0;border-bottom:1px solid #344659;overflow-wrap:anywhere}#measurements button{font-size:13px;padding:4px 8px}#units{color:#ffd58b;font-size:14px}.note{padding:12px;background:#28352c;border:1px solid #536e50;border-radius:8px;font-size:14px}#status{min-height:26px;color:#82ddc5}.error{color:#ff9e99!important}dialog{max-width:470px;border:1px solid #587083;border-radius:12px;background:#1b2836;color:#fff;padding:24px}dialog::backdrop{background:#000a}dialog h2{margin-top:0;font-size:20px}:focus-visible{outline:3px solid #80dacc;outline-offset:3px}@media(max-width:900px){.workspace{grid-template-columns:1fr}#viewport{height:58vh;min-height:320px}main{padding:12px}}\n\u003c/style>\u003c/head>\u003cbody>\u003cmain>\n\u003cheader>\u003ch1>DICOM 測量\u003c/h1>\u003cp>在此電腦開啟原檔，調整影像、量距離與面積。檔案不會上傳；關閉頁面後測量紀錄不保留。\u003c/p>\u003c/header>\n\u003clabel>選擇 DICOM \u003cinput id=\"file\" type=\"file\" accept=\".dcm,.dicom\">\u003c/label>\u003cp id=\"info\">\u003c/p>\n\u003cdiv class=\"toolbar\" aria-label=\"影像工具\">\u003cbutton data-tool=\"pan\" aria-pressed=\"true\">移動\u003c/button>\u003cbutton id=\"minus\">縮小 −\u003c/button>\u003cspan id=\"zoom\">—\u003c/span>\u003cbutton id=\"plus\">放大 ＋\u003c/button>\u003cbutton id=\"fit\">適合畫面\u003c/button>\u003cbutton data-tool=\"length\" aria-pressed=\"false\">距離（2 點）\u003c/button>\u003cbutton data-tool=\"angle\" aria-pressed=\"false\">角度（3 點）\u003c/button>\u003cbutton data-tool=\"area\" aria-pressed=\"false\">面積（圈選）\u003c/button>\u003cbutton id=\"finish\" disabled>完成圈選\u003c/button>\u003cbutton data-tool=\"calibrate\" aria-pressed=\"false\">校正毫米比例\u003c/button>\u003c/div>\n\u003cdiv class=\"toolbar\">\u003cbutton id=\"brighter\">亮一點\u003c/button>\u003cbutton id=\"darker\">暗一點\u003c/button>\u003cbutton id=\"contrast-up\">增加對比\u003c/button>\u003cbutton id=\"contrast-down\">降低對比\u003c/button>\u003clabel>窗位 \u003cinput id=\"center\" type=\"number\" step=\"any\">\u003c/label>\u003clabel>窗寬 \u003cinput id=\"width\" type=\"number\" min=\"1\" step=\"any\">\u003c/label>\u003cbutton id=\"window\">套用灰階\u003c/button>\u003cbutton id=\"auto-window\">重設灰階\u003c/button>\u003c/div>\n\u003cp id=\"status\" role=\"status\" aria-live=\"polite\">請選擇 DICOM 檔案。\u003c/p>\n\u003cdiv class=\"workspace\">\u003ccanvas id=\"viewport\" aria-label=\"DICOM 影像與測量畫布\">\u003c/canvas>\u003caside>\u003ch2>測量結果\u003c/h2>\u003cp id=\"units\">\u003c/p>\u003cul id=\"measurements\">\u003c/ul>\u003cdiv class=\"toolbar\">\u003cbutton id=\"undo\">退一步\u003c/button>\u003cbutton id=\"clear\">清除標記\u003c/button>\u003cbutton id=\"reset-calibration\">清除校正\u003c/button>\u003c/div>\u003cbutton id=\"export\" class=\"primary\" disabled>下載含測量標記的 PNG\u003c/button>\u003cp>下載後按上方「返回院務」，上傳這張 PNG，即可建立 QR Code。\u003c/p>\u003c/aside>\u003c/div>\n\u003cp class=\"note\">毫米校正：用影像中已知尺寸的尺或標記畫線，再輸入實際 mm。標記須與要測量的位置位於相同平面；X 光有投影放大，不能把偵測器像素間距直接當成動物的實際尺寸。尚未校正時僅顯示 pixel。面積請沿外緣順序圈選，避免交叉。此試用版支援未壓縮、單張灰階 DICOM；請以原廠檢視器核對，並保留原檔。\u003c/p>\n\u003cdialog id=\"calibration-dialog\">\u003cform id=\"calibration-form\">\u003ch2>輸入已知尺寸\u003c/h2>\u003cp>你剛畫的校正線，其實際長度是多少 mm？請使用與測量位置相同平面的標記。\u003c/p>\u003clabel>已知長度 \u003cinput id=\"known-mm\" type=\"number\" min=\"0.001\" step=\"any\" required> mm\u003c/label>\u003cp id=\"calibration-error\" class=\"error\" role=\"alert\">\u003c/p>\u003cdiv class=\"toolbar\">\u003cbutton type=\"submit\" class=\"primary\">套用校正\u003c/button>\u003cbutton id=\"cancel-calibration\" type=\"button\">取消\u003c/button>\u003c/div>\u003c/form>\u003c/dialog>\n\u003c/main>\u003cscript>\n/* v77: uncompressed Explicit VR Little Endian, single-frame grayscale DICOM. */\nfunction parseDicomV77(buffer){\n const v=new DataView(buffer),bytes=new Uint8Array(buffer),long=new Set(['OB','OD','OF','OL','OV','OW','SQ','UC','UR','UT','UN','SV','UV']);\n const str=(p,n)=>new TextDecoder('ascii').decode(bytes.subarray(p,p+n)).replace(/\\0/g,'').trim();\n if(buffer.byteLength\u003c132||str(128,4)!=='DICM')throw Error('不是支援的 DICOM Part 10 檔案。');\n let p=132,pixel=null,syntax='',tags=new Map();\n while(p+8\u003c=buffer.byteLength){\n  const g=v.getUint16(p,true),e=v.getUint16(p+2,true),vr=str(p+4,2),wide=long.has(vr),h=wide?12:8;\n  if(!/^[A-Z]{2}$/.test(vr)||p+h>buffer.byteLength)throw Error('DICOM 元素格式不符。');\n  const n=wide?v.getUint32(p+8,true):v.getUint16(p+6,true),start=p+h;\n  if(n===0xffffffff)throw Error('此 DICOM 使用壓縮影像或未定長度序列，此版尚未支援。');\n  if(start+n>buffer.byteLength)throw Error('DICOM 檔案不完整。');\n  if(g===2&&e===16){syntax=str(start,n);if(syntax!=='1.2.840.10008.1.2.1')throw Error('此版支援未壓縮 Explicit VR Little Endian DICOM；此檔編碼尚未支援。');}\n  if(g===0x28)tags.set(e,{vr,start,n});\n  if(g===0x7fe0&&e===0x10){pixel={start,n};break;}\n  p=start+n;\n }\n const num=(e,fallback)=>{const t=tags.get(e);if(!t)return fallback;if(t.vr==='US'&&t.n===2)return v.getUint16(t.start,true);if(t.vr==='SS'&&t.n===2)return v.getInt16(t.start,true);return Number(str(t.start,t.n).split('\\\\')[0]);};\n const text=e=>{const t=tags.get(e);return t?str(t.start,t.n):'';};\n const rows=num(16),cols=num(17),bits=num(256),stored=num(257),high=num(258),signed=num(259),samples=num(2),frames=num(8,1),photo=text(4),slope=num(1053,1),intercept=num(1052,0);\n if(syntax!=='1.2.840.10008.1.2.1'||!pixel)throw Error('找不到支援的 DICOM 像素資料。');\n if(frames!==1||samples!==1||!['MONOCHROME1','MONOCHROME2'].includes(photo))throw Error('此版只支援單張灰階 X 光；彩色或多張影像尚未支援。');\n if(!Number.isInteger(rows)||!Number.isInteger(cols)||rows\u003c1||cols\u003c1||rows*cols>16000000||![8,16].includes(bits)||!Number.isInteger(stored)||stored\u003c1||stored>bits||high!==stored-1||![0,1].includes(signed)||!Number.isFinite(slope)||slope===0||!Number.isFinite(intercept))throw Error('DICOM 像素規格尚未支援。');\n if(tags.has(0x3000)||tags.has(0x3010)||tags.has(0x2000)||tags.has(0x1220))throw Error('此檔含灰階／色彩查表，此版尚未支援。');\n const voi=text(0x1056);if(voi&&voi!=='LINEAR')throw Error('此檔的灰階轉換尚未支援。');\n const count=rows*cols,required=count*(bits/8);if(pixel.n!==required+(required%2))throw Error('DICOM 像素長度不符。');\n const values=new Float32Array(count),mask=2**stored-1,sign=2**(stored-1),range=2**stored;\n let lo=Infinity,hi=-Infinity;\n for(let i=0;i\u003ccount;i++){let x=(bits===8?bytes[pixel.start+i]:v.getUint16(pixel.start+i*2,true))&mask;if(signed&&x>=sign)x-=range;x=x*slope+intercept;values[i]=x;lo=Math.min(lo,x);hi=Math.max(hi,x);}\n let center=num(1050,NaN),width=num(1051,NaN);const windowed=Number.isFinite(center)&&Number.isFinite(width)&&width>=1;\n const rgba=new Uint8ClampedArray(count*4);\n for(let i=0;i\u003ccount;i++){const x=values[i];let y;\n  if(windowed)y=width===1?(x>center-.5?255:0):((x-(center-.5))/(width-1)+.5)*255;\n  else y=hi>lo?(x-lo)/(hi-lo)*255:0;\n  y=Math.max(0,Math.min(255,y));if(photo==='MONOCHROME1')y=255-y;\n  const j=i*4;rgba[j]=rgba[j+1]=rgba[j+2]=Math.round(y);rgba[j+3]=255;\n }\n return {rows,cols,rgba,stored,photo,values,lo,hi,center,width};\n}\n\n'use strict';\nfunction dicomDistanceV78(a,b){return Math.hypot(a.x-b.x,a.y-b.y);}\nfunction dicomAreaV78(points){let sum=0;for(let i=0;i\u003cpoints.length;i++){const a=points[i],b=points[(i+1)%points.length];sum+=a.x*b.y-b.x*a.y;}return Math.abs(sum)/2;}\nfunction dicomAngleV78(points){const [a,b,c]=points,u={x:a.x-b.x,y:a.y-b.y},v={x:c.x-b.x,y:c.y-b.y},den=Math.hypot(u.x,u.y)*Math.hypot(v.x,v.y);return den?Math.acos(Math.max(-1,Math.min(1,(u.x*v.x+u.y*v.y)/den)))*180/Math.PI:NaN;}\nconst viewerV78={image:null,file:null,scale:1,panX:0,panY:0,tool:'pan',pending:[],marks:[],mmPerPixel:null,drag:null,url:null};\nconst byIdV78=id=>document.getElementById(id);\nfunction statusV78(message,error=false){const el=byIdV78('status');el.textContent=message;el.className=error?'error':'';}\nfunction updateUnitsV78(){byIdV78('units').textContent=viewerV78.mmPerPixel?'已手動校正：'+viewerV78.mmPerPixel.toFixed(6)+' mm／pixel（限相同平面）':'尚未校正：距離顯示 pixel，面積顯示 pixel²';}\nfunction toolV78(tool){viewerV78.tool=tool;viewerV78.pending=[];viewerV78.drag=null;document.querySelectorAll('[data-tool]').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.tool===tool)));byIdV78('finish').disabled=tool!=='area';byIdV78('viewport').style.cursor=tool==='pan'?'grab':'crosshair';statusV78({pan:'拖曳移動；滑鼠滾輪可放大縮小。',length:'點兩個位置測量距離。',area:'依序點選邊界，再按「完成圈選」。',angle:'點三個位置，第二點為角度頂點。',calibrate:'點選已知尺寸標記的兩端，再輸入它的實際長度。'}[tool]);drawV78();}\nfunction fitV78(){if(!viewerV78.image)return;const c=byIdV78('viewport'),d=viewerV78.image;viewerV78.scale=Math.min(c.width/d.cols,c.height/d.rows)*.95;viewerV78.panX=(c.width-d.cols*viewerV78.scale)/2;viewerV78.panY=(c.height-d.rows*viewerV78.scale)/2;drawV78();}\nfunction resizeV78(){const c=byIdV78('viewport');c.width=Math.round(c.clientWidth);c.height=Math.round(c.clientHeight);fitV78();}\nfunction windowV78(){const d=viewerV78.image;if(!d)return;const center=Number(byIdV78('center').value),width=Number(byIdV78('width').value);if(!Number.isFinite(center)||!Number.isFinite(width)||width\u003c1){statusV78('窗寬必須大於或等於 1。',true);return;}\n const rgba=new Uint8ClampedArray(d.values.length*4);\n for(let i=0;i\u003cd.values.length;i++){let y=width===1?(d.values[i]>center-.5?255:0):((d.values[i]-(center-.5))/(width-1)+.5)*255;y=Math.max(0,Math.min(255,y));if(d.photo==='MONOCHROME1')y=255-y;const j=i*4;rgba[j]=rgba[j+1]=rgba[j+2]=Math.round(y);rgba[j+3]=255;}\n viewerV78.source.getContext('2d').putImageData(new ImageData(rgba,d.cols,d.rows),0,0);drawV78();}\nfunction markTextV78(mark){const s=viewerV78.mmPerPixel,pts=mark.points;\n if(mark.type==='angle'){const angle=dicomAngleV78(pts);return Number.isFinite(angle)?angle.toFixed(1)+'°':'無效角度';}\n if(mark.type==='area')return (dicomAreaV78(pts)*(s?s*s:1)).toFixed(2)+(s?' mm²':' pixel²');\n return (dicomDistanceV78(pts[0],pts[1])*(s||1)).toFixed(2)+(s?' mm':' pixel');}\nfunction paintMarksV78(ctx,map,marks,pending=[],font=16){ctx.save();ctx.lineWidth=2;ctx.font=font+'px sans-serif';ctx.lineJoin='round';let labelIndex=0;\n for(const mark of [...marks,...(pending.length?[{type:'pending',points:pending}]:[])]){const points=mark.points.map(map);ctx.strokeStyle=mark.type==='pending'?'#ffcf66':'#61f6d1';ctx.beginPath();points.forEach((p,i)=>i?ctx.lineTo(p.x,p.y):ctx.moveTo(p.x,p.y));if(mark.type==='area')ctx.closePath();ctx.stroke();for(const p of points){ctx.fillStyle=ctx.strokeStyle;ctx.beginPath();ctx.arc(p.x,p.y,3,0,Math.PI*2);ctx.fill();}\n  if(mark.type!=='pending'){const text=(++labelIndex)+'. '+markTextV78(mark),p=points[0],labelWidth=ctx.measureText(text).width+12,labelX=Math.max(0,Math.min(ctx.canvas.width-labelWidth,p.x+7)),labelY=Math.max(font+10,p.y-7-labelIndex*(font+10));ctx.fillStyle='rgba(0,0,0,.8)';ctx.fillRect(labelX,labelY-font-3,labelWidth,font+8);ctx.fillStyle='#fff';ctx.fillText(text,labelX+6,labelY);}}\n ctx.restore();}\nfunction drawV78(){const c=byIdV78('viewport'),ctx=c.getContext('2d');ctx.fillStyle='#080d12';ctx.fillRect(0,0,c.width,c.height);if(!viewerV78.image)return;\n ctx.drawImage(viewerV78.source,viewerV78.panX,viewerV78.panY,viewerV78.image.cols*viewerV78.scale,viewerV78.image.rows*viewerV78.scale);\n paintMarksV78(ctx,p=>({x:p.x*viewerV78.scale+viewerV78.panX,y:p.y*viewerV78.scale+viewerV78.panY}),viewerV78.marks,viewerV78.pending);\n byIdV78('zoom').textContent=Math.round(viewerV78.scale*100)+'%';}\nfunction listV78(){const box=byIdV78('measurements');box.replaceChildren();viewerV78.marks.forEach((mark,i)=>{const row=document.createElement('li'),b=document.createElement('button');row.textContent=(i+1)+'. '+({length:'距離',area:'面積',angle:'角度'}[mark.type])+'：'+markTextV78(mark)+' ';b.textContent='刪除';b.onclick=()=>{viewerV78.marks.splice(i,1);listV78();drawV78();};row.appendChild(b);box.appendChild(row);});updateUnitsV78();}\nfunction imagePointV78(e){const c=byIdV78('viewport'),rect=c.getBoundingClientRect();return {x:((e.clientX-rect.left)*c.width/rect.width-viewerV78.panX)/viewerV78.scale,y:((e.clientY-rect.top)*c.height/rect.height-viewerV78.panY)/viewerV78.scale};}\nfunction clickPointV78(e){if(!viewerV78.image||viewerV78.tool==='pan')return;const p=imagePointV78(e),d=viewerV78.image;if(p.x\u003c0||p.y\u003c0||p.x>=d.cols||p.y>=d.rows)return;\n const pts=viewerV78.pending;if(pts.length&&dicomDistanceV78(pts[pts.length-1],p)\u003c.01)return;pts.push(p);\n const tool=viewerV78.tool;if(tool==='calibrate'&&pts.length===2){const pixels=dicomDistanceV78(pts[0],pts[1]);if(pixels\u003c1){statusV78('校正線太短，請重新畫線。',true);viewerV78.pending=[];drawV78();return;}\n  byIdV78('calibration-dialog').showModal();byIdV78('known-mm').value='';byIdV78('known-mm').focus();\n }else if((tool==='length'&&pts.length===2)||(tool==='angle'&&pts.length===3)){if(tool==='angle'&&!Number.isFinite(dicomAngleV78(pts))){statusV78('角度的三個位置不能重合。',true);}else viewerV78.marks.push({type:tool,points:[...pts]});viewerV78.pending=[];listV78();}\n drawV78();}\nfunction finishAreaV78(){if(viewerV78.tool!=='area'||viewerV78.pending.length\u003c3){statusV78('面積至少需要三個位置。',true);return;}if(dicomAreaV78(viewerV78.pending)\u003c.01){statusV78('圈選範圍沒有面積，請重新選取。',true);return;}viewerV78.marks.push({type:'area',points:[...viewerV78.pending]});viewerV78.pending=[];listV78();drawV78();}\nfunction zoomV78(factor,x,y){if(!viewerV78.image)return;const c=byIdV78('viewport');x??=c.width/2;y??=c.height/2;const old=viewerV78.scale,next=Math.max(.02,Math.min(12,old*factor));viewerV78.panX=x-(x-viewerV78.panX)*next/old;viewerV78.panY=y-(y-viewerV78.panY)*next/old;viewerV78.scale=next;drawV78();}\nlet loadRevisionV78=0;\nasync function loadV78(file){if(!file)return;const revision=++loadRevisionV78;viewerV78.image=null;viewerV78.file=null;viewerV78.source=null;viewerV78.marks=[];viewerV78.pending=[];viewerV78.mmPerPixel=null;byIdV78('export').disabled=true;byIdV78('info').textContent='';listV78();drawV78();statusV78('讀取 DICOM 中…');\n try{if(!file.size||file.size>50*1024*1024)throw Error('檔案上限 50 MB。');const d=parseDicomV77(await file.arrayBuffer());if(revision!==loadRevisionV78)return;viewerV78.image=d;viewerV78.file=file;viewerV78.source=document.createElement('canvas');viewerV78.source.width=d.cols;viewerV78.source.height=d.rows;\n  byIdV78('center').value=Number.isFinite(d.center)?d.center:(d.lo+d.hi+1)/2;byIdV78('width').value=Number.isFinite(d.width)&&d.width>=1?d.width:Math.max(1,d.hi-d.lo+1);windowV78();fitV78();toolV78('pan');byIdV78('export').disabled=false;byIdV78('info').textContent=file.name+'｜'+d.cols+' × '+d.rows+'｜'+d.stored+' 位元灰階';statusV78('已開啟。可量 pixel；要量毫米，請先用已知尺寸標記校正。');\n }catch(e){if(revision===loadRevisionV78)statusV78('無法開啟：'+e.message,true);}}\nasync function exportV78(){if(!viewerV78.image)return;const d=viewerV78.image,canvas=document.createElement('canvas');canvas.width=d.cols;canvas.height=d.rows+100;const ctx=canvas.getContext('2d');ctx.drawImage(viewerV78.source,0,0);paintMarksV78(ctx,p=>p,viewerV78.marks,[],Math.max(18,Math.round(d.cols/100)));ctx.fillStyle='#111';ctx.fillRect(0,d.rows,d.cols,100);ctx.fillStyle='#fff';ctx.font='24px sans-serif';ctx.fillText('genblue AH｜DICOM 測量試用｜'+(viewerV78.mmPerPixel?'手動校正 '+viewerV78.mmPerPixel.toFixed(6)+' mm/pixel；限相同平面':'未校正：pixel 單位'),20,d.rows+38);ctx.fillText('僅為分享影像；請保留 DICOM 原檔與原廠檢視結果。',20,d.rows+76);\n const blob=await new Promise(resolve=>canvas.toBlob(resolve,'image/png'));if(!blob){statusV78('下載失敗，請重試。',true);return;}const url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download=viewerV78.file.name.replace(/\\.[^.]+$/,'')+'_測量.png';a.click();setTimeout(()=>URL.revokeObjectURL(url),30000);statusV78('已產生測量 PNG；可回院務系統上傳，再建立 QR Code。');}\nbyIdV78('file').onchange=e=>loadV78(e.target.files[0]);document.querySelectorAll('[data-tool]').forEach(b=>b.onclick=()=>toolV78(b.dataset.tool));byIdV78('fit').onclick=fitV78;byIdV78('plus').onclick=()=>zoomV78(1.25);byIdV78('minus').onclick=()=>zoomV78(.8);byIdV78('finish').onclick=finishAreaV78;byIdV78('window').onclick=windowV78;byIdV78('auto-window').onclick=()=>{const d=viewerV78.image;if(!d)return;byIdV78('center').value=(d.lo+d.hi+1)/2;byIdV78('width').value=Math.max(1,d.hi-d.lo+1);windowV78();};byIdV78('undo').onclick=()=>{if(viewerV78.pending.length)viewerV78.pending.pop();else viewerV78.marks.pop();listV78();drawV78();};byIdV78('clear').onclick=()=>{viewerV78.marks=[];viewerV78.pending=[];listV78();drawV78();};byIdV78('export').onclick=exportV78;\nbyIdV78('calibration-form').onsubmit=e=>{e.preventDefault();const mm=Number(byIdV78('known-mm').value),pts=viewerV78.pending;if(!Number.isFinite(mm)||mm\u003c=0||pts.length!==2){byIdV78('calibration-error').textContent='請輸入大於 0 的已知長度。';return;}viewerV78.mmPerPixel=mm/dicomDistanceV78(pts[0],pts[1]);viewerV78.pending=[];byIdV78('calibration-dialog').close();listV78();drawV78();statusV78('毫米比例已校正，所有既有距離與面積已重新計算。');};\nfunction cancelCalibrationV78(){viewerV78.pending=[];byIdV78('calibration-error').textContent='';drawV78();}byIdV78('cancel-calibration').onclick=()=>{byIdV78('calibration-dialog').close();cancelCalibrationV78();};byIdV78('calibration-dialog').oncancel=cancelCalibrationV78;byIdV78('reset-calibration').onclick=()=>{viewerV78.mmPerPixel=null;listV78();drawV78();statusV78('已清除校正，恢復 pixel 單位。');};\nconst viewportV78=byIdV78('viewport');viewportV78.onclick=clickPointV78;viewportV78.onpointerdown=e=>{if(viewerV78.tool!=='pan'||!viewerV78.image)return;viewerV78.drag={x:e.clientX,y:e.clientY,panX:viewerV78.panX,panY:viewerV78.panY};viewportV78.setPointerCapture(e.pointerId);};viewportV78.onpointermove=e=>{const d=viewerV78.drag;if(!d)return;const r=viewportV78.getBoundingClientRect();viewerV78.panX=d.panX+(e.clientX-d.x)*viewportV78.width/r.width;viewerV78.panY=d.panY+(e.clientY-d.y)*viewportV78.height/r.height;drawV78();};viewportV78.onpointerup=viewportV78.onpointercancel=()=>{viewerV78.drag=null;};viewportV78.addEventListener('wheel',e=>{e.preventDefault();const r=viewportV78.getBoundingClientRect();zoomV78(e.deltaY\u003c0?1.15:1/1.15,(e.clientX-r.left)*viewportV78.width/r.width,(e.clientY-r.top)*viewportV78.height/r.height);},{passive:false});\nwindow.addEventListener('resize',resizeV78);document.addEventListener('keydown',e=>{if(e.key==='Escape'&&!byIdV78('calibration-dialog').open){viewerV78.pending=[];drawV78();}});resizeV78();updateUnitsV78();\n\nfunction adjustWindowV78(brightness,contrast){const d=viewerV78.image;if(!d)return;const w=Number(byIdV78('width').value);byIdV78('center').value=Number(byIdV78('center').value)+brightness*w*(d.photo==='MONOCHROME1'?1:-1);byIdV78('width').value=Math.max(1,w/contrast);windowV78();}\nbyIdV78('brighter').onclick=()=>adjustWindowV78(.1,1);byIdV78('darker').onclick=()=>adjustWindowV78(-.1,1);byIdV78('contrast-up').onclick=()=>adjustWindowV78(0,1.25);byIdV78('contrast-down').onclick=()=>adjustWindowV78(0,.8);\n\u003c/script>\u003c/body>\u003c/html>";
+const dicomEmbeddedV791={scope:'',ready:null,revision:0};
+function dicomEmbeddedScopeV791(){return imagingScopeV61()+'|'+(imagingV61.pet?.id||'');}
+function clearDicomViewerV791(){dicomEmbeddedV791.revision++;dicomEmbeddedV791.scope='';dicomEmbeddedV791.ready=null;document.getElementById('im791-dicom-modal').hidden=true;const frame=document.getElementById('im791-dicom-frame');frame.onload=null;frame.srcdoc='';}
+function closeDicomViewerV791(){document.getElementById('im791-dicom-modal').hidden=true;document.getElementById('im791-open-dicom')?.focus();}
+async function openDicomViewerV791(){
+ if(!imShareAllowedV76()){imagingMessageV61('請先登入有看診權限的帳號。',true);return;}
+ const scope=dicomEmbeddedScopeV791();if(dicomEmbeddedV791.scope&&dicomEmbeddedV791.scope!==scope)clearDicomViewerV791();
+ const modal=document.getElementById('im791-dicom-modal'),frame=document.getElementById('im791-dicom-frame');modal.hidden=false;
+ if(!dicomEmbeddedV791.ready){
+  dicomEmbeddedV791.scope=scope;const revision=++dicomEmbeddedV791.revision;
+  dicomEmbeddedV791.ready=new Promise((resolve,reject)=>{frame.onload=()=>{if(revision!==dicomEmbeddedV791.revision){resolve(false);return;}try{if(typeof frame.contentWindow.loadV78!=='function')throw Error('測量頁未載入完成');resolve(true);}catch(e){reject(e);}};});
+  frame.srcdoc=dicomEmbeddedHtmlV791;
+  try{if(!await dicomEmbeddedV791.ready||scope!==dicomEmbeddedScopeV791())return;const file=document.getElementById('im61-file').files[0];if(file&&/\.(dcm|dicom)$/i.test(file.name))await frame.contentWindow.loadV78(file);}
+  catch(e){if(scope===dicomEmbeddedScopeV791()){dicomEmbeddedV791.ready=null;imagingMessageV61('測量頁開啟失敗：'+e.message,true);closeDicomViewerV791();}}
+ }
+ document.getElementById('im791-close-dicom').focus();
+}
+async function importSelectedDicomV791(){
+ const scope=dicomEmbeddedScopeV791(),file=document.getElementById('im61-file').files[0];
+ if(!file||!/\.(dcm|dicom)$/i.test(file.name)){alert('請先在院務影像欄位選擇 DICOM 原檔，或直接在下方測量頁選檔。');return;}
+ if(!confirm('重新帶入目前選取的 DICOM？測量頁原有的標記與校正會清除，請先下載要保留的圖片。'))return;
+ if(scope!==dicomEmbeddedV791.scope)return;
+ await dicomEmbeddedV791.ready;if(scope===dicomEmbeddedScopeV791())await document.getElementById('im791-dicom-frame').contentWindow.loadV78(file);
+}
+const dicomEmbeddedResetV791=imagingResetV61;imagingResetV61=function(...args){clearDicomViewerV791();return dicomEmbeddedResetV791.apply(this,args);};
+const dicomEmbeddedSelectV791=selectImagingPetV61;selectImagingPetV61=function(p){if(imagingV61.pet?.id!==p?.id)clearDicomViewerV791();return dicomEmbeddedSelectV791.apply(this,arguments);};
+const dicomEmbeddedLogoutV791=logoutSupabase;logoutSupabase=async function(...args){clearDicomViewerV791();return dicomEmbeddedLogoutV791.apply(this,args);};
+_supabase.auth.onAuthStateChange(()=>{if(dicomEmbeddedV791.scope&&dicomEmbeddedV791.scope!==dicomEmbeddedScopeV791())clearDicomViewerV791();});
+
+</script>
+<script id="medicalPetEditV792">
+/* v79.2: jump from a consultation to the exact patient's owner/pet editor. */
+let medicalPetEditContextV792=null,medicalPetEditBusyV792=false;
+function medicalPetEditScopeV792(){return CURRENT_TENANT_ID+'|'+CURRENT_USER?.id;}
+function medicalPetEditValidV792(ctx){return !!ctx&&ctx.scope===medicalPetEditScopeV792()&&ctx.petId===currentPetId&&ctx.ownerId===currentOwnerId;}
+function medicalPetEditStatusV792(text,error=false){const el=document.getElementById('med792-status');el.textContent=text;el.style.color=error?'#b42318':'#476343';}
+function medicalPetEditRenderV792(owner,pet){
+ const ctx=medicalPetEditContextV792;if(!medicalPetEditValidV792(ctx))return;
+ document.getElementById('med792-context').hidden=false;
+ document.getElementById('med792-patient').textContent='目前門診：'+pet.name+'｜飼主：'+owner.name+'｜新編號：'+(owner.system_code||'未填')+'／舊病歷號：'+(owner.owner_code||'未填');
+ document.getElementById('med792-chip').value=pet.microchip||'';
+ document.getElementById('ownerPetTableSearch').value=owner.system_code||owner.owner_code||owner.name||pet.name;
+ const group={owner,pets:[pet]};
+ const index=globalOwnersPetsData.findIndex(x=>x.owner.id===owner.id);
+ if(index<0)globalOwnersPetsData.push(group);else{const existing=globalOwnersPetsData[index];const pets=existing.pets.map(p=>p.id===pet.id?pet:p);if(!pets.some(p=>p.id===pet.id))pets.push(pet);globalOwnersPetsData[index]={owner,pets};}
+ // Render only this verified patient; identical names never pick a different animal.
+ ++integratedSearchRequest;renderIntegratedTable([group]);
+ medicalPetEditStatusV792('可直接新增或修改晶片號碼；其他寵物資料可按下方「改」。');
+}
+async function goToOwnerPetFromMedicalV792(){
+ if(medicalPetEditBusyV792)return;
+ if(!currentPetId||!currentOwnerId){alert('請先選擇看診寵物。');return;}
+ if(!imShareAllowedV76()){alert('此帳號沒有修改寵物資料的權限。');return;}
+ const ctx={scope:medicalPetEditScopeV792(),tenant:CURRENT_TENANT_ID,petId:currentPetId,ownerId:currentOwnerId};medicalPetEditBusyV792=true;
+ const btn=document.getElementById('med792-open');btn.disabled=true;
+ try{
+  const [p,o]=await Promise.all([
+   _supabase.from('pets').select('*').eq('tenant_id',ctx.tenant).eq('id',ctx.petId).eq('owner_id',ctx.ownerId).single(),
+   _supabase.from('owners').select('*').eq('tenant_id',ctx.tenant).eq('id',ctx.ownerId).single()
+  ]);
+  if(!medicalPetEditValidV792(ctx))return;
+  if(p.error||o.error||!p.data||!o.data)throw p.error||o.error||Error('找不到目前寵物或飼主');
+  if(p.data.id!==ctx.petId||p.data.owner_id!==ctx.ownerId||p.data.tenant_id!==ctx.tenant||o.data.id!==ctx.ownerId||o.data.tenant_id!==ctx.tenant)throw Error('寵物與飼主資料不符');
+  collectCurrentMedicalState();ctx.chip=p.data.microchip??null;medicalPetEditContextV792=ctx;
+  switchTab('owners_pets');medicalPetEditRenderV792(o.data,p.data);document.getElementById('med792-context').scrollIntoView({block:'start'});document.getElementById('med792-chip').focus();
+ }catch(e){if(medicalPetEditValidV792(ctx))alert('無法帶入寵物資料：'+e.message);}
+ finally{medicalPetEditBusyV792=false;btn.disabled=false;}
+}
+function syncMedicalPetChipV792(pet){
+ currentPetMicrochip=pet.microchip||'';
+ document.getElementById('cardPetChip').textContent=currentPetMicrochip||'無晶片';
+ document.getElementById('medicalPetNameInfo').value=currentPetName+(currentPetMicrochip?' (晶片: '+currentPetMicrochip+')':'');
+ for(const list of [allPetsListForDropdown,activeAppointmentsList])for(const p of list)if(p.id===pet.id)p.microchip=pet.microchip;
+ for(const group of globalOwnersPetsData)for(const p of group.pets)if(p.id===pet.id)p.microchip=pet.microchip;
+ const result=globalSearchMatches.get(pet.id);if(result)result.microchip=pet.microchip;
+}
+async function saveMedicalPetChipV792(){
+ const ctx=medicalPetEditContextV792;if(medicalPetEditBusyV792)return;
+ if(!medicalPetEditValidV792(ctx)){medicalPetEditStatusV792('目前門診已變更，請重新從門診帶入正確寵物。',true);return;}
+ if(!imShareAllowedV76()){medicalPetEditStatusV792('沒有修改寵物資料的權限。',true);return;}
+ const chip=document.getElementById('med792-chip').value.trim()||null;
+ if(chip===ctx.chip){medicalPetEditStatusV792('晶片號碼沒有變更。');return;}
+ const btn=document.getElementById('med792-save');btn.disabled=true;medicalPetEditBusyV792=true;
+ try{
+  let request=_supabase.from('pets').update({microchip:chip}).eq('tenant_id',ctx.tenant).eq('id',ctx.petId).eq('owner_id',ctx.ownerId);
+  request=ctx.chip===null?request.is('microchip',null):request.eq('microchip',ctx.chip);
+  const {data,error}=await request.select('id,tenant_id,owner_id,microchip').single();
+  if(!medicalPetEditValidV792(ctx))return;
+  if(error||!data)throw error||Error('資料可能已被其他人修改，請重新從門診帶入確認');
+  if(data.id!==ctx.petId||data.tenant_id!==ctx.tenant||data.owner_id!==ctx.ownerId||data.microchip!==chip)throw Error('伺服器尚未確認儲存結果');
+  ctx.chip=data.microchip;syncMedicalPetChipV792(data);medicalPetEditStatusV792('晶片號碼已儲存，門診卡片已同步更新。');
+  await filterIntegratedTable();
+ }catch(e){if(medicalPetEditValidV792(ctx))medicalPetEditStatusV792('尚未確認儲存：'+e.message+'。可重新按門診的「修改寵物資料」核對。',true);}
+ finally{medicalPetEditBusyV792=false;btn.disabled=false;}
+}
+async function backToMedicalFromPetEditV792(){
+ const ctx=medicalPetEditContextV792;if(medicalPetEditBusyV792)return;
+ if(!medicalPetEditValidV792(ctx)){alert('原看診已變更，請從候診清單開啟正確病患。');return;}
+ // Re-read the chip in case the existing full pet editor was used.
+ try{const {data,error}=await _supabase.from('pets').select('id,tenant_id,owner_id,microchip').eq('tenant_id',ctx.tenant).eq('id',ctx.petId).eq('owner_id',ctx.ownerId).single();if(!medicalPetEditValidV792(ctx))return;if(error)throw error;if(data&&data.id===ctx.petId&&data.tenant_id===ctx.tenant&&data.owner_id===ctx.ownerId){ctx.chip=data.microchip??null;syncMedicalPetChipV792(data);}}
+ catch(e){if(medicalPetEditValidV792(ctx))medicalPetEditStatusV792('晶片同步未完成：'+e.message+'；返回後可再開啟確認。',true);}
+ if(medicalPetEditValidV792(ctx))switchTab('medical');
+}
+const medicalPetEditSwitchV792=switchTab;switchTab=function(...args){if(medicalPetEditContextV792&&!medicalPetEditValidV792(medicalPetEditContextV792)){medicalPetEditContextV792=null;document.getElementById('med792-context').hidden=true;}return medicalPetEditSwitchV792.apply(this,args);};
+const medicalPetEditLogoutV792=logoutSupabase;logoutSupabase=async function(...args){medicalPetEditContextV792=null;document.getElementById('med792-context').hidden=true;return medicalPetEditLogoutV792.apply(this,args);};
+
+</script>
+<script id="billingPresetsV80">
+/* v80: reusable manual POS charges; existing clinical charges and blank rows remain. */
+const billingPresetsV80={scope:'',items:[],selected:new Set(),loading:false,saving:false,revision:0};
+function billingPresetScopeV80(){return CURRENT_TENANT_ID+'|'+CURRENT_USER?.id;}
+function billingPresetStatusV80(text,error=false){const e=document.getElementById('bp80-status');e.textContent=text;e.style.color=error?'#b42318':'#476343';}
+function billingPresetValidateV80(items){
+ if(!Array.isArray(items)||items.length>200)throw Error('常用項目最多 200 筆');const ids=new Set();
+ for(const x of items){if(!x||typeof x.id!=='string'||!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(x.id)||ids.has(x.id)||typeof x.name!=='string'||!x.name.trim()||x.name.length>100||typeof x.code!=='string'||x.code.length>30||typeof x.category!=='string'||!x.category.trim()||x.category.length>50||typeof x.price!=='number'||!Number.isFinite(x.price)||x.price<0||x.price>99999999.99||Math.abs(x.price*100-Math.round(x.price*100))>1e-5)throw Error('請核對名稱、分類、代碼與金額（最多兩位小數）');ids.add(x.id);}return items;
+}
+function billingPresetExistsV80(item){return [...document.querySelectorAll('#invoiceItemsList .list-row')].some(row=>row.dataset.billingPresetV80===item.id||(row.querySelector('.invoice-name')?.value.trim()===item.name&&Number(row.querySelector('.invoice-price')?.value)===item.price));}
+function billingPresetRenderV80(){
+ const state=billingPresetsV80,box=document.getElementById('bp80-list');box.replaceChildren();document.getElementById('bp80-settings').hidden=CURRENT_PROFILE?.role!=='admin';document.getElementById('bp80-settings-fields').disabled=state.loading||state.saving;
+ const category=document.getElementById('bp80-category'),old=category.value;category.replaceChildren();const option=(value,text)=>{const e=document.createElement('option');e.value=value;e.textContent=text;category.appendChild(e);};option('','全部分類');for(const value of [...new Set(state.items.map(x=>x.category))])option(value,value);category.value=[...category.options].some(o=>o.value===old)?old:'';
+ const query=document.getElementById('bp80-query').value.trim().toLowerCase(),cat=category.value;
+ const filtered=state.items.filter(x=>(!cat||x.category===cat)&&(!query||[x.name,x.code,x.category].some(v=>v.toLowerCase().includes(query))));
+ for(const item of filtered){const row=document.createElement('label');row.style.cssText='display:flex;gap:12px;align-items:center;padding:10px 5px;border-bottom:1px solid #dae2d3;cursor:pointer';const check=document.createElement('input');check.type='checkbox';check.style.width='auto';const exists=billingPresetExistsV80(item);check.checked=state.selected.has(item.id)&&!exists;check.disabled=exists||state.loading||state.saving;check.onchange=()=>{check.checked?state.selected.add(item.id):state.selected.delete(item.id);};const text=document.createElement('span');text.style.flex='1';text.textContent=(item.code?item.code+'｜':'')+item.name;const price=document.createElement('span');price.textContent='NT$ '+item.price.toLocaleString('zh-TW')+(exists?'（已在帳單）':'');if(exists)state.selected.delete(item.id);row.append(check,text,price);box.appendChild(row);}
+ if(!state.items.length)box.textContent='尚無常用項目。管理者可展開下方「設定常用收費清單」新增，或從目前手動明細帶入。';else if(!filtered.length)box.textContent='沒有符合的常用項目。';
+}
+function billingPresetResetV80(){const state=billingPresetsV80;state.revision++;state.scope='';state.items=[];state.selected.clear();state.loading=false;state.saving=false;document.getElementById('bp80-editor').replaceChildren();billingPresetRenderV80();}
+async function billingPresetLoadV80(){
+ if(!familyAllowedV74()){billingPresetStatusV80('此帳號沒有結帳權限。',true);return;}
+ if(billingPresetsV80.saving){billingPresetStatusV80('請等候清單儲存完成。');return;}
+ const scope=billingPresetScopeV80(),state=billingPresetsV80;if(state.scope!==scope)billingPresetResetV80();state.scope=scope;state.loading=true;const rev=++state.revision;
+ billingPresetRenderV80();billingPresetStatusV80('正在讀取常用收費清單…');
+ try{const {data,error}=await _supabase.rpc('manage_billing_presets_v80',{p_action:'list'});if(scope!==billingPresetScopeV80()||rev!==state.revision)return;if(error)throw error;if(data?.tenant_id!==CURRENT_TENANT_ID)throw Error('院所資料不符');state.items=billingPresetValidateV80(data.items);state.selected.clear();billingPresetRenderV80();billingPresetEditorV80();billingPresetStatusV80('勾選常用項目，再按「加入勾選項目」；加入後可修改這次的數量與金額。');}
+ catch(e){if(scope===billingPresetScopeV80()&&rev===state.revision)billingPresetStatusV80('讀取失敗：'+e.message+'。原本的增加收費細項仍可使用。',true);}
+ finally{if(scope===billingPresetScopeV80()&&rev===state.revision){state.loading=false;billingPresetRenderV80();}}
+}
+function billingPresetOpenV80(){const panel=document.getElementById('bp80-panel');panel.open=true;billingPresetLoadV80();panel.scrollIntoView({block:'nearest'});}
+function billingPresetApplyV80(){
+ const state=billingPresetsV80;if(!familyAllowedV74()||state.scope!==billingPresetScopeV80()||state.loading||state.saving||inventoryCheckoutBusy||familyStateNowV74()?.pending){billingPresetStatusV80('請先完成讀取或目前的結帳操作。',true);return;}
+ const items=state.items.filter(x=>state.selected.has(x.id));if(!items.length){billingPresetStatusV80('請先勾選要加入的常用項目。',true);return;}
+ let count=0;for(const item of items){if(billingPresetExistsV80(item))continue;addInvoiceRow();const list=document.getElementById('invoiceItemsList'),row=list.lastElementChild;row.dataset.billingPresetV80=item.id;row.querySelector('.invoice-name').value=item.name;row.querySelector('.invoice-qty').value='1';row.querySelector('.invoice-price').value=String(item.price);row.querySelector('.invoice-name').dispatchEvent(new Event('input',{bubbles:true}));count++;}
+ state.selected.clear();calculateInvoiceTotal();billingPresetRenderV80();billingPresetStatusV80('已加入 '+count+' 個項目；請核對本次數量及金額。');
+}
+function billingPresetEditorRowV80(item={id:crypto.randomUUID(),name:'',code:'',category:'一般處置',price:''}){
+ const row=document.createElement('div');row.dataset.id=item.id;row.style.cssText='display:grid;grid-template-columns:1fr 1.2fr 2fr 1fr auto;gap:8px;margin:8px 0';
+ for(const [key,label] of [['code','代碼（選填）'],['category','分類'],['name','項目名稱'],['price','預設金額']]){const input=document.createElement('input');input.dataset.field=key;input.setAttribute('aria-label',label);input.placeholder=label;input.value=String(item[key]);input.type=key==='price'?'number':'text';input.style.minWidth='0';if(key==='price'){input.min='0';input.step='.01';}else input.maxLength={code:30,category:50,name:100}[key];row.appendChild(input);}
+ const remove=document.createElement('button');remove.type='button';remove.className='btn-danger';remove.textContent='刪除';remove.onclick=()=>row.remove();row.appendChild(remove);document.getElementById('bp80-editor').appendChild(row);
+}
+function billingPresetEditorV80(){const editor=document.getElementById('bp80-editor');editor.replaceChildren();for(const item of billingPresetsV80.items)billingPresetEditorRowV80(item);}
+function billingPresetImportInvoiceV80(){
+ if(CURRENT_PROFILE?.role!=='admin')return;
+ const rows=[...document.querySelectorAll('#invoiceItemsList .list-row')].filter(row=>!row.dataset.serviceChargeId&&!row.dataset.medicineId&&!row.dataset.medicationGroupV64);
+ const existing=new Set([...document.querySelectorAll('#bp80-editor [data-field="name"]')].map(e=>e.value.trim()));let count=0;
+ for(const row of rows){const name=row.querySelector('.invoice-name')?.value.trim(),priceText=row.querySelector('.invoice-price')?.value;if(!name||!priceText||existing.has(name)||/檢驗|X\s*光|快篩|疫苗|超音波|生化|血球/.test(name))continue;const price=Number(priceText);if(!Number.isFinite(price)||price<0)continue;billingPresetEditorRowV80({id:crypto.randomUUID(),name,code:'',category:'一般處置',price});existing.add(name);count++;}
+ billingPresetStatusV80('已帶入 '+count+' 筆手動明細到設定草稿，請核對後按「儲存常用清單」。');
+}
+function billingPresetReadEditorV80(){const items=[];for(const row of document.getElementById('bp80-editor').children){const value=key=>row.querySelector('[data-field="'+key+'"]').value.trim();if(!value('name')&&!value('code')&&!value('price'))continue;if(!value('price'))throw Error('請填預設金額，免費請填 0');items.push({id:row.dataset.id,name:value('name'),code:value('code'),category:value('category'),price:Number(value('price'))});}return billingPresetValidateV80(items);}
+async function billingPresetSaveV80(){
+ const state=billingPresetsV80;if(CURRENT_PROFILE?.role!=='admin'||state.scope!==billingPresetScopeV80()||state.loading||state.saving)return;
+ let items;try{items=billingPresetReadEditorV80();}catch(e){billingPresetStatusV80(e.message,true);return;}
+ const scope=billingPresetScopeV80(),rev=state.revision;state.saving=true;document.getElementById('bp80-save').disabled=true;billingPresetRenderV80();
+ try{const {data,error}=await _supabase.rpc('manage_billing_presets_v80',{p_action:'save',p_items:items,p_expected:state.items});if(scope!==billingPresetScopeV80()||rev!==state.revision)return;if(error)throw error;if(!data?.saved||data.tenant_id!==CURRENT_TENANT_ID)throw Error('伺服器尚未確認儲存');state.items=billingPresetValidateV80(data.items);state.selected.clear();billingPresetEditorV80();billingPresetRenderV80();billingPresetStatusV80('常用收費清單已儲存，院內其他電腦重新讀取即可使用。');}
+ catch(e){if(scope===billingPresetScopeV80()&&rev===state.revision)billingPresetStatusV80('尚未確認儲存：'+e.message+'。設定草稿仍保留。',true);}
+ finally{if(scope===billingPresetScopeV80()&&rev===state.revision){state.saving=false;document.getElementById('bp80-save').disabled=false;billingPresetRenderV80();}}
+}
+const billingPresetSwitchV80=switchTab;switchTab=function(tab,...rest){if(billingPresetsV80.scope&&billingPresetsV80.scope!==billingPresetScopeV80())billingPresetResetV80();if(tab==='invoices')billingPresetsV80.selected.clear();const result=billingPresetSwitchV80.call(this,tab,...rest);if(tab==='invoices')billingPresetRenderV80();return result;};
+const billingPresetLogoutV80=logoutSupabase;logoutSupabase=async function(...args){billingPresetResetV80();return billingPresetLogoutV80.apply(this,args);};
+new MutationObserver(()=>{if(billingPresetsV80.items.length)billingPresetRenderV80();}).observe(document.getElementById('invoiceItemsList'),{childList:true});
+document.getElementById('invoiceItemsList').addEventListener('input',()=>{if(billingPresetsV80.items.length)billingPresetRenderV80();});
 
 </script>
 </body></html>
