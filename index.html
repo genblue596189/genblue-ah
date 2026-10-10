@@ -2,7 +2,7 @@
 <meta name="genblue-version" content="v85">
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>吉布動物醫院管理系統 genblue設計版權所有 · v85</title>
+    <title>吉布動物醫院管理系統 genblue設計版權所有 · v85_3</title>
     <!-- 引入 Supabase JS SDK CDN -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
@@ -3395,7 +3395,7 @@ if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',
             for (let offset=0;;offset+=1000) {
                 const {data,error}=await _supabase.from('invoices')
                     .select('*, owners(id,name,mobile,phone,owner_code,system_code), invoice_items(*)')
-                    .eq('tenant_id',tenant).eq('checkout_type','商品零售')
+                    .eq('tenant_id',tenant)
                     .order('created_at',{ascending:false}).order('id',{ascending:false}).range(offset,offset+999);
                 if (error) throw error;
                 if (tenant!==CURRENT_TENANT_ID || request!==searchCenterLoadRequest) return null;
@@ -3409,7 +3409,12 @@ if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',
                 if (tenant!==CURRENT_TENANT_ID || request!==searchCenterLoadRequest) return null;
                 for (const pet of data||[]) pets.set(pet.id,pet);
             }
-            return invoices.map(i=>({...i,category:i.category||'一般商品',items:i.invoice_items||[],pets:pets.get(i.pet_id)||null}));
+            const splits=new Map();
+            for(let offset=0;offset<invoices.length;offset+=200){const batch=invoices.slice(offset,offset+200),reply=await posRpcV77('finance_status',{invoice_ids:batch.map(i=>i.id)});
+                if(tenant!==CURRENT_TENANT_ID||request!==searchCenterLoadRequest)return null;
+                if(reply.tenant_id!==String(tenant)||!Array.isArray(reply.statuses)||reply.statuses.length!==batch.length)throw Error('商品分類回覆不完整');
+                for(const status of reply.statuses){if(status.revenue_split?.version!==853)throw Error('請先執行 v85_3 門診商品收入分類 SQL');splits.set(status.invoice_id,status);}}
+            return invoices.filter(i=>splits.get(i.id)?.revenue_split?.has_product).map(i=>{const split=splits.get(i.id).revenue_split;return {...i,category:split.has_clinic?'門診追加商品':i.category||'一般商品',total_amount:split.product_total,items:split.product_lines?.length?split.product_lines:i.invoice_items||[],pets:pets.get(i.pet_id)||null};});
         }
 
         async function loadSearchCenterData() {
@@ -3569,7 +3574,7 @@ if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',
             tbody.innerHTML = '';
             if (collapseHistoryUntilSearch(tbody, 'searchSalesKeyword')) return;
             if(!dataList || dataList.length === 0) {
-                tbody.innerHTML = `<tr><td colspan="6" style="text-align: center; color: #64748b;">尚無純商品銷售紀錄</td></tr>`;
+                tbody.innerHTML = `<tr><td colspan="6" style="text-align: center; color: #64748b;">尚無商品銷售紀錄（含門診追加商品）</td></tr>`;
                 return;
             }
             dataList.forEach(inv => {
@@ -5760,7 +5765,7 @@ async function loadOwnersAndPetsIntegrated() {
                 const reply=await posRpcV77('finance_status',{invoice_ids:ids});
                 if(tenant!==CURRENT_TENANT_ID||request!==financialReportRequest)return null;
                 if(reply.tenant_id!==String(tenant)||!Array.isArray(reply.statuses)||reply.statuses.length!==ids.length||new Set(reply.statuses.map(r=>r.invoice_id)).size!==ids.length||reply.statuses.some(r=>!ids.includes(r.invoice_id)))throw Error('收款核對狀態回覆不完整，請確認已更新 v84_5 SQL');
-                for(const row of reply.statuses)verification.set(row.invoice_id,row);
+                for(const row of reply.statuses){if(row.revenue_split?.version!==853)throw Error('請先執行 v85_3 門診商品收入分類 SQL');verification.set(row.invoice_id,row);}
             }
             return invoices.map(i=>({...i,pets:pets.get(i.pet_id)||null,verificationV845:verification.get(i.id)}));
         }
@@ -5843,10 +5848,10 @@ async function loadOwnersAndPetsIntegrated() {
                 if (verifiedV845) totalDiscount += disc; 
                 if (verifiedV845) totalRevenue += total;
 
-                if (inv.checkout_type === '商品零售') {
-                    if (verifiedV845) { productCount++; productDiscount += disc; productTotal += total; }
-                } else {
-                    if (verifiedV845) { clinicCount++; clinicDiscount += disc; clinicTotal += total; }
+                const revenueV853=posRevenueV853(inv,inv.verificationV845?.confirmed_refunds||0);
+                if(verifiedV845){
+                    if(revenueV853.has_product){productCount++;productDiscount+=Number(revenueV853.product_discount||0);productTotal+=revenueV853.product_total;}
+                    if(revenueV853.has_clinic){clinicCount++;clinicDiscount+=Number(revenueV853.clinic_discount||0);clinicTotal+=revenueV853.clinic_total;}
                 }
 
                 const ownerStr = financialOwnerDisplay(inv);
@@ -5857,7 +5862,7 @@ async function loadOwnersAndPetsIntegrated() {
                 tr.innerHTML = `
                     <td>${new Date(inv.created_at).toLocaleString()}</td>
                     <td><b>${ownerStr}</b>${petStr}</td>
-                    <td><span style="background: #e0f2fe; color: ${typeBadgeColor}; padding: 2px 6px; border-radius: 4px; font-weight: bold;">${inv.checkout_type}</span>${inv.voided_at ? ' <b style="color:#dc2626">已作廢</b>' : '<br><b>'+escapeCheckoutText(({verified:'已核對確認',pending:'已收款、待核對',unlinked:'舊帳單尚未連結',unpaid:'待收款'})[inv.verificationV845?.state]||'待核對')+'</b>'+(inv.verificationV845?.method?'｜'+escapeCheckoutText(inv.verificationV845.method):'')+(inv.verificationV845?.verified_at?'<br>核對：'+new Date(inv.verificationV845.verified_at).toLocaleString()+'｜'+escapeCheckoutText(inv.verificationV845.verified_by||''):'')+(inv.verificationV845?.settled_date?'<br>實際入帳日：'+escapeCheckoutText(inv.verificationV845.settled_date):'')}</td>
+                    <td><span style="background: #e0f2fe; color: ${typeBadgeColor}; padding: 2px 6px; border-radius: 4px; font-weight: bold;">${escapeCheckoutText(revenueV853.has_product&&revenueV853.has_clinic?'門診＋商品':inv.checkout_type)}</span><br>門診 ${revenueV853.clinic_total.toLocaleString()}｜商品 ${revenueV853.product_total.toLocaleString()}${inv.voided_at ? ' <b style="color:#dc2626">已作廢</b>' : '<br><b>'+escapeCheckoutText(({verified:'已核對確認',pending:'已收款、待核對',unlinked:'舊帳單尚未連結',unpaid:'待收款'})[inv.verificationV845?.state]||'待核對')+'</b>'+(inv.verificationV845?.method?'｜'+escapeCheckoutText(inv.verificationV845.method):'')+(inv.verificationV845?.verified_at?'<br>核對：'+new Date(inv.verificationV845.verified_at).toLocaleString()+'｜'+escapeCheckoutText(inv.verificationV845.verified_by||''):'')+(inv.verificationV845?.settled_date?'<br>實際入帳日：'+escapeCheckoutText(inv.verificationV845.settled_date):'')}</td>
                     <td>NT$ ${sub.toLocaleString()}</td>
                     <td>NT$ ${disc.toLocaleString()}</td>
                     <td><b>NT$ ${inv.voided_at ? '0（原 ' + originalTotalV845.toLocaleString() + '）' : verifiedV845 ? total.toLocaleString()+(Number(inv.verificationV845.confirmed_refunds||0)?'（已扣核對退款）':'') : '待確認 '+originalTotalV845.toLocaleString()}</b></td>
@@ -10745,6 +10750,38 @@ class BackupZipWriterV62{
  async finish(){const start=this.offset;for(const e of this.entries){const h=new Uint8Array(46+e.encoded.length),d=new DataView(h.buffer);d.setUint32(0,0x02014b50,true);d.setUint16(4,20,true);d.setUint16(6,20,true);d.setUint16(8,0x800,true);d.setUint16(14,0x21,true);d.setUint32(16,e.crc,true);d.setUint32(20,e.size,true);d.setUint32(24,e.size,true);d.setUint16(28,e.encoded.length,true);d.setUint32(42,e.offset,true);h.set(e.encoded,46);await this.write(h);}const size=this.offset-start,h=new Uint8Array(22),d=new DataView(h.buffer);d.setUint32(0,0x06054b50,true);d.setUint16(8,this.entries.length,true);d.setUint16(10,this.entries.length,true);d.setUint32(12,size,true);d.setUint32(16,start,true);await this.write(h);if(this.stream){await this.stream.close();return null;}return new Blob(this.parts,{type:'application/zip'});}
  async abort(){if(this.stream)try{await this.stream.abort();}catch{}this.parts=[];}
 }
+
+// v85_1: page table data while preserving raw JSON numbers and consistency.
+function backupRawRowsV851(raw){
+ const marker=raw.indexOf('"rows"'),colon=raw.indexOf(':',marker),end=raw.lastIndexOf('}');
+ if(marker<0||colon<0||end<colon)throw Error('備份分批回覆缺少資料列');
+ const array=raw.slice(colon+1,end).trim();if(!array.startsWith('[')||!array.endsWith(']')||!Array.isArray(JSON.parse(array)))throw Error('備份分批資料列不完整');return array;
+}
+function backupManifestKeyV851(m){
+ const groups={};for(const key of ['tables','private_tables','booking_tables']){groups[key]={};for(const name of Object.keys(m[key]||{}).sort()){const {rows,...meta}=m[key][name];groups[key][name]=meta;}}
+ return JSON.stringify({tenant_id:m.tenant_id,format:m.format,format_version:m.format_version,table_count:m.table_count,total_rows:m.total_rows,groups,attachments:m.attachments});
+}
+async function backupReadPagedV851(tenant,signal,ensure,progress){
+ const readManifest=async()=>{const {data,error}=await _supabase.rpc('genblue_backup_manifest_v851',{p_expected_tenant:tenant}).abortSignal(signal);ensure();if(error)throw Error(error.message+'；請確認已執行 v85_1 備份 SQL');if(typeof data!=='string')throw Error('備份清單格式不符');const m=JSON.parse(data);if(m.tenant_id!==tenant||m.format_version!==3)throw Error('備份院所或版本不符');return m;};
+ progress('正在讀取備份範圍與資料筆數…');const manifest=await readManifest(),initialKey=backupManifestKeyV851(manifest),rawGroups={},sections=[['tables','public'],['private_tables','private'],['booking_tables','booking']];let done=0;
+ for(const [group,schema] of sections){if(!manifest[group]||typeof manifest[group]!=='object')throw Error('備份缺少 '+group);rawGroups[group]={};for(const [name,table]of Object.entries(manifest[group])){
+  if(!Number.isSafeInteger(table.row_count)||table.row_count<0||!/^[a-f0-9]{32}$/.test(table.signature)||!Array.isArray(table.rows)||table.rows.length)throw Error('備份清單資料不完整：'+name);
+  let offset=0,limit=50;const pieces=[];
+  while(offset<table.row_count){ensure();progress('正在備份 '+name+'：'+offset.toLocaleString()+'／'+table.row_count.toLocaleString()+' 筆（全部已讀 '+done.toLocaleString()+' 筆）');
+   const {data,error}=await _supabase.rpc('genblue_backup_page_v851',{p_expected_tenant:tenant,p_schema:schema,p_table:name,p_signature:table.signature,p_offset:offset,p_limit:limit}).abortSignal(signal);ensure();
+   if(error){if((error.code==='57014'||/statement timeout/i.test(error.message))&&limit>1){limit=Math.max(1,Math.floor(limit/2));progress(name+' 讀取較慢，改以每批 '+limit+' 筆繼續…');continue;}throw Error(error.message);}
+   if(typeof data!=='string')throw Error('備份分批格式不符');const page=JSON.parse(data),raw=backupRawRowsV851(data);
+   if(page.tenant_id!==tenant||page.schema!==schema||page.table!==name||page.signature!==table.signature||page.total!==table.row_count||page.offset!==offset||!Array.isArray(page.rows)||page.rows.length!==Math.min(limit,table.row_count-offset))throw Error('備份分批院所／筆數不符：'+name);
+   pieces.push(raw.slice(1,-1));offset+=page.rows.length;done+=page.rows.length;
+  }
+  const {rows,signature,...meta}=table;const head=JSON.stringify(meta);rawGroups[group][name]=head.slice(0,-1)+',"rows":['+pieces.join(',')+']}';
+ }}
+ if(done!==manifest.total_rows)throw Error('完整備份總筆數不符');
+ progress('正在核對分批期間資料是否變動…');const finalManifest=await readManifest();if(backupManifestKeyV851(finalManifest)!==initialKey)throw Error('備份期間資料已變動，這次未完成；請於較少操作時重新備份');
+ const parts=[];for(const [key,value]of Object.entries(manifest)){if(rawGroups[key])parts.push(JSON.stringify(key)+':{'+Object.entries(rawGroups[key]).map(([n,s])=>JSON.stringify(n)+':'+s).join(',')+'}');else parts.push(JSON.stringify(key)+':'+JSON.stringify(value));}
+ ensure();return '{'+parts.join(',')+'}';
+}
+
 startClinicDataBackup=async function(options={}){
  if(clinicBackupBusy)return;if(CURRENT_PROFILE?.role!=='admin'||!CURRENT_TENANT_ID){alert('只有本院管理者可以備份。');return;}
  const tenant=CURRENT_TENANT_ID,scope=backupScopeV62(),status=document.getElementById('clinicBackupStatus'),button=document.getElementById('clinicBackupStart'),progress=document.getElementById('clinicBackupProgress'),link=document.getElementById('clinicBackupDownload');
@@ -10756,7 +10793,7 @@ startClinicDataBackup=async function(options={}){
  try{
  let handle;if(!options.scheduledArchiveV72&&typeof window.showSaveFilePicker==='function')handle=await window.showSaveFilePicker({suggestedName:'genblue_'+tenant.replace(/[^A-Za-z0-9_-]/g,'_')+'_'+new Date().toISOString().replace(/[^0-9]/g,'').slice(0,14)+'_含影像.zip',types:[{description:'院內資料與影像備份',accept:{'application/zip':['.zip']}}]});
  ensure();setStage('正在取得本院資料、線上預約與原始檔清單…');
- const {data,error}=await _supabase.rpc('genblue_export_clinic_backup_v62',{p_expected_tenant:tenant}).abortSignal(controller.signal);if(error)throw Error(error.message);ensure();if(typeof data!=='string')throw Error('備份函式版本不符');const snapshot=JSON.parse(data);validateClinicBackupSnapshot(snapshot,tenant);if(snapshot.format_version!==3)throw Error('請安裝 v62 備份 SQL');if(!snapshot.tables.imaging_shares_v76)throw Error('請先執行 v76.4 備份範圍更新 SQL，納入影像 QR 分享資料後再備份');if(!CLINIC_BACKUP_POS_TABLES_V843.every(name=>Object.prototype.hasOwnProperty.call(snapshot.tables,name)))throw Error('請先執行 v84_3 備份範圍更新 SQL，納入待付款與交班資料後再備份');
+ const data=await backupReadPagedV851(tenant,controller.signal,ensure,setStage);ensure();if(typeof data!=='string')throw Error('備份函式版本不符');const snapshot=JSON.parse(data);validateClinicBackupSnapshot(snapshot,tenant);if(snapshot.format_version!==3)throw Error('請安裝 v62 備份 SQL');if(!snapshot.tables.imaging_shares_v76)throw Error('請先執行 v76.4 備份範圍更新 SQL，納入影像 QR 分享資料後再備份');if(!CLINIC_BACKUP_POS_TABLES_V843.every(name=>Object.prototype.hasOwnProperty.call(snapshot.tables,name)))throw Error('請先執行 v84_3 備份範圍更新 SQL，納入待付款與交班資料後再備份');
  const files=snapshot.attachments.objects;
  const estimated=snapshot.attachments.total_bytes+new TextEncoder().encode(data).length+1048576;
  if(estimated>(handle?2*1024*1024*1024:512*1024*1024))throw Error(handle?'備份超過本版 2 GB 限制。':'備份超過 512 MB，請在電腦 Chrome／Edge 使用直接儲存功能。');
@@ -14338,7 +14375,7 @@ function posFrozenV77(key,data){const k=posKeyV77(key);const previous=JSON.parse
 function posReceiptV77(result,d,method){
  const id=typeof result==='string'?result:result.invoice_id;
  if(!id)return;
- openReceiptModal({id,created_at:new Date().toISOString(),checkout_type:'門診收費 ('+method+')',subtotal:d.subtotal,discount:d.discount,total_amount:d.total},escapeCheckoutText(d.ownerName),escapeCheckoutText(d.billingPetName),
+ openReceiptModal({id,created_at:new Date().toISOString(),checkout_type:(d.lines.some(l=>l.stock_kind==='item')?'門診＋商品':'門診收費')+' ('+method+')',subtotal:d.subtotal,discount:d.discount,total_amount:d.total},escapeCheckoutText(d.ownerName),escapeCheckoutText(d.billingPetName),
  [...d.lines,...d.medicationGroups.map(g=>({item_name:medicationGroupLabelsV64[g.kind]||g.kind,quantity:1,unit_price:g.price}))].map(l=>({...l,item_name:escapeCheckoutText(l.item_name),subtotal:l.quantity*l.unit_price})));
 }
 function posTenderV77(method,total){if(method!=='現金')return null;const text=prompt('應收 '+posMoneyV77(total)+'\n請輸入飼主交付現金（只記應收金額為收入）',String(total));if(text===null)throw Error('收款已取消');const tender=Number(text);if(!Number.isFinite(tender)||tender<total)throw Error('收到現金不足');if(!confirm('收到 '+posMoneyV77(tender)+'\n找零 '+posMoneyV77(tender-total)+'\n確認完成收款？'))throw Error('收款已取消');return tender;}
@@ -14418,7 +14455,7 @@ function posRenderEditorV77(q){
   const r=posNodeV77('div');r.className='pos-row-v77';r.append(posNodeV77('span',label));const a=posInputV77('number',qty),b=posInputV77('number',price);a.step='0.01';b.step='0.01';
   a.oninput=b.oninput=()=>{onchange(Number(a.value),Number(b.value));update();};r.append(a,b);if(remove)r.append(posButtonV77('移除',remove));else a.disabled=true;box.append(r);
  }
- for(const l of d.lines)row(l.item_name,l.quantity,l.unit_price,(n,p)=>{if(l.stock_kind==='medicine')return;l.quantity=n;l.unit_price=p;},l.stock_kind==='medicine'?null:()=>{d.lines=d.lines.filter(x=>x!==l);posRenderEditorV77(q);});
+ for(const l of d.lines)row((l.stock_kind==='item'?'【商品】':'')+l.item_name,l.quantity,l.unit_price,(n,p)=>{if(l.stock_kind==='medicine')return;l.quantity=n;l.unit_price=p;},l.stock_kind==='medicine'?null:()=>{d.lines=d.lines.filter(x=>x!==l);posRenderEditorV77(q);});
  for(const r of box.querySelectorAll('.pos-row-v77')){if(r.children[0]&&d.lines.find(l=>l.item_name===r.children[0].textContent)?.stock_kind==='medicine')r.querySelectorAll('input').forEach(i=>i.disabled=true);}
  for(const g of d.medicationGroups)row(medicationGroupLabelsV64[g.kind]||g.kind,1,g.price,(_,p)=>g.price=p,null);
  const search=posInputV77('search','');search.placeholder='輸入商品名稱後按 Enter 搜尋';
@@ -14497,7 +14534,7 @@ function posSplitPagesV77(){
  const style=posNodeV77('style');style.id='posCompactStyleV84';style.textContent='#posHomeV77{display:flex;align-items:center;flex-wrap:wrap;gap:8px;background:transparent;border:0;border-radius:0;box-shadow:none;padding:0;margin:8px 0 12px;min-height:32px}#posHomeV77 h3{font-size:14px;line-height:1.4;margin:0 4px 0 0;color:var(--ink,var(--text-main));font-weight:600}#posHomeV77 b{font-size:13px;line-height:1.4;margin-right:4px;color:var(--text-main)}#posHomeV77 button{padding:5px 10px;font-size:12px;line-height:1.4;min-height:30px;margin:0;border-radius:7px}#posDeskV77 .card{margin:0 0 16px}#posTabV77 .card{max-width:1200px}#posShiftTabV77{max-width:1200px}.pos-form-grid-v77{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px}.pos-form-grid-v77 label{display:flex;flex-direction:column;gap:6px;margin:0}.pos-form-grid-v77 input,.pos-form-grid-v77 select{width:100%!important;box-sizing:border-box}#posDenomsV77{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:12px}#posDenomsV77 label{display:flex;flex-direction:column;gap:5px;margin:0}#posDenomsV77 input{width:100%;box-sizing:border-box}#posCountTotalV77{font-size:1.15rem;font-weight:700;margin:20px 0}@media(max-width:900px){#posDenomsV77{grid-template-columns:repeat(3,minmax(0,1fr))}.pos-form-grid-v77{grid-template-columns:repeat(2,minmax(0,1fr))}}@media(max-width:600px){#posDenomsV77{grid-template-columns:repeat(2,minmax(0,1fr))}.pos-form-grid-v77{grid-template-columns:1fr}}';document.head.append(style);
 }
 posMountV77();posSplitPagesV77();
-const posVersionV84=posNodeV77('span',' · v85');posVersionV84.id='genblueVersionV84';document.querySelector('.journal-side-foot')?.append(posVersionV84);
+const posVersionV84=posNodeV77('span',' · v85_3');posVersionV84.id='genblueVersionV84';document.querySelector('.journal-side-foot')?.append(posVersionV84);
 const posSwitchOriginalV77=switchTab;
 switchTab=function(tab,...args){
  if(tab==='posShiftTabV77'&&!familyAllowedV74()){alert('此帳號沒有開班／下班結算權限');return;}
@@ -14644,7 +14681,7 @@ async function posDailySummaryV846(){
  document.getElementById('posConfirmIncomeV846').disabled=true;
  if(!familyAllowedV74()){box.replaceChildren();return null;}
  try{const reply=await posRpcV77('daily_summary');if(request!==posSummaryRequestV846||scope!==posScopeNowV77())return null;
-  if(reply.tenant_id!==String(CURRENT_TENANT_ID)||!reply.summary)throw Error('今日總結回覆不完整');
+  if(reply.tenant_id!==String(CURRENT_TENANT_ID)||!reply.summary)throw Error('今日總結回覆不完整');if(reply.revenue_version!==853)throw Error('請先執行 v85_3 門診商品收入分類 SQL');
   box.replaceChildren();box.append(posNodeV77('p','工作日：'+reply.business_date));
   const grid=posNodeV77('div');grid.className='pos-form-grid-v77';
   for(const [label,key] of [['門診收入','clinic_total'],['商品收入','product_total'],['今日合計','total'],['已入帳','confirmed_total'],['待處理','pending_total']]){if(key==='pending_total'&&!Number(reply.summary.pending_total)&&!Number(reply.summary.pending_count))continue;const cell=posNodeV77('div');cell.append(posNodeV77('span',label),posNodeV77('strong',posMoneyV77(reply.summary[key])));grid.append(cell);}box.append(grid);
@@ -14655,8 +14692,9 @@ async function posDailySummaryV846(){
   if(Number(reply.summary.pending_count))box.append(posNodeV77('p','待處理款項請在下方核對後入帳。'));
   document.getElementById('posConfirmIncomeV846').disabled=!(posStateV77?.shift||(posStateV77?.review_shift&&CURRENT_PROFILE?.role==='admin'))||posStateV77?.schema_version!==850||(reply.income_complete&&reply.drawer_review?.count_current===true);
   box.append(posNodeV77('p',reply.drawer_review?.count_current?'✓ 錢櫃核對相符':'現金尚未完成清點；下班前請清點。'));
+  const invoiceCard=document.getElementById('posInvoiceReviewV852');if(invoiceCard?.open)posActionV77(()=>posInvoiceReviewV847());
   return reply;
- }catch(error){if(request===posSummaryRequestV846&&scope===posScopeNowV77()){box.replaceChildren(posNodeV77('p','今日總結尚未讀取：'+error.message+'；請執行包內 sql_v85_今日工作與急診恢復.sql，再更新當班資料。'));document.getElementById('posConfirmIncomeV846').disabled=true;}return null;}
+ }catch(error){if(request===posSummaryRequestV846&&scope===posScopeNowV77()){box.replaceChildren(posNodeV77('p','今日總結尚未讀取：'+error.message+'；請執行包內 sql_v85_3_門診商品收入分類.sql，再更新當班資料。'));document.getElementById('posConfirmIncomeV846').disabled=true;}return null;}
 }
 function posMountV846(){
  const card=posNodeV77('section');card.id='posDailySummaryV846';card.className='card pos-panel-v77';card.append(posNodeV77('h3','今日門診＋商品收入總結'));const body=posNodeV77('div');body.id='posDailySummaryBodyV846';card.append(body);
@@ -14682,18 +14720,52 @@ async function posInvoiceReviewV847(reset=false){
  if(statuses.statuses.length!==rows.length)throw Error('帳單核對狀態不完整');
  const map=new Map(statuses.statuses.map(r=>[r.invoice_id,r])),box=document.getElementById('posInvoiceRowsV847');box.replaceChildren();
  box.append(posNodeV77('p','第 '+(posInvoiceOffsetV847+1)+'–'+(posInvoiceOffsetV847+rows.length)+' 筆；作廢保留原單並回補庫存，實際退款仍需另外記錄。'));
- for(const inv of rows){const row=posNodeV77('div');row.className='pos-row-v77';row.append(posNodeV77('span',new Date(inv.created_at).toLocaleString('zh-TW')+'｜'+inv.checkout_type+'｜'+posMoneyV77(inv.total_amount)+'｜'+(({verified:'已确认入帳',pending:'已收款待核對',unlinked:'舊帳單未連結',unpaid:'待收款',voided:'已作廢'})[map.get(inv.id)?.state]||'待核對')+'｜帳單 '+inv.id));
-  if(inv.voided_at)row.append(posNodeV77('span','作廢原因：'+(inv.void_reason||'—')));
-  else row.append(posButtonV77('作廢原帳單',async()=>{await voidInvoice(inv.id);await posRefreshV77({fresh:true,required:true});await posInvoiceReviewV847();}));
-  const copy=posButtonV77('填入退款帳單號',()=>{document.getElementById('posMovementReferenceV77').value=inv.id;document.getElementById('posMovementKindV77').value='refund';document.getElementById('posMovementAmountV77').value=String(inv.total_amount);document.getElementById('posMovementCardV77').scrollIntoView?.({behavior:'smooth',block:'start'});alert('已填入原帳單號與原金額，尚未退款或寫入紀錄。請確認實際退款方式、金額與原因後再記錄。');});copy.disabled=!posStateV77?.shift;row.append(copy);box.append(row);
+ for(const inv of rows){
+  const row=posNodeV77('details');row.className='pos-invoice-detail-v852';
+  const state=map.get(inv.id)?.state;const split=map.get(inv.id)?.revenue_split;
+  row.append(posNodeV77('summary',new Date(inv.created_at).toLocaleString('zh-TW')+'｜'+(split?.has_product&&split?.has_clinic?'門診＋商品':inv.checkout_type)+'｜'+posMoneyV77(inv.total_amount)+'｜'+(({verified:'已確認入帳',pending:'已收款待核對',unlinked:'舊帳單未連結',unpaid:'待收款',voided:'已作廢'})[state]||'待核對')+'｜帳單 '+inv.id));
+  const detail=posNodeV77('div');detail.append(posNodeV77('p','展開後讀取收費明細。'));row.append(detail);
+  row.ontoggle=()=>{if(row.open)return posActionV77(()=>posInvoiceDetailV852({...inv,verificationV845:map.get(inv.id)},detail,scope,request));};
+  const actions=posNodeV77('div');actions.className='pos-invoice-actions-v852';
+  if(inv.voided_at)actions.append(posNodeV77('p','作廢原因：'+(inv.void_reason||'—')));
+  else actions.append(posButtonV77('作廢原帳單',async()=>{await voidInvoice(inv.id);await posRefreshV77({fresh:true,required:true});await posInvoiceReviewV847();}));
+  const copy=posButtonV77('填入退款帳單號',()=>{document.getElementById('posMovementReferenceV77').value=inv.id;document.getElementById('posMovementKindV77').value='refund';document.getElementById('posMovementAmountV77').value=String(inv.total_amount);document.getElementById('posMovementCardV77').scrollIntoView?.({behavior:'smooth',block:'start'});alert('已填入原帳單號與原金額，尚未退款或寫入紀錄。請確認實際退款方式、金額與原因後再記錄。');});copy.disabled=!posStateV77?.shift;actions.append(copy);row.append(actions);box.append(row);
  }
+ if(!rows.length)box.replaceChildren(posNodeV77('p','此日期沒有帳單。'));
  const prev=posButtonV77('上一頁',async()=>{posInvoiceOffsetV847=Math.max(0,posInvoiceOffsetV847-50);await posInvoiceReviewV847();});prev.disabled=posInvoiceOffsetV847===0;
  const next=posButtonV77('下一頁',async()=>{posInvoiceOffsetV847+=50;await posInvoiceReviewV847();});next.disabled=(data||[]).length<=50;box.append(prev,next);
 }
+async function posInvoiceDetailV852(inv,box,scope,request){
+ if(box.dataset.loading==='1'||box.dataset.loaded==='1')return;
+ if(!familyAllowedV74()||scope!==posScopeNowV77()||request!==posInvoiceRequestV847)return;
+ box.dataset.loading='1';box.replaceChildren(posNodeV77('p','正在讀取收費明細…'));
+ try{
+  const {data,error}=await _supabase.from('invoices').select('*, owners(id,name,mobile,phone,owner_code,system_code), invoice_items(*)').eq('tenant_id',CURRENT_TENANT_ID).eq('id',inv.id).single();
+  if(error)throw Error(error.message);
+  if(scope!==posScopeNowV77()||request!==posInvoiceRequestV847||!familyAllowedV74())return;
+  if(data?.pet_id){const petReply=await _supabase.from('pets').select('id,name').eq('tenant_id',CURRENT_TENANT_ID).eq('id',data.pet_id).maybeSingle();if(petReply.error)throw Error(petReply.error.message);data.pets=petReply.data;}
+  if(scope!==posScopeNowV77()||request!==posInvoiceRequestV847||!familyAllowedV74())return;
+  if(!data||String(data.id)!==String(inv.id)||String(data.tenant_id)!==String(CURRENT_TENANT_ID))throw Error('帳單資料不符');
+  box.replaceChildren();
+  box.append(posNodeV77('p','飼主：'+(data.owners?.name||'散客／未指定')+'｜寵物：'+(data.pets?.name||'—')));
+  const revenue=posRevenueV853(inv,inv.verificationV845?.confirmed_refunds||0);box.append(posNodeV77('p','門診金額：'+posMoneyV77(revenue.clinic_total)+'｜商品金額：'+posMoneyV77(revenue.product_total)+(inv.verificationV845?.confirmed_refunds?'（已扣核對退款）':'')+'；整單折扣按比例分攤。'));
+  const table=posNodeV77('table');table.className='pos-invoice-table-v852';const head=posNodeV77('tr');
+  for(const label of ['收費項目','數量','單價','小計'])head.append(posNodeV77('th',label));table.append(head);
+  for(const item of data.invoice_items||[]){const line=posNodeV77('tr');for(const value of [item.item_name||'未命名項目',String(item.quantity??'—'),posMoneyV77(item.unit_price??item.price??0),posMoneyV77(item.subtotal??Number(item.quantity)*Number(item.unit_price??item.price??0))])line.append(posNodeV77('td',value));table.append(line);}
+  if(data.invoice_items?.length)box.append(table);else box.append(posNodeV77('p','此帳單沒有收費項目明細。'));
+  box.append(posNodeV77('p','帳單實收合計：'+posMoneyV77(data.total_amount)+'｜付款資訊：'+(data.checkout_type||'—')));
+  if(data.voided_at)box.append(posNodeV77('p','作廢時間：'+new Date(data.voided_at).toLocaleString('zh-TW')+'｜原因：'+(data.void_reason||'—')));
+  box.dataset.loaded='1';
+ }catch(error){if(scope===posScopeNowV77()&&request===posInvoiceRequestV847){box.replaceChildren(posNodeV77('p','明細讀取失敗：'+error.message),posButtonV77('重新讀取明細',()=>posInvoiceDetailV852(inv,box,scope,request)));}}
+ finally{box.dataset.loading='0';}
+}
 function posMountV847(){
- const card=posNodeV77('details');card.className='card pos-panel-v77';card.append(posNodeV77('summary','帳單查詢／作廢與退款處理'));
- const form=posNodeV77('div');form.className='pos-form-grid-v77';for(const [id,label] of [['posInvoiceStartV847','起始日期'],['posInvoiceEndV847','結束日期']]){const input=posInputV77('date',posTaipeiDateV845());input.id=id;input.onkeydown=e=>{if(e.key==='Enter'){e.preventDefault();posActionV77(()=>posInvoiceReviewV847(true));}};posLabelV77(label,input,form);}card.append(form,posButtonV77('查詢帳單',()=>posInvoiceReviewV847(true)));const rows=posNodeV77('div');rows.id='posInvoiceRowsV847';card.append(rows);document.getElementById('posDeskV77').append(card);
- document.getElementById('statGrandTotal').parentElement.append(posNodeV77('p','本頁僅查詢已確認入帳的營收。收款核對、確認入帳、退款及作廢均在「開班／交班／下班」處理。'));
+ const card=posNodeV77('details');card.id='posInvoiceReviewV852';card.className='pos-invoice-review-v852';card.append(posNodeV77('summary','逐筆帳款明細／作廢（點此展開）'));
+ card.append(posNodeV77('p','先展開個別帳單查看項目。記錯帳或需重開時，請作廢原單後重新開立；原單及原因會保留。作廢會回補已扣庫存，實際退款請另行記錄。'));
+ const form=posNodeV77('div');form.className='pos-form-grid-v77';for(const [id,label] of [['posInvoiceStartV847','起始日期'],['posInvoiceEndV847','結束日期']]){const input=posInputV77('date',posTaipeiDateV845());input.id=id;input.onkeydown=e=>{if(e.key==='Enter'){e.preventDefault();posActionV77(()=>posInvoiceReviewV847(true));}};posLabelV77(label,input,form);}card.append(form,posButtonV77('查詢帳單',()=>posInvoiceReviewV847(true)));const rows=posNodeV77('div');rows.id='posInvoiceRowsV847';card.append(rows);document.getElementById('posDailySummaryV846').append(card);
+ card.ontoggle=()=>{if(card.open)return posActionV77(()=>posInvoiceReviewV847(true));};
+ const style=posNodeV77('style');style.textContent='.pos-invoice-review-v852{margin-top:14px;border-top:1px solid var(--border-color,#ddd);padding-top:12px;background:transparent}.pos-invoice-review-v852>summary,.pos-invoice-detail-v852>summary{cursor:pointer;font-weight:600;font-size:.95rem;overflow-wrap:anywhere}.pos-invoice-detail-v852{margin:10px 0;padding:10px;border:1px solid var(--border-color,#ddd);border-radius:8px;background:transparent}.pos-invoice-detail-v852 p{font-size:.9rem}.pos-invoice-actions-v852{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}.pos-invoice-table-v852{width:100%;font-size:.9rem;border-collapse:collapse}.pos-invoice-table-v852 th,.pos-invoice-table-v852 td{padding:7px 5px;border-bottom:1px solid var(--border-color,#ddd);text-align:left;overflow-wrap:anywhere}.pos-invoice-review-v852 button{font-size:.85rem;padding:8px 12px}';document.head.append(style);
+ document.getElementById('statGrandTotal').parentElement.append(posNodeV77('p','本頁僅查詢已確認入帳的營收。收款核對、確認入帳、退款及作廢均在「今日工作」處理。'));
 }
 posMountV847();
 
@@ -14733,5 +14805,14 @@ function posSimpleWorkMountV85(){
  const style=posNodeV77('style');style.textContent='#posOpenBoxV77{display:none!important}#posOpenV77{padding:10px 24px;font-size:1rem}#posShiftTabV77 details[hidden],#posLegacyV845[hidden]{display:none!important}';document.head.append(style);
 }
 posSimpleWorkMountV85();
+
+// v85_3: one invoice/payment, independent medical and product revenue.
+function posRevenueV853(invoice,refund=0){
+ const split=invoice.verificationV845?.revenue_split;
+ if(!split||split.version!==853)throw Error('請先執行 v85_3 門診與商品收入分類 SQL，再更新資料');
+ const total=Math.max(0,Number(invoice.total_amount||0)-Number(refund||0));
+ const product=split.net_product_total!==undefined?Number(split.net_product_total):Math.round((total*Number(split.product_ratio)+Number.EPSILON)*100)/100;
+ return {...split,product_total:product,clinic_total:split.net_clinic_total!==undefined?Number(split.net_clinic_total):Math.round((total-product+Number.EPSILON)*100)/100};
+}
 </script>
 </body></html>
