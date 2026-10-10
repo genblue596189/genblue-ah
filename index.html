@@ -2,7 +2,7 @@
 <meta name="genblue-version" content="v85">
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>吉布動物醫院管理系統 genblue設計版權所有 · v85_5</title>
+    <title>吉布動物醫院管理系統 genblue設計版權所有 · v85_6</title>
     <!-- 引入 Supabase JS SDK CDN -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
@@ -14552,7 +14552,7 @@ function posSplitPagesV77(){
  const style=posNodeV77('style');style.id='posCompactStyleV84';style.textContent='#posHomeV77{display:flex;align-items:center;flex-wrap:wrap;gap:8px;background:transparent;border:0;border-radius:0;box-shadow:none;padding:0;margin:8px 0 12px;min-height:32px}#posHomeV77 h3{font-size:14px;line-height:1.4;margin:0 4px 0 0;color:var(--ink,var(--text-main));font-weight:600}#posHomeV77 b{font-size:13px;line-height:1.4;margin-right:4px;color:var(--text-main)}#posHomeV77 button{padding:5px 10px;font-size:12px;line-height:1.4;min-height:30px;margin:0;border-radius:7px}#posDeskV77 .card{margin:0 0 16px}#posTabV77 .card{max-width:1200px}#posShiftTabV77{max-width:1200px}.pos-form-grid-v77{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px}.pos-form-grid-v77 label{display:flex;flex-direction:column;gap:6px;margin:0}.pos-form-grid-v77 input,.pos-form-grid-v77 select{width:100%!important;box-sizing:border-box}#posDenomsV77{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:12px}#posDenomsV77 label{display:flex;flex-direction:column;gap:5px;margin:0}#posDenomsV77 input{width:100%;box-sizing:border-box}#posCountTotalV77{font-size:1.15rem;font-weight:700;margin:20px 0}@media(max-width:900px){#posDenomsV77{grid-template-columns:repeat(3,minmax(0,1fr))}.pos-form-grid-v77{grid-template-columns:repeat(2,minmax(0,1fr))}}@media(max-width:600px){#posDenomsV77{grid-template-columns:repeat(2,minmax(0,1fr))}.pos-form-grid-v77{grid-template-columns:1fr}}';document.head.append(style);
 }
 posMountV77();posSplitPagesV77();
-const posVersionV84=posNodeV77('span',' · v85_5');posVersionV84.id='genblueVersionV84';document.querySelector('.journal-side-foot')?.append(posVersionV84);
+const posVersionV84=posNodeV77('span',' · v85_6');posVersionV84.id='genblueVersionV84';document.querySelector('.journal-side-foot')?.append(posVersionV84);
 const posSwitchOriginalV77=switchTab;
 switchTab=function(tab,...args){
  if(tab==='posShiftTabV77'&&!familyAllowedV74()){alert('此帳號沒有開班／下班結算權限');return;}
@@ -14582,6 +14582,14 @@ const posLogoutOriginalV77=logoutSupabase;logoutSupabase=async function(...args)
 // v84_6: one daily drawer, handovers, verification and subsequent bank settlement.
 let posFormRevisionV845=null,posBankOffsetV845=0,posCountTouchedV849=false,posCountScopeV849='',posRestoredProofV849='';
 const posMethodsV845=['現金','信用卡','轉帳','行動支付'];
+// v85_6: saved counts belong to history, never a new count form.
+function posClearCountFormV856(){
+ for(const n of posDenomsV77)document.getElementById('posDenom'+n+'V77').value='';
+ for(let idx=1;idx<4;idx++){document.getElementById('posActualV845_'+idx).value='';document.getElementById('posEvidenceV845_'+idx).value='';}
+ document.getElementById('posCloseReasonV77').value='';document.getElementById('posRecipientV845').value='';
+ posCountTouchedV849=false;posRestoredProofV849='';posCountUpdateV77();
+}
+
 function posTaipeiDateV845(){return new Intl.DateTimeFormat('sv-SE',{timeZone:'Asia/Taipei'}).format(new Date());}
 function posReconcileRenderV845(){
  const state=posStateV77,day=state?.day,ready=state?.schema_version===850,review=state?.shift||state?.review_shift,closedReview=!state?.shift&&!!state?.review_shift;
@@ -14598,8 +14606,8 @@ function posReconcileRenderV845(){
  for(const event of state.handover_history||[]){const a=event.after_data;if(event.action==='today_work_v85'){history.append(posNodeV77('p',new Date(event.created_at).toLocaleString('zh-TW')+'｜恢復今日工作｜操作人 '+event.actor+'｜保留原下班時間 '+new Date(a.original_closed_at).toLocaleString('zh-TW')+'｜原實點 '+posMoneyV77(a.original_counted)+'｜原應有 '+posMoneyV77(a.original_expected)+'｜原差額 '+posMoneyV77(a.original_difference)));continue;}history.append(posNodeV77('p',new Date(event.created_at).toLocaleString('zh-TW')+'｜'+(event.action==='end_day_v845'?'最終下班':event.action==='confirm_income_v846'?(a.supplement_after_close?'下班後補核對入帳':'確認今日入帳'):'中途交班')+'｜工作日 '+a.business_date+'｜操作人 '+event.actor+(a.recipient?'｜接班人 '+a.recipient:'')+'｜現金差額 '+posMoneyV77(a.cash_difference)+'｜未相符付款方式 '+a.unresolved_methods+'｜'+(a.reason||'核對相符')));}
  if(!review){posFormRevisionV845=null;return;}
  if(!ready){document.getElementById('posVerifyStatusV845').textContent='請先執行 v85 每日錢櫃與收款核對 SQL，再更新資料。';return;}
- const countScope=posScopeNowV77()+'|'+day.business_date;
- if(posCountScopeV849!==countScope){posCountScopeV849=countScope;posCountTouchedV849=false;posRestoredProofV849='';for(const n of posDenomsV77)document.getElementById('posDenom'+n+'V77').value='';}
+ const countScope=posScopeNowV77()+'|'+day.business_date+'|'+(closedReview?'closed:':'active:')+review.id;
+ if(posCountScopeV849!==countScope){posCountScopeV849=countScope;posClearCountFormV856();}
  const changed=posFormRevisionV845!==day.revision;
  const first=posFormRevisionV845===null;posFormRevisionV845=day.revision;
  document.getElementById('posVerifyStatusV845').textContent='工作日 '+day.business_date+(closedReview?'｜今日已下班；管理者可補核對，原下班時間及清點紀錄保留。':'｜交班不關閉錢櫃，金額繼續累計。')+(changed&&!first?'收款或核對資料已更新，請重新填寫非現金核對金額。':'');
@@ -14607,7 +14615,7 @@ function posReconcileRenderV845(){
  for(let idx=0;idx<4;idx++){
   const method=posMethodsV845[idx],m=day.methods.find(x=>x.method===method)||{total:0,verified:0,pending_count:0};
   document.getElementById('posMethodSystemV845_'+idx).textContent=(idx===0?'錢櫃應有 '+posMoneyV77(day.expected)+'；':'')+'今日淨收款 '+posMoneyV77(m.total)+'｜已核對 '+posMoneyV77(m.verified)+(m.pending_count?'｜待核對 '+m.pending_count+' 筆':'');
-  if(idx>0&&changed){document.getElementById('posActualV845_'+idx).value=Number(m.total)===0?'0':'';document.getElementById('posEvidenceV845_'+idx).value='';}
+  if(idx>0&&changed){document.getElementById('posActualV845_'+idx).value=!closedReview&&Number(m.total)===0?'0':'';document.getElementById('posEvidenceV845_'+idx).value='';}
  }
  posDrawerReviewV849(state.drawer_review);posDifferencesV845();
  const rows=document.getElementById('posUnverifiedV845');rows.replaceChildren();
@@ -14645,6 +14653,7 @@ async function posReconcileV845(mode){
  const denominations=Object.fromEntries(posDenomsV77.map(n=>[String(n),Number(document.getElementById('posDenom'+n+'V77').value)]));
  if(!confirm((mode==='handover'?'確認交班給 '+recipient+'？錢櫃保持開啟、金額繼續累計。':mode==='confirm'?(closedReview?'確認下班後補核對？款項將列入財務已確認收入，保留原下班紀錄，不重新開班。':'確認今日入帳？款項將列入財務已確認收入，錢櫃保持開啟。'):'結束今日工作？若之後有急診，按「今日工作」即可恢復原錢櫃。')+'\n'+posMethodsV845.map(m=>m+'核對：'+posMoneyV77(actual[m])).join('\n')+(unmatched?'\n有 '+unmatched+' 種付款方式未相符，保留待處理。':'\n各付款方式相符，待核對款項轉為已確認。')+(posStateV77.pending.length?'\n尚未收款 '+posStateV77.pending.length+' 筆，保留到後續處理。':'')))return;
  const result=await posFrozenRpcV77('reconcile','reconcile',{shift_id:active.id,revision:day.revision,mode,actual,evidence,denominations,recipient,reason});
+ if(mode==='end_day'||closedReview)posClearCountFormV856();
  await posRefreshV77({fresh:true,required:true});await posBankLoadV845(true);
  if(typeof fetchFinancialReport==='function'&&document.getElementById('reportStartDate').value)await fetchFinancialReport();
  const summary=await posDailySummaryV846();
@@ -14800,8 +14809,8 @@ function posDrawerReviewV849(review){
  for(const inv of review.voided_payments||[])box.append(posNodeV77('p','已作廢帳單 '+inv.invoice_id+'｜原帳款 '+posMoneyV77(inv.amount)+'｜'+inv.payment_method+'｜已記錄同付款方式退款 '+posMoneyV77(inv.recorded_refunds)+'｜原因：'+(inv.void_reason||'—')+'。作廢不等於已退款，請核對實際款項及退款紀錄。'));
  const saved=review.saved,data=saved?.data;
  if(data){box.append(posNodeV77('p','上次保存清點：'+new Date(saved.created_at).toLocaleString('zh-TW')+'｜實點 '+posMoneyV77(data.actual?.['現金'])+'｜當時應有 '+posMoneyV77(data.expected)+'｜差額 '+posMoneyV77(data.cash_difference)+'｜操作人 '+saved.actor+(review.count_current?'｜目前金流仍相符':'｜歷史紀錄；目前金流需重新清點核對')));
-  const proofKey=saved.created_at+'|'+saved.actor+'|'+(data.verified_revision||data.revision);
-  if(review.count_current&&proofKey!==posRestoredProofV849&&!posCountTouchedV849&&data.denominations){for(const n of posDenomsV77)document.getElementById('posDenom'+n+'V77').value=String(data.denominations[String(n)]??0);for(let idx=1;idx<4;idx++){document.getElementById('posActualV845_'+idx).value=String(data.actual[posMethodsV845[idx]]??0);}posCountTouchedV849=true;posRestoredProofV849=proofKey;}
+  // Keep saved denominations in the audit record; do not fill them into editable fields.
+ 
  }else if(review.original_closed_at){box.append(posNodeV77('p','原下班清點：'+new Date(review.original_closed_at).toLocaleString('zh-TW')+'｜當時實點 '+posMoneyV77(review.original_counted)+'｜當時應有 '+posMoneyV77(review.original_expected)+'｜原差額 '+posMoneyV77(review.original_difference)+'。這是原始紀錄，不能當成補入較早帳款後的新清點結果。'));}
 }
 const drawerExplanationV849=posNodeV77('details');drawerExplanationV849.id='posDrawerExplanationV849';document.getElementById('posVerifyCardV845').insertBefore(drawerExplanationV849,document.getElementById('posVerifyStatusV845'));
