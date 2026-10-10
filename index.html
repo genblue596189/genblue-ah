@@ -2,7 +2,7 @@
 <meta name="genblue-version" content="v85">
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>吉布動物醫院管理系統 genblue設計版權所有 · v85_3</title>
+    <title>吉布動物醫院管理系統 genblue設計版權所有 · v85_4</title>
     <!-- 引入 Supabase JS SDK CDN -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
@@ -3613,12 +3613,10 @@ if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',
             const reason = prompt('請填寫作廢原因（原帳單會保留，已扣的庫存會回補）：');
             if (reason === null) return;
             if (reason.trim().length < 2) { alert('請填寫至少兩字的作廢原因'); return; }
-            if (!confirm('確定作廢這筆交易並回補庫存？')) return;
+            if (!confirm('確定作廢這筆交易並回補庫存？\n請確認原單的藥品／商品已退回，或尚未實際交付。未退回時請取消，不可回補庫存。')) return;
             let error;
             try {
-                ({ error } = await _supabase.rpc('void_checkout_with_inventory', {
-                    p_invoice_id: invoiceId, p_reason: reason.trim()
-                }));
+                await posRpcV77('void_safe_v854',{invoice_id:invoiceId,reason:reason.trim(),stock_return_confirmed:true});
             } catch (err) { error = err; }
             if (error) { alert('作廢失敗，帳單與庫存均未變更：' + error.message); return; }
             alert('帳單已作廢，已扣的庫存已回補。退款請依原付款方式另行處理。');
@@ -14349,7 +14347,7 @@ async function posRefreshV77(options={}){
  }
  if(posRefreshPromiseV84&&posRefreshPromiseScopeV84===scope)return posRefreshV77(options);
  posLoadingV77=true;posRefreshPromiseScopeV84=scope;
- if(posScopeV77!==scope){posStateV77=null;posSelectedV77=null;posEditV77=null;document.getElementById('posQueueV77').replaceChildren();document.getElementById('posEditorV77').replaceChildren();}
+ if(posScopeV77!==scope){posStateV77=null;posSelectedV77=null;posEditV77=null;document.getElementById('posQueueV77').replaceChildren();document.getElementById('posEditorV77').replaceChildren();document.getElementById('posPaidRowsV854')?.replaceChildren();document.getElementById('posReissueRowsV854')?.replaceChildren();posPaidOffsetV854=0;posReissueOffsetV854=0;posWorkRequestV854++;}
  const task=(async()=>{
   try{
    const state=await posRpcV77('list');if(state.tenant_id!==String(CURRENT_TENANT_ID))throw Error('院所回覆不符');
@@ -14372,10 +14370,10 @@ async function posRequireShiftV84(){
 
 function posKeyV77(suffix){return 'genblue-pos-v77:'+posScopeNowV77()+':'+suffix;}
 function posFrozenV77(key,data){const k=posKeyV77(key);const previous=JSON.parse(sessionStorage.getItem(k)||'null');if(previous)return previous;const frozen={...data,id:crypto.randomUUID()};sessionStorage.setItem(k,JSON.stringify(frozen));return frozen;}
-function posReceiptV77(result,d,method){
+function posReceiptV77(result,d,method,kind='clinic'){
  const id=typeof result==='string'?result:result.invoice_id;
  if(!id)return;
- openReceiptModal({id,created_at:new Date().toISOString(),checkout_type:(d.lines.some(l=>l.stock_kind==='item')?'門診＋商品':'門診收費')+' ('+method+')',subtotal:d.subtotal,discount:d.discount,total_amount:d.total},escapeCheckoutText(d.ownerName),escapeCheckoutText(d.billingPetName),
+ openReceiptModal({id,created_at:new Date().toISOString(),checkout_type:(kind==='retail'?'商品零售':d.lines.some(l=>l.stock_kind==='item')?'門診＋商品':'門診收費')+' ('+method+')',subtotal:d.subtotal,discount:d.discount,total_amount:d.total},escapeCheckoutText(d.ownerName),escapeCheckoutText(d.billingPetName),
  [...d.lines,...d.medicationGroups.map(g=>({item_name:medicationGroupLabelsV64[g.kind]||g.kind,quantity:1,unit_price:g.price}))].map(l=>({...l,item_name:escapeCheckoutText(l.item_name),subtotal:l.quantity*l.unit_price})));
 }
 function posTenderV77(method,total){if(method!=='現金')return null;const text=prompt('應收 '+posMoneyV77(total)+'\n請輸入飼主交付現金（只記應收金額為收入）',String(total));if(text===null)throw Error('收款已取消');const tender=Number(text);if(!Number.isFinite(tender)||tender<total)throw Error('收到現金不足');if(!confirm('收到 '+posMoneyV77(tender)+'\n找零 '+posMoneyV77(tender-total)+'\n確認完成收款？'))throw Error('收款已取消');return tender;}
@@ -14428,9 +14426,9 @@ function posRenderV77(){
  document.getElementById('posStageV77').hidden=!(can||posMedicalV77());document.getElementById('posDeskV77').hidden=!can;
  const queue=document.getElementById('posQueueV77');queue.replaceChildren();
  if(!s.pending.length)queue.append(posNodeV77('p','目前沒有雲端待付款帳單'));
- for(const q of s.pending){const row=posNodeV77('div');row.className='pos-row-v77';row.append(posNodeV77('span',(q.draft.ownerName||'飼主')+'｜'+q.draft.billingPetName+'｜'+posMoneyV77(q.draft.total)+'｜'+q.dispensing));
+ for(const q of s.pending){const row=posNodeV77('div');row.className='pos-row-v77';row.append(posNodeV77('span',(q.draft.ownerName||'飼主')+'｜'+q.draft.billingPetName+'｜'+posMoneyV77(q.draft.total)));posProgressV854(q,row);
  if(can)row.append(posButtonV77('接手／核對明細',()=>{if(posEditV77&&!confirm('放棄尚未儲存的修改？'))return;posSelectedV77=q.id;posEditV77=JSON.parse(JSON.stringify(q.draft));posRenderEditorV77(q);}));
- if(posMedicalV77()||can){const select=posNodeV77('select');for(const value of ['未調劑','已調劑','已交付']){const o=posNodeV77('option',value);o.value=value;select.append(o);}select.value=q.dispensing;select.onchange=()=>posActionV77(async()=>{await posRpcV77('dispensing',{id:q.id,version:q.version,value:select.value});await posRefreshV77();});row.append(select);}queue.append(row);}
+ if(posMedicalV77()||can)row.append(posDispensingControlV854(q));queue.append(row);}
  const existing=s.pending.find(q=>q.id===posSelectedV77);if(posSelectedV77&&!existing){posSelectedV77=null;posEditV77=null;document.getElementById('posEditorV77').replaceChildren();}
  document.getElementById('posCorrectOpeningV77').hidden=CURRENT_PROFILE?.role!=='admin'||!s.shift;
  const lastEnded=s.history.find(h=>h.closed_at);const today=new Date().toLocaleDateString('zh-TW',{timeZone:'Asia/Taipei'});const endedToday=lastEnded&&new Date(lastEnded.closed_at).toLocaleDateString('zh-TW',{timeZone:'Asia/Taipei'})===today;
@@ -14450,7 +14448,8 @@ function posRenderV77(){
 }
 function posRenderEditorV77(q){
  const box=document.getElementById('posEditorV77');box.replaceChildren();const d=posEditV77;if(!d)return;
- box.append(posNodeV77('h3',d.ownerName+'／'+d.billingPetName+' 明細核對（版本 '+q.version+'）'));
+ box.append(posNodeV77('h3',d.ownerName+'／'+d.billingPetName+(q.reissue?' 重開草稿｜原單 '+q.reissue.original_invoice_id:' 明細核對')+'（版本 '+q.version+'）'));
+ if(q.reissue)box.append(posNodeV77('p','此草稿尚未收款或扣庫存。原單已收款時，須先核對並記錄原單實際退款，才可再次收取全額；不會自動抵扣舊款。處方用量由醫師處理，櫃台可更正費用與商品。'));
  function row(label,qty,price,onchange,remove){
   const r=posNodeV77('div');r.className='pos-row-v77';r.append(posNodeV77('span',label));const a=posInputV77('number',qty),b=posInputV77('number',price);a.step='0.01';b.step='0.01';
   a.oninput=b.oninput=()=>{onchange(Number(a.value),Number(b.value));update();};r.append(a,b);if(remove)r.append(posButtonV77('移除',remove));else a.disabled=true;box.append(r);
@@ -14464,9 +14463,10 @@ function posRenderEditorV77(q){
  search.onkeydown=e=>{if(e.key==='Enter'){e.preventDefault();find();}};box.append(search,posButtonV77('搜尋商品',find),results,posButtonV77('加入同張帳單',async()=>{const item=loadedItemsMap[results.value];if(!item)throw Error('請先搜尋並點選商品');d.lines.push({item_name:item.name,quantity:1,unit_price:Number(item.sell_price||0),stock_kind:'item',stock_id:results.value});posRenderEditorV77(q);}));
  const discount=posInputV77('number',d.discount);discount.step='0.01';discount.oninput=()=>{d.discount=Number(discount.value);update();};posLabelV77('折扣',discount,box);const total=posNodeV77('p');box.append(total);
  function update(){try{posTotalsV77(d);total.textContent='待收 '+posMoneyV77(d.total);}catch(e){total.textContent=e.message;}}update();
- box.append(posButtonV77('儲存櫃台修改',async()=>{posTotalsV77(d);await posRpcV77('edit',{id:q.id,version:q.version,draft:d});posEditV77=null;posSelectedV77=null;box.replaceChildren();await posRefreshV77();}));
- const payment=posNodeV77('select');for(const v of ['現金','信用卡','轉帳','行動支付']){const o=posNodeV77('option',v);o.value=v;payment.append(o);}box.append(payment,posButtonV77('確認收款並開收據',async()=>{if(JSON.stringify(d)!==JSON.stringify(q.draft))throw Error('請先儲存明細修改，再重新接手核對');await posPayV77(q,payment.value);box.replaceChildren();}));
- if(CURRENT_PROFILE?.role==='admin')box.append(posButtonV77('取消待付款（返回候診）',async()=>{if(!confirm('取消後此掛號回候診，由醫師重新處理費用。確定？'))return;await posRpcV77('cancel',{id:q.id,version:q.version});await posRefreshV77();}));
+ box.append(posButtonV77('儲存櫃台修改',async()=>{posTotalsV77(d);if(q.reissue)await posRpcV77('reissue_save_v854',{draft_id:q.id,version:q.version,draft:d});else await posRpcV77('edit',{id:q.id,version:q.version,draft:d});posEditV77=null;posSelectedV77=null;box.replaceChildren();await posRefreshV77();}));
+ const payment=posNodeV77('select');for(const v of ['現金','信用卡','轉帳','行動支付']){const o=posNodeV77('option',v);o.value=v;payment.append(o);}box.append(payment,posButtonV77('確認收款並開收據',async()=>{if(JSON.stringify(d)!==JSON.stringify(q.draft))throw Error('請先儲存明細修改，再重新接手核對');if(q.reissue)await posReissuePayV854(q,payment.value);else await posPayV77(q,payment.value);box.replaceChildren();}));
+ if(q.reissue)box.append(posButtonV77('取消重開草稿',async()=>{if(!confirm('取消這份草稿？原單作廢紀錄與退款紀錄仍保留。'))return;await posRpcV77('reissue_cancel_v854',{draft_id:q.id,version:q.version});posEditV77=null;box.replaceChildren();await posWorkLoadV854();}));
+ else if(CURRENT_PROFILE?.role==='admin')box.append(posButtonV77('取消待付款（返回候診）',async()=>{if(!confirm('取消後此掛號回候診，由醫師重新處理費用。確定？'))return;await posRpcV77('cancel',{id:q.id,version:q.version});await posRefreshV77();}));
 }
 function posCountUpdateV77(){if(!posCountTouchedV849||posDenomsV77.every(n=>document.getElementById('posDenom'+n+'V77').value.trim()==='')){const out=document.getElementById('posCountTotalV77');out.textContent='尚未清點現金；填寫面額張數後才計算溢收／短少。';out.style.color='var(--text-main,#475569)';return null;}let sum=0;for(const n of posDenomsV77){const v=Number(document.getElementById('posDenom'+n+'V77').value||0);if(!Number.isInteger(v)||v<0){document.getElementById('posCountTotalV77').textContent='請輸入非負整數張數';return null;}sum+=n*v;}
  const diff=sum-Number(posStateV77?.expected||0);const out=document.getElementById('posCountTotalV77');out.textContent='實際清點 '+posMoneyV77(sum)+'｜'+(diff>0?'溢收 ':diff<0?'短少 ':'相符 ')+posMoneyV77(Math.abs(diff));out.style.color=diff?'#dc2626':'#15803d';return sum;}
@@ -14534,7 +14534,7 @@ function posSplitPagesV77(){
  const style=posNodeV77('style');style.id='posCompactStyleV84';style.textContent='#posHomeV77{display:flex;align-items:center;flex-wrap:wrap;gap:8px;background:transparent;border:0;border-radius:0;box-shadow:none;padding:0;margin:8px 0 12px;min-height:32px}#posHomeV77 h3{font-size:14px;line-height:1.4;margin:0 4px 0 0;color:var(--ink,var(--text-main));font-weight:600}#posHomeV77 b{font-size:13px;line-height:1.4;margin-right:4px;color:var(--text-main)}#posHomeV77 button{padding:5px 10px;font-size:12px;line-height:1.4;min-height:30px;margin:0;border-radius:7px}#posDeskV77 .card{margin:0 0 16px}#posTabV77 .card{max-width:1200px}#posShiftTabV77{max-width:1200px}.pos-form-grid-v77{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px}.pos-form-grid-v77 label{display:flex;flex-direction:column;gap:6px;margin:0}.pos-form-grid-v77 input,.pos-form-grid-v77 select{width:100%!important;box-sizing:border-box}#posDenomsV77{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:12px}#posDenomsV77 label{display:flex;flex-direction:column;gap:5px;margin:0}#posDenomsV77 input{width:100%;box-sizing:border-box}#posCountTotalV77{font-size:1.15rem;font-weight:700;margin:20px 0}@media(max-width:900px){#posDenomsV77{grid-template-columns:repeat(3,minmax(0,1fr))}.pos-form-grid-v77{grid-template-columns:repeat(2,minmax(0,1fr))}}@media(max-width:600px){#posDenomsV77{grid-template-columns:repeat(2,minmax(0,1fr))}.pos-form-grid-v77{grid-template-columns:1fr}}';document.head.append(style);
 }
 posMountV77();posSplitPagesV77();
-const posVersionV84=posNodeV77('span',' · v85_3');posVersionV84.id='genblueVersionV84';document.querySelector('.journal-side-foot')?.append(posVersionV84);
+const posVersionV84=posNodeV77('span',' · v85_4');posVersionV84.id='genblueVersionV84';document.querySelector('.journal-side-foot')?.append(posVersionV84);
 const posSwitchOriginalV77=switchTab;
 switchTab=function(tab,...args){
  if(tab==='posShiftTabV77'&&!familyAllowedV74()){alert('此帳號沒有開班／下班結算權限');return;}
@@ -14559,7 +14559,7 @@ window.addEventListener('focus',()=>{if(posScopeNowV77()&&!posBusyV77)posRefresh
 const posLoadProfileOriginalV77=loadCurrentUserProfile;
 loadCurrentUserProfile=async function(...args){const result=await posLoadProfileOriginalV77.apply(this,args);await posRefreshV77();return result;};
 
-const posLogoutOriginalV77=logoutSupabase;logoutSupabase=async function(...args){posStateV77=null;posScopeV77='';posSelectedV77=null;posEditV77=null;document.getElementById('posQueueV77').replaceChildren();document.getElementById('posEditorV77').replaceChildren();document.getElementById('posHomeV77').hidden=true;return posLogoutOriginalV77.apply(this,args);};
+const posLogoutOriginalV77=logoutSupabase;logoutSupabase=async function(...args){posStateV77=null;posScopeV77='';posSelectedV77=null;posEditV77=null;document.getElementById('posQueueV77').replaceChildren();document.getElementById('posEditorV77').replaceChildren();document.getElementById('posPaidRowsV854')?.replaceChildren();document.getElementById('posReissueRowsV854')?.replaceChildren();posPaidOffsetV854=0;posReissueOffsetV854=0;posWorkRequestV854++;document.getElementById('posHomeV77').hidden=true;return posLogoutOriginalV77.apply(this,args);};
 
 // v84_6: one daily drawer, handovers, verification and subsequent bank settlement.
 let posFormRevisionV845=null,posBankOffsetV845=0,posCountTouchedV849=false,posCountScopeV849='',posRestoredProofV849='';
@@ -14662,7 +14662,7 @@ posEndWorkV842=()=>posReconcileV845('end_day');
 // Preserve verification requests across ambiguous network failures, including final closure.
 const posFrozenBeforeV845=posFrozenRpcV77;
 posFrozenRpcV77=async function(action,key,data){
- if(!['reconcile','verify_bank','adopt_legacy','today_work'].includes(action))return posFrozenBeforeV845(action,key,data);
+ if(!['reconcile','verify_bank','adopt_legacy','today_work','reissue_prepare_v854','reissue_pay_v854'].includes(action))return posFrozenBeforeV845(action,key,data);
  const registryKey=posKeyV77('verification-retries'),registry=JSON.parse(sessionStorage.getItem(registryKey)||'[]');
  if(!registry.some(r=>r.key===key))registry.push({action,key});sessionStorage.setItem(registryKey,JSON.stringify(registry));
  try{const result=await posFrozenBeforeV845(action,key,data);sessionStorage.setItem(registryKey,JSON.stringify(registry.filter(r=>r.key!==key)));return result;}
@@ -14718,6 +14718,7 @@ async function posInvoiceReviewV847(reset=false){
  const rows=(data||[]).slice(0,50),statuses=rows.length?await posRpcV77('finance_status',{invoice_ids:rows.map(r=>r.id)}):{statuses:[]};
  if(scope!==posScopeNowV77()||request!==posInvoiceRequestV847)return;
  if(statuses.statuses.length!==rows.length)throw Error('帳單核對狀態不完整');
+ const links=rows.length?await posRpcV77('reissue_links_v854',{invoice_ids:rows.map(r=>r.id)}):{tenant_id:String(CURRENT_TENANT_ID),rows:[]};if(scope!==posScopeNowV77()||request!==posInvoiceRequestV847)return;if(links.tenant_id!==String(CURRENT_TENANT_ID))throw Error('新舊單院所回覆不符');
  const map=new Map(statuses.statuses.map(r=>[r.invoice_id,r])),box=document.getElementById('posInvoiceRowsV847');box.replaceChildren();
  box.append(posNodeV77('p','第 '+(posInvoiceOffsetV847+1)+'–'+(posInvoiceOffsetV847+rows.length)+' 筆；作廢保留原單並回補庫存，實際退款仍需另外記錄。'));
  for(const inv of rows){
@@ -14727,8 +14728,10 @@ async function posInvoiceReviewV847(reset=false){
   const detail=posNodeV77('div');detail.append(posNodeV77('p','展開後讀取收費明細。'));row.append(detail);
   row.ontoggle=()=>{if(row.open)return posActionV77(()=>posInvoiceDetailV852({...inv,verificationV845:map.get(inv.id)},detail,scope,request));};
   const actions=posNodeV77('div');actions.className='pos-invoice-actions-v852';
-  if(inv.voided_at)actions.append(posNodeV77('p','作廢原因：'+(inv.void_reason||'—')));
-  else actions.append(posButtonV77('作廢原帳單',async()=>{await voidInvoice(inv.id);await posRefreshV77({fresh:true,required:true});await posInvoiceReviewV847();}));
+  if(inv.voided_at){actions.append(posNodeV77('p','作廢原因：'+(inv.void_reason||'—')),posButtonV77('重新開立（帶入草稿）',()=>posReissuePrepareV854(inv.id)));}
+  if(!inv.voided_at)actions.append(posButtonV77('作廢原帳單',async()=>{await voidInvoice(inv.id);await posRefreshV77({fresh:true,required:true});await posInvoiceReviewV847();}));
+  for(const link of links.rows.filter(l=>String(l.original_invoice_id)===String(inv.id)||String(l.new_invoice_id)===String(inv.id))){const message=String(link.new_invoice_id)===String(inv.id)?'由原單 '+link.original_invoice_id+' 重新開立':'重開狀態：'+({draft:'草稿，尚未收款',paid:'已完成新單',cancelled:'草稿已取消'}[link.state]||link.state)+(link.new_invoice_id?'｜新單 '+link.new_invoice_id:'');row.append(posNodeV77('p',message+'｜原因：'+link.reason));}
+
   const copy=posButtonV77('填入退款帳單號',()=>{document.getElementById('posMovementReferenceV77').value=inv.id;document.getElementById('posMovementKindV77').value='refund';document.getElementById('posMovementAmountV77').value=String(inv.total_amount);document.getElementById('posMovementCardV77').scrollIntoView?.({behavior:'smooth',block:'start'});alert('已填入原帳單號與原金額，尚未退款或寫入紀錄。請確認實際退款方式、金額與原因後再記錄。');});copy.disabled=!posStateV77?.shift;actions.append(copy);row.append(actions);box.append(row);
  }
  if(!rows.length)box.replaceChildren(posNodeV77('p','此日期沒有帳單。'));
@@ -14814,5 +14817,55 @@ function posRevenueV853(invoice,refund=0){
  const product=split.net_product_total!==undefined?Number(split.net_product_total):Math.round((total*Number(split.product_ratio)+Number.EPSILON)*100)/100;
  return {...split,product_total:product,clinic_total:split.net_clinic_total!==undefined?Number(split.net_clinic_total):Math.round((total-product+Number.EPSILON)*100)/100};
 }
+
+// v85_4: prescription progress survives payment; reissue drafts are cloud-backed.
+let posWorkRequestV854=0,posPaidOffsetV854=0,posReissueOffsetV854=0;
+function posHasDrugsV854(q){return (q.draft.medicationGroups||[]).some(g=>g.drugs?.length)||(q.draft.lines||[]).some(l=>l.stock_kind==='medicine');}
+function posProgressV854(q,parent){
+ const rx=posHasDrugsV854(q),paid=q.state==='paid';
+ parent.append(posNodeV77('span','付款：'+(paid?'已付款':'待收款')),posNodeV77('span',rx?'調劑：'+(q.dispensing==='未調劑'?'未調劑':'已調劑'):'調劑：無處方藥'),posNodeV77('span',rx?'交付：'+(q.dispensing==='已交付'?'已交付':'尚未交付'):'交付：無處方藥'));
+}
+function posDispensingControlV854(q){
+ const select=posNodeV77('select');for(const value of ['未調劑','已調劑','已交付']){const o=posNodeV77('option',value);o.value=value;select.append(o);}select.value=q.dispensing;select.setAttribute('aria-label','處方調劑與交付狀態');select.disabled=!posHasDrugsV854(q);
+ select.onchange=()=>posActionV77(async()=>{const order=['未調劑','已調劑','已交付'];let reason='';if(order.indexOf(select.value)<order.indexOf(q.dispensing)){if(CURRENT_PROFILE?.role!=='admin'){select.value=q.dispensing;throw Error('退回較早進度須管理者處理');}reason=prompt('請填寫退回較早調劑／交付進度的原因')||'';if(reason.trim().length<2){select.value=q.dispensing;throw Error('請填寫至少兩字的更正原因');}}try{await posRpcV77('dispensing',{id:q.id,version:q.version,value:select.value,reason});await posRefreshV77({fresh:true,required:true});}catch(e){select.value=q.dispensing;throw e;}});return select;
+}
+async function posWorkLoadV854(){
+ const scope=posScopeNowV77(),req=++posWorkRequestV854,box=document.getElementById('posPaidRowsV854'),drafts=document.getElementById('posReissueRowsV854');
+ if(!scope||!(familyAllowedV74()||posMedicalV77())){box.replaceChildren();drafts.replaceChildren();return;}
+ try{const reply=await posRpcV77('work_list_v854',{offset:posPaidOffsetV854,reissue_offset:posReissueOffsetV854});if(scope!==posScopeNowV77()||req!==posWorkRequestV854)return;
+  if(reply.tenant_id!==String(CURRENT_TENANT_ID)||reply.version!==854)throw Error('請先執行 v85_4 SQL');
+  box.replaceChildren();drafts.replaceChildren();document.getElementById('posPaidSummaryV854').textContent='已付款／交付進度（'+reply.paid_total+' 筆，點此展開）';
+  for(const q of reply.paid){const row=posNodeV77('div');row.className='pos-row-v77';row.append(posNodeV77('span',(q.draft.ownerName||'飼主')+'｜'+q.draft.billingPetName+'｜'+posMoneyV77(q.draft.total)));posProgressV854(q,row);row.append(posDispensingControlV854(q));box.append(row);}
+  if(!reply.paid.length)box.append(posNodeV77('p','目前沒有待交付或今日已付款的帳單。'));
+  function pages(parent,offset,total,update){const prev=posButtonV77('上一頁',async()=>{update(Math.max(0,offset-50));await posWorkLoadV854();});prev.disabled=!offset;const next=posButtonV77('下一頁',async()=>{update(offset+50);await posWorkLoadV854();});next.disabled=offset+50>=total;if(total>50||offset)parent.append(prev,next);}
+  pages(box,posPaidOffsetV854,reply.paid_total,x=>posPaidOffsetV854=x);
+  const draftCard=document.getElementById('posReissueCardV854');draftCard.hidden=!reply.reissue_total;document.getElementById('posReissueSummaryV854').textContent='重新開立草稿（'+reply.reissue_total+' 筆，尚未收款）';
+  for(const r of reply.reissues){const row=posNodeV77('div');row.className='pos-row-v77';const a=r.after_data;row.append(posNodeV77('span',a.draft.ownerName+'｜'+a.draft.billingPetName+'｜'+posMoneyV77(a.draft.total)+'｜原單 '+a.original_invoice_id),posButtonV77('接手重開草稿',()=>posReissueEditorV854({...a,id:r.id})));drafts.append(row);}
+  pages(drafts,posReissueOffsetV854,reply.reissue_total,x=>posReissueOffsetV854=x);
+ }catch(e){if(scope===posScopeNowV77()&&req===posWorkRequestV854){box.replaceChildren(posNodeV77('p','進度讀取失敗：'+e.message));drafts.replaceChildren();}}
+}
+function posReissueEditorV854(root){
+ if(root.state!=='draft'){alert(root.new_invoice_id?'此原單已重開，新的帳單號：'+root.new_invoice_id:'草稿已結束');return;}
+ if(posEditV77&&!confirm('放棄目前尚未儲存的修改，接手重開草稿？'))return;
+ posSelectedV77=null;posEditV77=JSON.parse(JSON.stringify(root.draft));posRenderEditorV77({id:root.id,version:root.version,draft:root.draft,reissue:root});document.getElementById('posEditorV77').scrollIntoView?.({behavior:'smooth',block:'start'});
+}
+async function posReissuePrepareV854(invoiceId){
+ const reason=prompt('請填寫重新開立原因；只建立草稿，尚未收款或扣庫存');if(reason===null)return;if(reason.trim().length<2)throw Error('請填寫至少兩字的原因');
+ const reply=await posFrozenRpcV77('reissue_prepare_v854','reissue-prepare:'+invoiceId,{invoice_id:invoiceId,reason:reason.trim()});
+ await posWorkLoadV854();switchTab('posTabV77');posReissueEditorV854(reply);
+}
+async function posReissuePayV854(q,method){
+ const key='reissue-pay:'+q.id,scope=posScopeNowV77();const shift=await posRequireShiftV84();
+ const pending=JSON.parse(sessionStorage.getItem(posKeyV77(key))||'null');
+ const request=pending||posFrozenV77(key,{draft_id:q.id,version:q.version,method,shift_id:shift.id,tendered:posTenderV77(method,q.draft.total)});
+ const result=await posFrozenRpcV77('reissue_pay_v854',key,request);if(scope!==posScopeNowV77())throw Error('登入身分已變更');sessionStorage.removeItem(posKeyV77(key));posReceiptV77(result,q.draft,request.method,q.reissue.kind);posEditV77=null;posSelectedV77=null;await posRefreshV77({fresh:true,required:true});await posInvoiceReviewV847();
+}
+function posWorkMountV854(){
+ const paid=posNodeV77('details');paid.className='pos-progress-card-v854';const title=posNodeV77('summary','已付款／交付進度（點此展開）');title.id='posPaidSummaryV854';paid.append(title);const rows=posNodeV77('div');rows.id='posPaidRowsV854';paid.append(rows);
+ const reissues=posNodeV77('details');reissues.id='posReissueCardV854';reissues.className='pos-progress-card-v854';reissues.hidden=true;const head=posNodeV77('summary','重新開立草稿');head.id='posReissueSummaryV854';reissues.append(head);const dr=posNodeV77('div');dr.id='posReissueRowsV854';reissues.append(dr);document.getElementById('posQueueV77').after(paid,reissues);
+ const style=posNodeV77('style');style.textContent='.pos-progress-card-v854{margin:12px 0;padding:10px;border:1px solid var(--border-color,#ddd);border-radius:8px;background:transparent}.pos-progress-card-v854>summary{cursor:pointer;font-weight:600}.pos-progress-card-v854[hidden]{display:none!important}#posQueueV77 .pos-row-v77>span:not(:first-child),#posPaidRowsV854 .pos-row-v77>span:not(:first-child){font-size:.85rem;padding:4px 7px;border:1px solid var(--border-color,#ddd);border-radius:6px}';document.head.append(style);
+}
+posWorkMountV854();
+const posRenderBeforeV854=posRenderV77;posRenderV77=function(){posRenderBeforeV854();posWorkLoadV854();};
 </script>
 </body></html>
