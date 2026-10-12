@@ -1730,7 +1730,7 @@ body.role-no-appointment #nav-online_booking{display:none!important}
     <label for="needReceiptCheckbox" style="cursor: pointer; margin-bottom: 0; color: #1e293b; font-weight: bold;">結帳後同時顯示/列印正式收據</label>
 </div>
 
-<div style="display: flex; gap: 10px;">
+<div id="invoiceCheckoutActionsV902" style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;align-items:stretch;">
     <button class="btn-success" onclick="processInvoiceCheckoutToArchive(true)" style="flex: 1;">💾 儲存並列印收據</button>
     <button class="btn-secondary" onclick="processInvoiceCheckoutToArchive(false)" style="flex: 1;">📁 僅儲存並完成歸檔 (不列印)</button>
 </div>
@@ -14496,7 +14496,7 @@ function posMountV77(){
  const tab=posNodeV77('div');tab.id='posTabV77';tab.className='tab-content';tab.innerHTML='<div class="card pos-panel-v77"><h2>雲端待付款</h2><p>待付款不列入營業額；調劑、交付與付款分開記錄。庫存仍依原系統在收款時扣除。</p><p id="posMessageV77"></p><div id="posQueueV77"></div><div id="posEditorV77"></div><div id="posDeskV77"><h2>開班與下班結算</h2><p id="posShiftInfoV77"></p><div id="posMethodsV77"></div><div id="posOpenBoxV77"><label>開班備用金 <input id="posOpeningV77" type="number" min="0" step="0.01" value="0"></label><button id="posOpenV77" type="button" class="btn-secondary">開始今日工作（開班）</button></div><div id="posCountBoxV77"><p>請輸入各面額張數；備用金不列入營業額。</p><div id="posDenomsV77"></div><p id="posCountTotalV77"></p><label>結算／差額原因 <input id="posCloseReasonV77" type="text"></label><button id="posCloseV77" type="button" class="btn-secondary">結束今日工作</button><hr><select id="posMovementKindV77"><option value="in">補入零鈔</option><option value="out">取出現金</option><option value="refund">記錄實際退款</option></select><label>金額 <input id="posMovementAmountV77" type="number" min="0" step="0.01"></label><label>原因 <input id="posMovementReasonV77"></label><label>退款帳單／憑證 <input id="posMovementReferenceV77"></label><select id="posMovementMethodV77"><option>現金</option><option>信用卡</option><option>轉帳</option><option>行動支付</option></select><button id="posMovementV77" type="button" class="btn-secondary">記錄異動</button><p>退款在此只記錄已退還的款項；原帳單作廢與庫存退回仍由財務管理處理。請勿將作廢直接視為已退現金。</p></div><details><summary>最近下班結算紀錄</summary><div id="posHistoryV77"></div></details><details><summary>最近收款／現金異動（含操作人）</summary><div id="posMovementHistoryV77"></div></details></div></div>';
  document.getElementById('invoices').parentElement.append(tab);tab.querySelector('.card').prepend(posButtonV77('返回首頁',()=>switchTab('appointments')),posButtonV77('更新資料',posRefreshV77));
  const recover=posButtonV77('核對上次收款（不再收錢）',posRecoverV77);recover.id='posRecoverV77';recover.hidden=true;tab.querySelector('.card').prepend(recover);
- const stage=posButtonV77('儲存並送至待付款',posStageV77);stage.id='posStageV77';document.getElementById('invoiceItemsList').parentElement.append(stage);
+ const stage=posButtonV77('儲存並送至待付款',posStageV77);stage.id='posStageV77';document.getElementById('invoiceCheckoutActionsV902').append(stage);
  const prepare=posButtonV77('儲存病歷並準備待付款費用',async()=>{if(!posMedicalV77())throw Error('沒有看診權限');await saveMedicalRecordAndDirectCheckout();});document.getElementById('medical').querySelector('.card').append(prepare);
  const retail=posNodeV77('select');retail.id='posRetailMethodV77';for(const v of ['現金','信用卡','轉帳','行動支付']){const o=posNodeV77('option',v);o.value=v;retail.append(o);}posLabelV77('商品收款方式',retail,document.getElementById('productCheckoutItems').parentElement);
  const transfer=posNodeV77('option','轉帳');transfer.value='轉帳';document.getElementById('invoicePaymentMethod').append(transfer);
@@ -15037,4 +15037,9 @@ resetPrescriptionEntryAfterAdd=function(...args){prescriptionCloseV901();return 
 document.getElementById('genblueVersionV84').textContent=' · v90.1';
 </script>
 
+
+<style id="checkoutButtonLayoutV902">
+#invoiceCheckoutActionsV902>button{width:100%;min-width:0;height:100%;margin:0;box-sizing:border-box;white-space:normal;overflow-wrap:anywhere}
+</style>
+<script id="versionV902">document.getElementById('genblueVersionV84').textContent=' · v90.2';</script>
 </body></html>
