@@ -11164,14 +11164,14 @@ function familyHasAppointmentV74(id){return !!id&&!!familyStateNowV74()?.entries
 let familyInvoiceTouchedV74=false;
 function familyBillHasContentV74(){
  const rows=[...document.querySelectorAll('#invoiceItemsList .list-row')];
- if(!familyInvoiceTouchedV74&&!clinicalInvoiceContext&&!clinicalMedicationGroupsV64&&!document.getElementById('invoiceOwnerSelect')?.value&&rows.length===1&&rows[0].querySelector('.invoice-name')?.value==='一般門診診察費'&&Number(rows[0].querySelector('.invoice-qty')?.value)===1&&Number(rows[0].querySelector('.invoice-price')?.value)===250&&Number(document.getElementById('invoiceDiscount')?.value||0)===0)return false;
+ if(!familyInvoiceTouchedV74&&!clinicalInvoiceContext&&!clinicalMedicationGroupsV64&&rows.length===1&&rows[0].querySelector('.invoice-name')?.value==='一般門診診察費'&&Number(rows[0].querySelector('.invoice-qty')?.value)===1&&Number(rows[0].querySelector('.invoice-price')?.value)===250&&Number(document.getElementById('invoiceDiscount')?.value||0)===0)return false;
  return rows.some(r=>r.querySelector('.invoice-name')?.value.trim());
 }
 function familyMessageV74(text){const p=document.getElementById('familyMessageV74');if(p)p.textContent=text;}
 function familyButtonV74(label,fn,disabled=false){const b=document.createElement('button');b.type='button';b.className='btn-secondary';b.textContent=label;b.disabled=disabled;b.onclick=fn;return b;}
 function familyMoneyV74(value){return 'NT$ '+Number(value).toLocaleString('zh-TW',{maximumFractionDigits:2});}
 function familyPayloadV74(e,payment){return {p_tenant_id:CURRENT_TENANT_ID,p_owner_id:e.ownerId,p_pet_id:e.billingPetId,p_checkout_type:'門診收費 ('+payment+')',p_category:'門診',p_appointment_id:e.billingAppointmentId,p_subtotal:e.subtotal,p_discount:e.discount,p_total:e.total,p_lines:e.lines,...(e.medicationGroups.length?{p_medication_groups:e.medicationGroups}:{})};}
-function clearFamilyBillV74(){clinicalInvoiceContext=null;clinicalMedicationGroupsV64=null;document.getElementById('invoiceItemsList').replaceChildren();document.getElementById('invoiceDiscount').value='0';currentAppointmentId=null;clearMedicalFormInputs();calculateInvoiceTotal();}
+function clearFamilyBillV74(){clinicalInvoiceContext=null;clinicalMedicationGroupsV64=null;document.getElementById('invoiceItemsList').replaceChildren();document.getElementById('invoiceDiscount').value='0';document.getElementById('invoiceOwnerSelect').value='';familyInvoiceTouchedV74=false;currentAppointmentId=null;clearMedicalFormInputs();calculateInvoiceTotal();}
 async function stageFamilyBillV74(){
  if(familyBusyV74||inventoryCheckoutBusy)return false;const scope=doctorScopeV51();familyBusyV74=true;
  try{
@@ -11182,15 +11182,17 @@ async function stageFamilyBillV74(){
   const lookup=await _supabase.from('appointments').select('id,tenant_id,pet_id,owner_id,status').eq('tenant_id',CURRENT_TENANT_ID).eq('id',draft.billingAppointmentId).single();
   if(lookup.error)throw lookup.error;if(scope!==doctorScopeV51())return false;
   const appointment=lookup.data;if(!appointment||appointment.pet_id!==draft.billingPetId||appointment.owner_id!==draft.ownerId||!['候診中','診間看診中'].includes(appointment.status))throw Error('掛號資料不符或已結束，請核對帳單');
-  const entry=JSON.parse(JSON.stringify({...draft,medicationSource:clinicalMedicationGroupsV64,releasePending:appointment.status==='診間看診中'&&doctorVisitV51?.scope===scope&&doctorVisitV51.petId===draft.billingPetId}));
+  const entry=JSON.parse(JSON.stringify({...draft,medicationSource:clinicalMedicationGroupsV64,releasePending:appointment.status==='診間看診中'}));
   const next={...state,entries:[...state.entries.filter(e=>e!==prior),entry],requestId:state.requestId||crypto.randomUUID()};persistFamilyV74(next);
   // Store fees before releasing the claim; a failed release retains a recoverable draft.
   if(entry.releasePending){
+   if(doctorVisitV51?.scope!==scope||doctorVisitV51.petId!==draft.billingPetId||doctorVisitV51.appointmentId!==draft.billingAppointmentId)throw Error('費用已保留，請用清單的「返回門診」確認本次接診權後重新加入');
    const verified=await _supabase.rpc('verify_clinic_visit_v51',{p_pet_id:draft.billingPetId,p_claim_id:doctorVisitV51.claimId});if(verified.error)throw verified.error;if(scope!==doctorScopeV51())return false;if(verified.data!==true)throw Error('費用已加入，但未確認原看診權；請先核對原掛號');
    const response=await _supabase.from('appointments').update({status:'候診中'}).eq('id',draft.billingAppointmentId).eq('tenant_id',CURRENT_TENANT_ID).eq('status','診間看診中').eq('clinician_id_v57',CURRENT_USER.id).select('id').single();
    if(response.error)throw Error('費用已加入，但返回候診未成功：'+response.error.message);
    if(scope!==doctorScopeV51())return false;entry.releasePending=false;persistFamilyV74(next);
   }
+  if(doctorVisitV51?.petId===draft.billingPetId){doctorVisitV51=null;clinicClaimsV51.delete(draft.billingPetId);}
   clearFamilyBillV74();familyMessageV74(draft.billingPetName+'已加入合併待收，尚未收款或扣庫存。');renderFamilyV74();
   const target=familyNextPetV74;familyNextPetV74=null;if(target&&target.scope===scope)await openFamilyPetV74(target.pet);
   else {await loadAppointments();renderFamilyV74();}return true;
@@ -11230,7 +11232,10 @@ async function switchFamilyMedicalV74(){
  if(familyStateNowV74()?.pending){alert('請先重試並核對尚未確認的合併結帳');return;}
  if(familyStateNowV74()?.entries.some(e=>e.billingPetId===pet.id)){alert('此寵物已在合併待收，請到收費頁修改其明細');return;}
  if(!familyAllowedV74()){alert('此切換流程會保留費用，需要結帳權限；請先儲存並返回候診，由有權限者接續。');return;}
- if(familyBillHasContentV74()){alert('收費頁仍有未完成帳單，請先處理後再切換');return;}
+ if(familyBillHasContentV74()){
+  if(clinicalInvoiceContext?.petId!==currentPetId||clinicalInvoiceContext?.ownerId!==currentOwnerId){alert('請先處理收費頁的帳單，再切換寵物');return;}
+  familyNextPetV74={scope:doctorScopeV51(),pet};switchTab('invoices');familyMessageV74('請核對本隻費用後按「加入同飼主合併待收」，接著開啟 '+pet.name+'。');return;
+ }
  const scope=doctorScopeV51(),original=currentPetId;familyNextPetV74={scope,pet};
  await saveMedicalRecordAndDirectCheckout();if(scope!==doctorScopeV51())return;
  if(currentPetId===original||clinicalInvoiceContext?.petId!==original){familyNextPetV74=null;return;}
@@ -11273,9 +11278,42 @@ function showFamilyReceiptV74(receipt=familyStateNowV74()?.lastReceipt){
   for(const l of [...e.lines,...e.medicationGroups.map(g=>({item_name:medicationGroupLabelsV64[g.kind],quantity:1,unit_price:g.price}))])line(l.item_name,l.quantity,familyMoneyV74(l.quantity*l.unit_price));
   line(e.billingPetName+' 小計（折扣 '+familyMoneyV74(e.discount)+'）','',familyMoneyV74(e.total));}
 }
+function renderFamilyBillingPickerV903(state){
+ const select=document.getElementById('familyBillingPetV903');if(!select)return;
+ const previous=select.value,owner=clinicalInvoiceContext?.ownerId||state?.entries[0]?.ownerId||currentOwnerId;
+ const petId=clinicalInvoiceContext?.petId||currentPetId;
+ select.replaceChildren(new Option('選擇同飼主的下一隻寵物',''));
+ for(const pet of allPetsListForDropdown.filter(p=>p.owner_id===owner&&p.id!==petId)){
+  const option=new Option(pet.name,pet.id);option.disabled=!!state?.entries.some(e=>e.billingPetId===pet.id);if(option.disabled)option.textContent+='（已加入待收）';select.appendChild(option);
+ }
+ select.value=familyNextPetV74?.scope===doctorScopeV51()?familyNextPetV74.pet.id:previous;
+ select.disabled=familyBusyV74||inventoryCheckoutBusy||!!state?.pending;
+}
+async function nextFamilyBillingV903(){
+ if(familyBusyV74||inventoryCheckoutBusy||familyStateNowV74()?.pending)return;
+ const owner=clinicalInvoiceContext?.ownerId||familyStateNowV74()?.entries[0]?.ownerId||currentOwnerId;
+ const pet=allPetsListForDropdown.find(p=>p.id===document.getElementById('familyBillingPetV903').value&&p.owner_id===owner);
+ if(!pet){alert('請先選擇同飼主的下一隻寵物');return;}
+ if(familyStateNowV74()?.entries.some(e=>e.billingPetId===pet.id)){alert('此寵物已在待收清單，請使用清單的返回門診或修改明細');return;}
+ familyNextPetV74={scope:doctorScopeV51(),pet};
+ if(familyBillHasContentV74()){await stageFamilyBillV74();return;}
+ familyNextPetV74=null;await openFamilyPetV74(pet);
+}
+async function returnFamilyMedicalV903(appointmentId=null){
+ if(familyBusyV74||inventoryCheckoutBusy||medicalSaveBusy||doctorOpeningV51||!familyAllowedV74())return;
+ if(familyStateNowV74()?.pending){alert('請先核對上一批結帳結果');return;}
+ if(appointmentId){restoreFamilyBillV74(appointmentId);if(clinicalInvoiceContext?.appointmentId!==appointmentId)return;}
+ const c=clinicalInvoiceContext;if(!c?.appointmentId||c.tenantId!==CURRENT_TENANT_ID){alert('請先選取本次掛號的待收帳單');return;}
+ const pet=allPetsListForDropdown.find(p=>p.id===c.petId&&p.owner_id===c.ownerId);if(!pet){alert('請先更新寵物資料後再返回門診');return;}
+ familyNextPetV74=null;
+ await familyStartOriginalV74([pet.id,pet.microchip||'',pet.name,pet.owner_id,pet.weight||0,pet.owner_name||pet.owners?.name||'',pet.birthday||'',pet.gender||'',pet.species||'',pet.breed||''],c.appointmentId);
+ renderFamilyV74();
+}
+
 function renderFamilyV74(){
  const state=familyStateNowV74(),allowed=familyAllowedV74(),box=document.getElementById('familyQueueV74');if(!box)return;
  document.getElementById('familyBillingV74').hidden=!allowed;document.getElementById('familyHomeV74').hidden=!allowed||!state?.entries.length;
+ renderFamilyBillingPickerV903(state);
  const select=document.getElementById('familyMedicalPetV74'),previous=select.value;select.replaceChildren();const none=document.createElement('option');none.value='';none.textContent='選擇同飼主的下一隻寵物';select.appendChild(none);
  const siblings=currentOwnerId?allPetsListForDropdown.filter(p=>p.owner_id===currentOwnerId&&p.id!==currentPetId):[];
  for(const pet of siblings){const o=document.createElement('option');o.value=pet.id;const queued=state?.entries.some(e=>e.billingPetId===pet.id);o.disabled=!!queued;o.textContent=pet.name+'（'+(pet.species||'寵物')+'）'+(queued?' 已加入待收':'');select.appendChild(o);}select.value=previous;
@@ -11290,7 +11328,7 @@ function renderFamilyV74(){
  if(state.pending){const warning=document.createElement('p');warning.textContent='上一批結果尚未確認；明細與付款方式已保留，請按重試核對。';box.appendChild(warning);}
  for(const e of state.entries){const row=document.createElement('div');row.className='family-row-v74';const details=document.createElement('details'),title=document.createElement('summary');title.textContent=e.billingPetName+'｜'+familyMoneyV74(e.total)+(e.releasePending?'｜需確認返回候診':'');details.appendChild(title);
   for(const line of [...e.lines,...e.medicationGroups.map(g=>({item_name:medicationGroupLabelsV64[g.kind],quantity:1,unit_price:g.price}))]){const info=document.createElement('p');info.textContent=line.item_name+' × '+line.quantity+'＝'+familyMoneyV74(line.quantity*line.unit_price);details.appendChild(info);}
-  const d=document.createElement('p');d.textContent='折扣：'+familyMoneyV74(e.discount);details.appendChild(d);row.append(details,familyButtonV74('修改明細',()=>restoreFamilyBillV74(e.billingAppointmentId),locked));box.appendChild(row);
+  const d=document.createElement('p');d.textContent='折扣：'+familyMoneyV74(e.discount);details.appendChild(d);row.append(details,familyButtonV74('修改明細',()=>restoreFamilyBillV74(e.billingAppointmentId),locked),familyButtonV74('返回門診',()=>returnFamilyMedicalV903(e.billingAppointmentId),locked),familyButtonV74('改為個別結帳',()=>{restoreFamilyBillV74(e.billingAppointmentId);if(clinicalInvoiceContext?.appointmentId===e.billingAppointmentId)familyMessageV74('已移回本隻帳單；可使用一般收款按鈕個別結帳，其他寵物仍保留在合併待收。');},locked));box.appendChild(row);
  }
 }
 function renderHomeVaccinesV74(){
@@ -11324,7 +11362,7 @@ function renderManualBackupV74(){
 function installFamilyV74(){
  function panel(id,title,html,parent,before=null){const n=document.createElement('section');n.id=id;n.className='card family-panel-v74';n.hidden=true;const h=document.createElement('h3');h.textContent=title;n.appendChild(h);const inner=document.createElement('div');inner.innerHTML=html;n.appendChild(inner);parent.insertBefore(n,before);return n;}
  const medical=document.getElementById('medical');panel('familyMedicalV74','同飼主的其他寵物','<select id="familyMedicalPetV74"></select> <button type="button" class="btn-secondary" onclick="switchFamilyMedicalV74()">儲存病歷與費用，再切換</button><p>先確認本隻費用並加入合併待收，再開啟下一隻；每隻病歷獨立保存。</p>',medical,medical.children[1]);
- const list=document.getElementById('invoiceItemsList');panel('familyBillingV74','同飼主合併結帳','<p>確認本隻帳單後加入清單，再選下一隻。加入清單尚未收款；整批收款時才扣庫存。待收明細暫存於此分頁，重新整理可保留；關閉分頁前請完成結帳。</p><button type="button" id="familyStageV74" class="btn-secondary" onclick="stageFamilyBillV74()">加入同飼主合併待收</button><div id="familyQueueV74"></div><p id="familyMessageV74" role="status" aria-live="polite"></p><button type="button" id="familyPayV74" class="btn-success" onclick="checkoutFamilyV74()">整批收款並開合併收據</button> <button type="button" id="familyLastReceiptV74" class="btn-secondary" onclick="showFamilyReceiptV74()" hidden>重開最近合併收據</button>',list.parentElement,list);
+ const list=document.getElementById('invoiceItemsList');panel('familyBillingV74','同飼主合併結帳','<p>確認本隻帳單後加入清單，再選下一隻。加入清單尚未收款；整批收款時才扣庫存。待收明細暫存於此分頁，重新整理可保留；關閉分頁前請完成結帳。</p><button type="button" id="familyStageV74" class="btn-secondary" onclick="stageFamilyBillV74()">加入同飼主合併待收</button><div style="margin:10px 0"><select id="familyBillingPetV903"></select> <button type="button" class="btn-secondary" onclick="nextFamilyBillingV903()">保留本隻費用，開啟下一隻</button> <button type="button" class="btn-secondary" onclick="returnFamilyMedicalV903()">返回本隻門診（保留帳單）</button></div><div id="familyQueueV74"></div><p id="familyMessageV74" role="status" aria-live="polite"></p><button type="button" id="familyPayV74" class="btn-success" onclick="checkoutFamilyV74()">整批收款並開合併收據</button> <button type="button" id="familyLastReceiptV74" class="btn-secondary" onclick="showFamilyReceiptV74()" hidden>重開最近合併收據</button>',list.parentElement,list);
  const home=document.getElementById('appointments');panel('familyHomeV74','同飼主待收清單','<span id="familyHomeTextV74"></span> <button type="button" class="btn-secondary" onclick="switchTab(\'invoices\')">前往合併結帳</button>',home,home.firstChild);
  const backup=document.getElementById('sb-home');if(backup){const info=document.createElement('p');info.id='manualBackupHomeV74';info.hidden=true;info.setAttribute('role','status');backup.appendChild(info);}
  panel('homeVaccinesV74','疫苗到期提醒','<div class="home-vaccine-controls-v74"><label>提醒範圍 <select id="homeVaccineDaysV74" onchange="renderHomeVaccinesV74()"><option value="7">7 天</option><option value="30" selected>30 天</option><option value="90">90 天</option></select></label> <button type="button" class="btn-secondary" onclick="loadPetVaccines()">更新</button></div><div id="homeVaccineListV74" role="status" aria-live="polite"></div>',home.querySelector('.journal-schedule')||home,home.querySelector('.journal-schedule .journal-memo'));
@@ -11333,10 +11371,10 @@ installFamilyV74();
 document.getElementById('invoiceItemsList').addEventListener('input',()=>{familyInvoiceTouchedV74=true;});
 const familySwitchOriginalV74=switchTab;switchTab=function(...args){const result=familySwitchOriginalV74.apply(this,args);renderFamilyV74();if(args[0]==='appointments'){renderHomeVaccinesV74();renderManualBackupV74();}return result;};
 const familyVaccinesOriginalV74=vaccineToolsRender;vaccineToolsRender=function(...args){const result=familyVaccinesOriginalV74.apply(this,args);renderHomeVaccinesV74();return result;};
-const familyStartOriginalV74=startDoctorConsultationV51;startDoctorConsultationV51=async function(args,...rest){if(familyStateNowV74()?.pending||familyBillHasContentV74()){alert('請先加入或完成收費頁的帳單，再開啟下一隻寵物');return;}if(familyStateNowV74()?.entries.some(e=>e.billingPetId===args[0])){alert('此寵物已在合併待收，請先修改其明細');return;}const result=await familyStartOriginalV74.call(this,args,...rest);renderFamilyV74();return result;};
-const familyDirectOriginalV74=directCheckoutFromAppointment;directCheckoutFromAppointment=function(petId,...rest){if(familyStateNowV74()?.pending||familyBillHasContentV74()||familyStateNowV74()?.entries.some(e=>e.billingPetId===petId)){alert('請先處理現有帳單；合併待收中的寵物請按「修改明細」');return;}return familyDirectOriginalV74.call(this,petId,...rest);};
+const familyStartOriginalV74=startDoctorConsultationV51;startDoctorConsultationV51=async function(args,...rest){if(familyStateNowV74()?.pending){alert('請先核對上一批結帳結果');return;}const queued=familyStateNowV74()?.entries.find(e=>e.billingPetId===args[0]);if(queued)return returnFamilyMedicalV903(queued.billingAppointmentId);if(familyBillHasContentV74()){if(clinicalInvoiceContext?.petId===args[0])return returnFamilyMedicalV903();alert('本隻費用尚未加入待收；請到收費頁按「保留本隻費用，開啟下一隻」');switchTab('invoices');return;}const result=await familyStartOriginalV74.call(this,args,...rest);renderFamilyV74();return result;};
+const familyDirectOriginalV74=directCheckoutFromAppointment;directCheckoutFromAppointment=function(petId,...rest){if(familyStateNowV74()?.pending){alert('請先核對上一批結帳結果');return;}const queued=familyStateNowV74()?.entries.find(e=>e.billingPetId===petId);if(queued)return restoreFamilyBillV74(queued.billingAppointmentId);if(familyBillHasContentV74()){if(clinicalInvoiceContext?.petId===petId){switchTab('invoices');return;}alert('請先將收費頁的帳單加入待收，再選下一隻');switchTab('invoices');return;}return familyDirectOriginalV74.call(this,petId,...rest);};
 const familySingleOriginalV74=processInvoiceCheckoutToArchive;processInvoiceCheckoutToArchive=async function(...args){if(familyStateNowV74()?.pending){alert('請先核對尚未確認的合併結帳');return;}if(familyHasAppointmentV74(clinicalInvoiceContext?.appointmentId||currentAppointmentId)){alert('此掛號已加入合併待收，請先修改清單中的明細');return;}return familySingleOriginalV74.apply(this,args);};
-const familySaveBillOriginalV74=saveMedicalRecordAndDirectCheckout;saveMedicalRecordAndDirectCheckout=async function(...args){if(familyStateNowV74()?.pending||familyBillHasContentV74()){alert('請先加入或完成收費頁的帳單，再轉入本隻費用');return;}return familySaveBillOriginalV74.apply(this,args);};
+const familySaveBillOriginalV74=saveMedicalRecordAndDirectCheckout;saveMedicalRecordAndDirectCheckout=async function(...args){if(familyStateNowV74()?.pending){alert('請先核對上一批結帳結果');return;}if(familyBillHasContentV74()){if(clinicalInvoiceContext?.petId!==currentPetId||clinicalInvoiceContext?.appointmentId!==currentAppointmentId){alert('請先加入或完成收費頁的帳單，再轉入本隻費用');return;}if(!confirm('重新由門診產生本隻帳單？目前本隻收費明細將重新產生，藥費需再核對；其他寵物的待收明細保留。'))return;}return familySaveBillOriginalV74.apply(this,args);};
 const familyLogoutOriginalV74=logoutSupabase;logoutSupabase=function(...args){clinicalInvoiceContext=null;clinicalMedicationGroupsV64=null;document.getElementById('invoiceItemsList').replaceChildren();currentAppointmentId=null;const receiptModal=document.getElementById('receipt-modal');if(receiptModal)receiptModal.style.display='none';document.getElementById('receiptItemsTableBody')?.replaceChildren();familyInvoiceTouchedV74=false;familyNextPetV74=null;familyScopeV74='';familyStateV74=null;for(const id of ['familyMedicalV74','familyBillingV74','familyHomeV74','homeVaccinesV74'])document.getElementById(id).hidden=true;document.getElementById('familyQueueV74').replaceChildren();document.getElementById('homeVaccineListV74').replaceChildren();return familyLogoutOriginalV74.apply(this,args);};
 
 </script>
@@ -15042,4 +15080,5 @@ document.getElementById('genblueVersionV84').textContent=' · v90.1';
 #invoiceCheckoutActionsV902>button{width:100%;min-width:0;height:100%;margin:0;box-sizing:border-box;white-space:normal;overflow-wrap:anywhere}
 </style>
 <script id="versionV902">document.getElementById('genblueVersionV84').textContent=' · v90.2';</script>
+<script>document.getElementById('genblueVersionV84').textContent=' · v90.3';</script>
 </body></html>
