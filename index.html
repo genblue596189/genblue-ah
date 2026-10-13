@@ -7124,7 +7124,7 @@ function medicalHistoryQuantityV913(p){
  if(!quantity||!Number.isFinite(Number(quantity)))return quantity;
  const route=String(p.medicine_name||'').match(/^\[([^\]]+)\]/)?.[1]||'';
  const kind=p.billing_kind||prescriptionRoutesV66.find(r=>r.name===route)?.kind||'';
- const unit=kind==='injection'||/注射|針劑/.test(route)?'ml':'';
+ const unit=kind==='injection'||/注射|針劑/.test(route)?'ml':kind==='oral'||/口服/.test(route)?'顆':'';
  return quantity+(unit?' '+unit:'');
 }
 function medicalPrescriptionListV53(prescriptions,detail){
@@ -7160,7 +7160,7 @@ function openMedicalDetailModal(record){
             const body=document.getElementById('rxTableBody');body.replaceChildren();
             if(!Array.isArray(prescriptions)||!prescriptions.length){const row=document.createElement('tr'),cell=document.createElement('td');cell.colSpan=6;cell.textContent='尚無處方用藥';cell.style.cssText='text-align:center;color:#64748b';row.append(cell);body.append(row);return;}
             prescriptions.forEach((p,index)=>{const row=document.createElement('tr');row.className='rx-editable-row';const number=document.createElement('td');number.textContent=index+1;row.append(number);
-                for(const [field,cls] of [['medicine_name','rx-input-name'],['custom_dose','rx-input-dose'],['quantity','rx-input-qty'],['instruction','rx-input-inst']]){const td=document.createElement('td'),input=document.createElement('input');input.type='text';input.className=cls;input.value=String(p[field]??(field==='quantity'?1:''));input.style.cssText='width:100%;padding:4px 8px';td.append(input);row.append(td);}
+                for(const [field,cls] of [['medicine_name','rx-input-name'],['custom_dose','rx-input-dose'],['quantity','rx-input-qty'],['instruction','rx-input-inst']]){const td=document.createElement('td'),input=document.createElement('input');input.type='text';input.className=cls;input.value=field==='quantity'?medicalHistoryQuantityV913({...p,quantity:p.quantity??1}):String(p[field]??'');input.style.cssText='width:100%;padding:4px 8px';td.append(input);row.append(td);}
                 const td=document.createElement('td'),button=document.createElement('button');button.className='btn-danger';button.style.cssText='padding:4px 8px;font-size:.75rem';button.textContent='刪';button.type='button';button.onclick=()=>row.remove();td.append(button);row.append(td);body.append(row);
             });
         }
@@ -15367,5 +15367,5 @@ ownerPetMountV908();
 </style>
 <style>#homeVaccineListV74[hidden]{display:none!important}#homeVaccineToggleV9010{margin-top:8px}#homeVaccineListV74{max-height:420px;overflow-y:auto}</style>
 <script id="versionV9010">document.getElementById('genblueVersionV84').textContent=' · v90.10';</script>
-<script id="versionV91">document.getElementById("genblueVersionV84").textContent=" · v91.4";</script>
+<script id="versionV91">document.getElementById("genblueVersionV84").textContent=" · v91.6";</script>
 </body></html>
