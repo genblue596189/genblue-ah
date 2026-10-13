@@ -1044,7 +1044,7 @@ body.role-no-appointment #nav-online_booking{display:none!important}
                     <h3>本次處方清單 (含多劑型與針劑明細)</h3>
                     <div id="prescriptionItemsContainer" style="margin-top: 10px; margin-bottom: 20px;"></div>
                     
-                    <div style="display: flex; gap: 15px; flex-wrap: wrap;">
+                    <div id="medicalPrescriptionActionsV909" style="display: flex; gap: 15px; flex-wrap: wrap;">
                         <button class="btn-success" onclick="openPrescriptionPreviewModal()">📄 預覽並列印正式處方箋</button>
                         <button class="btn-secondary" onclick="saveMedicalRecordOnlyAndArchive()">📁 僅儲存歸檔（不收費）</button>
                         <button type="button" class="btn-warning" onclick="returnToWaitingWithoutSaveV75_4()">↩ 回候診（不儲存）</button>
@@ -15320,4 +15320,20 @@ logoutSupabase=function(...args){ownerFormV908=null;ownerPetLocalV908=new Map();
 addPetToOwnerPrompt=function(ownerId){return openQuickNewPet(ownerId);};
 ownerPetMountV908();
 </script>
+<style id="medicalActionColorsV909">
+#medicalPrescriptionActionsV909>button{color:#fff!important;font-weight:700;border:2px solid transparent!important;box-shadow:0 2px 5px rgba(15,23,42,.15)}
+#medicalPrescriptionActionsV909>button:nth-child(1){background:#1d4ed8!important;border-color:#1e40af!important}
+#medicalPrescriptionActionsV909>button:nth-child(1):hover:not(:disabled){background:#1e40af!important}
+#medicalPrescriptionActionsV909>button:nth-child(2){background:#475569!important;border-color:#334155!important}
+#medicalPrescriptionActionsV909>button:nth-child(2):hover:not(:disabled){background:#334155!important}
+#medicalPrescriptionActionsV909>button:nth-child(3){background:#854d0e!important;border-color:#713f12!important}
+#medicalPrescriptionActionsV909>button:nth-child(3):hover:not(:disabled){background:#713f12!important}
+#medicalPrescriptionActionsV909>button:nth-child(4){background:#166534!important;border-color:#14532d!important}
+#medicalPrescriptionActionsV909>button:nth-child(4):hover:not(:disabled){background:#14532d!important}
+#medicalPrescriptionActionsV909>button:nth-child(5){background:#6d28d9!important;border-color:#5b21b6!important}
+#medicalPrescriptionActionsV909>button:nth-child(5):hover:not(:disabled){background:#5b21b6!important}
+#medicalPrescriptionActionsV909>button:focus-visible{outline:3px solid #0f172a;outline-offset:3px;box-shadow:inset 0 0 0 2px #fff}
+#medicalPrescriptionActionsV909>button:disabled{opacity:1!important;background:#64748b!important;border-color:#475569!important;color:#fff!important;cursor:not-allowed;box-shadow:none}
+</style>
+<script id="versionV909">document.getElementById('genblueVersionV84').textContent=' · v90.9';</script>
 </body></html>
