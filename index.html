@@ -7119,8 +7119,16 @@ async function loadAllMedicalRecords(petId,options={}){
   container.append(section);
  }
 }
+function medicalHistoryQuantityV913(p){
+ const quantity=String(p.quantity??'').trim();
+ if(!quantity||!Number.isFinite(Number(quantity)))return quantity;
+ const route=String(p.medicine_name||'').match(/^\[([^\]]+)\]/)?.[1]||'';
+ const kind=p.billing_kind||prescriptionRoutesV66.find(r=>r.name===route)?.kind||'';
+ const unit=kind==='injection'||/注射|針劑/.test(route)?'ml':'';
+ return quantity+(unit?' '+unit:'');
+}
 function medicalPrescriptionListV53(prescriptions,detail){
- const ul=document.createElement('ul');for(const p of Array.isArray(prescriptions)?prescriptions:[]){const li=document.createElement('li');li.textContent=(p.medicine_name||'')+' '+(detail?'－劑量：':'（劑量：')+(normalizePrescriptionDoseV91(p)||'-')+(detail?' | 數量：':'）：')+(p.quantity??'')+' '+(p.instruction||'');ul.append(li);}
+ const ul=document.createElement('ul');for(const p of Array.isArray(prescriptions)?prescriptions:[]){const li=document.createElement('li');li.textContent=(p.medicine_name||'')+' '+(detail?'－劑量：':'（劑量：')+(normalizePrescriptionDoseV91(p)||'-')+(detail?' | 數量：':'）：')+medicalHistoryQuantityV913(p)+' '+(p.instruction||'');ul.append(li);}
  if(!ul.childNodes.length){const li=document.createElement('li');li.textContent=detail?'無用藥明細':'無用藥紀錄';ul.append(li);}return ul;
 }
 function openMedicalDetailModal(record){
@@ -15359,5 +15367,5 @@ ownerPetMountV908();
 </style>
 <style>#homeVaccineListV74[hidden]{display:none!important}#homeVaccineToggleV9010{margin-top:8px}#homeVaccineListV74{max-height:420px;overflow-y:auto}</style>
 <script id="versionV9010">document.getElementById('genblueVersionV84').textContent=' · v90.10';</script>
-<script id="versionV91">document.getElementById("genblueVersionV84").textContent=" · v91.1";</script>
+<script id="versionV91">document.getElementById("genblueVersionV84").textContent=" · v91.4";</script>
 </body></html>
