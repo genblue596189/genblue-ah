@@ -5104,6 +5104,7 @@ async function loadOwnersAndPetsIntegrated() {
                 .order('id', { ascending: true });
             if (lastOwnerId) request = request.gt('id', lastOwnerId);
             const { data, error } = await request.limit(pageSize);
+            if(ownerReadV50!==ownerPetCacheGenerationV50||ownerScopeV50!==String(CURRENT_TENANT_ID)+'|'+CURRENT_USER?.id)return;
             if (!error) {
                 ownerPage = data || [];
                 pageError = null;
@@ -5127,6 +5128,7 @@ async function loadOwnersAndPetsIntegrated() {
     if (loadStatus) loadStatus.textContent = loadIncomplete ? `部分載入 ${ownersData.length} 位；仍可依新編號直接查詢` : `已載入 ${ownersData.length} 位飼主`;
     // 整理成全域資料結構供前端表格與下拉選單使用
     if(ownerReadV50!==ownerPetCacheGenerationV50||ownerScopeV50!==String(CURRENT_TENANT_ID)+'|'+CURRENT_USER?.id)return;
+    if(typeof ownerMergeRowsV908==='function')ownerMergeRowsV908(ownersData);
     globalOwnersPetsData = ownersData.map(owner => {
         return {
             owner: {
@@ -5384,103 +5386,6 @@ async function loadOwnersAndPetsIntegrated() {
             renderIntegratedTable(filtered);
         }
 
-        async function saveIntegratedOwnerAndPet(actionType) {
-            const ownerCode = document.getElementById('intOwnerCode').value.trim();
-            const ownerName = document.getElementById('intOwnerName').value.trim();
-            const ownerMobile = document.getElementById('intOwnerMobile').value.trim();
-            const ownerPhone = document.getElementById('intOwnerPhone').value.trim();
-            const ownerEmail = document.getElementById('intOwnerEmail').value.trim();
-            const ownerAddress = document.getElementById('intOwnerAddress').value.trim();
-            const ownerNotes = document.getElementById('intOwnerNotes').value.trim();
-
-            const petName = document.getElementById('intPetName').value.trim();
-            const microchip = document.getElementById('intPetMicrochip').value.trim();
-            const birthday = document.getElementById('intPetBirthday').value;
-            const species = document.getElementById('intPetSpecies').value;
-            const breed = document.getElementById('intPetBreed').value;
-            const gender = document.getElementById('intPetGender').value;
-            const weight = roundPetWeight(document.getElementById('intPetWeight').value);
-
-            if(!ownerName || !ownerMobile || !petName) { alert('請至少填寫「飼主姓名」、「手機」與「寵物名字」！'); return; }
-
-            const { data: ownerData, error: ownerError } = await _supabase.from('owners').insert([{
-                tenant_id: CURRENT_TENANT_ID, 
-                owner_code: ownerCode || null,
-                name: ownerName, 
-                mobile: ownerMobile, 
-                phone: ownerPhone, 
-                email: ownerEmail, 
-                address: ownerAddress,
-                notes: ownerNotes || null
-            }]).select();
-
-            if (ownerError || !ownerData || ownerData.length === 0) { 
-                alert('新增飼主失敗：' + (ownerError ? ownerError.message : '未知錯誤')); 
-                return; 
-            }
-            const newOwnerId = ownerData[0].id;
-            const newSystemCode = ownerData[0].system_code || '';
-
-            const { data: petData, error: petError } = await _supabase.from('pets').insert([{
-                tenant_id: CURRENT_TENANT_ID, owner_id: newOwnerId, name: petName, microchip: microchip || null, birthday: birthday || null, species, breed, gender, weight
-            }]).select();
-
-            if (petError || !petData || petData.length === 0) {
-                alert('新增寵物失敗，Supabase 錯誤訊息：' + (petError ? petError.message : '未知錯誤'));
-                return;
-            }
-
-            const newPetObj = {
-                id: petData[0].id,
-                name: petName,
-                microchip: microchip || '',
-                weight: weight || 0,
-                birthday: birthday || '',
-                gender: gender || '',
-                species: species || '貓',
-                breed: breed || '',
-                owner_id: newOwnerId,
-                owner_name: ownerName
-            };
-
-            // 清空輸入欄位
-            document.getElementById('intOwnerCode').value = '';
-            document.getElementById('intOwnerName').value = '';
-            document.getElementById('intOwnerMobile').value = '';
-            document.getElementById('intOwnerPhone').value = '';
-            document.getElementById('intOwnerEmail').value = '';
-            document.getElementById('intOwnerAddress').value = '';
-            document.getElementById('intOwnerNotes').value = '';
-            document.getElementById('intPetName').value = '';
-            document.getElementById('intPetMicrochip').value = '';
-            document.getElementById('intPetWeight').value = '';
-            document.getElementById('intPetBirthday').value = '';
-            document.getElementById('petBirthdayLabel').innerText = '出生日期 (日曆選單)';
-
-            await loadOwnersAndPetsIntegrated();
-
-            if (actionType === 'save_and_waiting') {
-                let exists = activeAppointmentsList.some(p => p.id === newPetObj.id);
-                if (!exists) {
-                    activeAppointmentsList.push({
-                        ...newPetObj,
-                        status: '候診中',
-                        session: '上午診',
-                        doctor: '張醫師',
-                        time: new Date().toLocaleTimeString()
-                    });
-                }
-                renderAppointmentTable(activeAppointmentsList);
-                alert('已成功建立資料，並已加入即時掛號候診列表！');
-                switchTab('appointments');
-            } else if (actionType === 'save_and_consult') {
-                alert('已成功建立資料，即將直接進入醫療門診！');
-                startConsultationById(newPetObj.id, newPetObj.microchip, newPetObj.name, newPetObj.owner_id, newPetObj.weight, newPetObj.owner_name, newPetObj.birthday, newPetObj.gender, newPetObj.species, newPetObj.breed);
-            } else {
-                alert(`已建立飼主與寵物。新系統編號：${newSystemCode || '請重新整理查看'}`);
-            }
-        }
-
         let petBirthdayCalendarResolve = null;
         let petBirthdayCalendarSelected = '';
         let petBirthdayCalendarPreviousFocus = null;
@@ -5607,7 +5512,7 @@ async function loadOwnersAndPetsIntegrated() {
                 if(ctx.tenant!==CURRENT_TENANT_ID)return;
                 document.getElementById('quickPetMessage').textContent='已新增 '+name+'；原看診寵物保持不變。';
                 document.getElementById('quickNewPetModal').style.display='none';quickPetContext=null;
-                await loadOwnersAndPetsIntegrated();alert('已替「'+ctx.owner.name+'」新增「'+name+'」。可搜尋新寵物後掛號，原看診內容保留。');
+                ownerCacheUpsertV908(ctx.owner,pet);alert('已替「'+ctx.owner.name+'」新增「'+name+'」。可搜尋新寵物後掛號，原看診內容保留。');
             }catch(e){document.getElementById('quickPetMessage').textContent='新增失敗或結果待確認：'+e.message+'。請先查詢是否已新增，再重試。';}
             finally{quickPetSaving=false;document.getElementById('quickPetSave').disabled=false;}
         }
@@ -10068,6 +9973,7 @@ async function refreshOwnerPetCacheV50(scope,tenant){
  if(scope!==clinicRefreshScopeV50())throw Error('登入或醫院已變更，更新已取消');
  if(generation!==ownerPetCacheGenerationV50)throw Error('已有較新的飼主資料讀取，請稍後重試');
  // Commit only a complete read; do not rebuild clinical selectors or reset forms.
+ if(typeof ownerMergeRowsV908==='function')ownerMergeRowsV908(owners);
  globalOwnersPetsData=owners.map(owner=>({owner,pets:owner.pets||[]}));
  allOwnersListForDropdown=owners;
  allPetsListForDropdown=owners.flatMap(owner=>(owner.pets||[]).map(p=>({...p,weight:roundPetWeight(p.weight)||0,
@@ -15227,4 +15133,191 @@ posDifferencesV845();document.getElementById('genblueVersionV84').textContent=' 
 #invoiceCheckoutActionsV902>button:disabled{opacity:1!important;background:#64748b!important;border-color:#475569!important;color:#fff!important;cursor:not-allowed;box-shadow:none}
 </style>
 <script id="versionV906">document.getElementById('genblueVersionV84').textContent=' · v90.6';</script>
+
+<style id="paidHistoryStyleV907">
+#posPaidRowsV854{max-height:380px;overflow-y:auto;overscroll-behavior:contain;padding-right:6px}
+#paidHistoryFiltersV907{display:flex;gap:8px;align-items:end;flex-wrap:wrap;margin:12px 0}
+#paidHistoryFiltersV907 label{font-size:.85rem;display:flex;flex-direction:column;gap:4px}
+#paidHistoryFiltersV907 input{max-width:170px}
+</style>
+<script id="paidHistoryV907">
+let paidFilterScopeV907='',paidDateV907='',paidHistoryModeV907=false;
+function paidTodayV907(){return new Intl.DateTimeFormat('sv-SE',{timeZone:'Asia/Taipei'}).format(new Date());}
+function paidDayV907(value){const date=new Date(value);return Number.isFinite(date.getTime())?new Intl.DateTimeFormat('sv-SE',{timeZone:'Asia/Taipei'}).format(date):'';}
+function paidFilterResetV907(force=false){
+ const scope=posScopeNowV77(),today=paidTodayV907();if(!force&&scope===paidFilterScopeV907&&today===paidDateV907)return;
+ paidFilterScopeV907=scope;paidDateV907=today;paidHistoryModeV907=false;posPaidOffsetV854=0;
+ for(const id of ['paidHistoryFromV907','paidHistoryToV907'])document.getElementById(id).value=today;
+}
+function paidProgressMatchesV907(q,invoices,from,to){
+ // Prefer recorded invoice identity. Never treat draft creation or dispensing updates as payment time.
+ const ids=[q.invoice_id,q.paid_invoice_id,q.invoice?.id,q.payment?.invoice_id,q.receipt?.invoice_id,q.result?.invoice_id].filter(Boolean),links=invoices.filter(inv=>ids.includes(inv.id));
+ if(ids.length)return links.some(inv=>!inv.voided_at&&paidDayV907(inv.created_at)>=from&&paidDayV907(inv.created_at)<=to);
+ if(links.length)return links.some(inv=>!inv.voided_at&&paidDayV907(inv.created_at)>=from&&paidDayV907(inv.created_at)<=to);
+ const appointment=q.draft?.billingAppointmentId;
+ if(appointment&&invoices.some(inv=>inv.appointment_id===appointment&&!inv.voided_at))return true;
+ const date=paidDayV907(q.paid_at||q.paidAt||q.payment?.paid_at||null);
+ return !!date&&date>=from&&date<=to;
+}
+async function paidInvoicesV907(from,to,scope,req,offset=null){
+ const lower=new Date(from+'T00:00:00+08:00'),upper=new Date(to+'T00:00:00+08:00');upper.setUTCDate(upper.getUTCDate()+1);
+ const rows=[];let start=offset??0;
+ for(;;){const limit=offset===null?1000:51;const {data,error}=await _supabase.from('invoices').select('id,tenant_id,owner_id,pet_id,appointment_id,created_at,checkout_type,total_amount,voided_at,owners(name,mobile,phone,owner_code,system_code)').eq('tenant_id',CURRENT_TENANT_ID).is('voided_at',null).gte('created_at',lower.toISOString()).lt('created_at',upper.toISOString()).order('created_at',{ascending:false}).order('id',{ascending:false}).range(start,start+limit-1);
+  if(scope!==posScopeNowV77()||req!==posWorkRequestV854)return null;if(error)throw error;
+  rows.push(...(data||[]));if(offset!==null||(data||[]).length<limit)break;start+=limit;
+ }return rows;
+}
+function paidHistoryPagesV907(parent,offset,hasNext){
+ const actions=posNodeV77('div');actions.style.cssText='display:flex;gap:8px;margin:10px 0';
+ const prev=posButtonV77('上一頁',async()=>{posPaidOffsetV854=Math.max(0,offset-50);await posWorkLoadV854();});prev.disabled=offset===0;
+ const next=posButtonV77('下一頁',async()=>{posPaidOffsetV854=offset+50;await posWorkLoadV854();});next.disabled=!hasNext;
+ if(offset||hasNext){actions.append(prev,next);parent.append(actions);}
+}
+async function posWorkLoadV854(){
+ paidFilterResetV907();const scope=posScopeNowV77(),req=++posWorkRequestV854,box=document.getElementById('posPaidRowsV854'),drafts=document.getElementById('posReissueRowsV854');
+ if(!scope||!(familyAllowedV74()||posMedicalV77())){box.replaceChildren();drafts.replaceChildren();return;}
+ const mode=paidHistoryModeV907,from=mode?document.getElementById('paidHistoryFromV907').value:paidDateV907,to=mode?document.getElementById('paidHistoryToV907').value:paidDateV907;
+ const valid=()=>scope===posScopeNowV77()&&req===posWorkRequestV854;
+ box.textContent='正在讀取'+(mode?'日期區間':'今日')+'已付款紀錄…';
+ try{
+  if(!/^\d{4}-\d{2}-\d{2}$/.test(from)||!/^\d{4}-\d{2}-\d{2}$/.test(to)||from>to)throw Error('請填正確起訖日期，開始日不能晚於結束日');
+  const invoices=await paidInvoicesV907(from,to,scope,req,mode?posPaidOffsetV854:null);if(!valid()||!invoices)return;
+  let reply=await posRpcV77('work_list_v854',{offset:0,reissue_offset:posReissueOffsetV854});if(!valid())return;
+  if(reply.tenant_id!==String(CURRENT_TENANT_ID)||reply.version!==854||!Array.isArray(reply.paid)||!Array.isArray(reply.reissues))throw Error('進度資料版本或院所不符，請確認既有 v85_4 SQL');
+  const allPaid=[...reply.paid];
+  if(!mode)for(let offset=50;offset<Number(reply.paid_total);offset+=50){const next=await posRpcV77('work_list_v854',{offset,reissue_offset:posReissueOffsetV854});if(!valid())return;if(next.tenant_id!==String(CURRENT_TENANT_ID)||next.version!==854||!Array.isArray(next.paid))throw Error('進度資料回覆不完整');allPaid.push(...next.paid);}
+  box.replaceChildren();drafts.replaceChildren();
+  if(mode){
+   const rows=invoices.slice(0,50);document.getElementById('posPaidSummaryV854').textContent='已結帳紀錄查詢（'+from+'～'+to+'，本頁 '+rows.length+' 筆）';
+   const ids=[...new Set(rows.map(i=>i.pet_id).filter(Boolean))],pets=new Map();
+   if(ids.length){const {data,error}=await _supabase.from('pets').select('id,name').eq('tenant_id',CURRENT_TENANT_ID).in('id',ids);if(!valid())return;if(error)throw error;for(const p of data||[])pets.set(p.id,p.name);}
+   if(!valid())return;
+   for(const inv of rows){const row=posNodeV77('div');row.className='pos-row-v77';const owner=inv.owners,code=[owner?.system_code?'新:'+owner.system_code:'',owner?.owner_code?'舊:'+owner.owner_code:''].filter(Boolean).join('／');
+    row.append(posNodeV77('span',new Date(inv.created_at).toLocaleString('zh-TW',{timeZone:'Asia/Taipei',year:'numeric',month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit'})+'｜'+(code?'['+code+'] ':'')+(owner?.name||'未指定飼主')+'｜'+(pets.get(inv.pet_id)||'未指定寵物')+'｜'+posMoneyV77(inv.total_amount)),posNodeV77('span',inv.checkout_type||'已結帳'),posNodeV77('span','帳單：'+inv.id));box.append(row);
+   }
+   if(!rows.length)box.append(posNodeV77('p','此日期區間沒有有效的已結帳紀錄。'));
+   box.append(posNodeV77('p','此處查詢正式帳單；不推測未提供的歷史調劑或交付狀態。'));
+   paidHistoryPagesV907(box,posPaidOffsetV854,invoices.length>50);
+  }else{
+   const paid=[...new Map(allPaid.filter(q=>paidProgressMatchesV907(q,invoices,from,to)).map(q=>[q.id,q])).values()];
+   document.getElementById('posPaidSummaryV854').textContent='今日已付款／交付進度（'+paid.length+' 筆，點此展開）';
+   const offset=Math.min(posPaidOffsetV854,Math.max(0,Math.floor((paid.length-1)/50)*50));posPaidOffsetV854=offset;
+   for(const q of paid.slice(offset,offset+50)){const row=posNodeV77('div');row.className='pos-row-v77';row.append(posNodeV77('span',(q.draft.ownerName||'飼主')+'｜'+q.draft.billingPetName+'｜'+posMoneyV77(q.draft.total)));posProgressV854(q,row);row.append(posDispensingControlV854(q));box.append(row);}
+   if(!paid.length)box.append(posNodeV77('p','今日沒有已付款／交付進度。之前已結帳的資料可用上方日期查詢。'));
+   paidHistoryPagesV907(box,offset,offset+50<paid.length);
+  }
+  const card=document.getElementById('posReissueCardV854');card.hidden=!reply.reissue_total;document.getElementById('posReissueSummaryV854').textContent='重新開立草稿（'+reply.reissue_total+' 筆，尚未收款）';
+  for(const r of reply.reissues){const row=posNodeV77('div');row.className='pos-row-v77';const a=r.after_data;row.append(posNodeV77('span',a.draft.ownerName+'｜'+a.draft.billingPetName+'｜'+posMoneyV77(a.draft.total)+'｜原單 '+a.original_invoice_id),posButtonV77('接手重開草稿',()=>posReissueEditorV854({...a,id:r.id})));drafts.append(row);}
+  if(reply.reissue_total>50||posReissueOffsetV854){const prev=posButtonV77('上一頁',async()=>{posReissueOffsetV854=Math.max(0,posReissueOffsetV854-50);await posWorkLoadV854();}),next=posButtonV77('下一頁',async()=>{posReissueOffsetV854+=50;await posWorkLoadV854();});prev.disabled=!posReissueOffsetV854;next.disabled=posReissueOffsetV854+50>=reply.reissue_total;drafts.append(prev,next);}
+ }catch(e){if(valid()){box.replaceChildren(posNodeV77('p','紀錄讀取失敗：'+e.message));drafts.replaceChildren();}}
+}
+function paidHistoryMountV907(){
+ const box=posNodeV77('div');box.id='paidHistoryFiltersV907';const paid=document.getElementById('posPaidRowsV854');
+ for(const [id,label] of [['paidHistoryFromV907','開始日期'],['paidHistoryToV907','結束日期']]){const input=posInputV77('date','');input.id=id;posLabelV77(label,input,box);}
+ const query=()=>{paidHistoryModeV907=true;posPaidOffsetV854=0;return posWorkLoadV854();};
+ box.append(posButtonV77('查詢已結帳紀錄',query),posButtonV77('只看今日進度',async()=>{paidFilterResetV907(true);await posWorkLoadV854();}));
+ box.onkeydown=e=>{if(e.key==='Enter'){e.preventDefault();void posActionV77(query);}};paid.before(box);paidFilterResetV907(true);
+ paid.parentElement.ontoggle=()=>{if(paid.parentElement.open){paidFilterResetV907(true);void posWorkLoadV854();}};
+ document.getElementById('genblueVersionV84').textContent=' · v90.7';
+}
+paidHistoryMountV907();
+</script>
+
+<script id="fastOwnerPetV908">
+let ownerPetScopeV908='',ownerPetLocalV908=new Map(),ownerFormV908=null,ownerSaveV908=false;
+const ownerFieldsV908=['intOwnerCode','intOwnerName','intOwnerMobile','intOwnerPhone','intOwnerEmail','intOwnerAddress','intOwnerNotes'];
+function ownerScopeV908(){return CURRENT_TENANT_ID&&CURRENT_USER?.id?String(CURRENT_TENANT_ID)+'|'+CURRENT_USER.id:'';}
+function ownerPrepareV908(){const scope=ownerScopeV908();if(scope!==ownerPetScopeV908){ownerPetScopeV908=scope;ownerPetLocalV908=new Map();ownerFormV908=null;}return scope;}
+function ownerMergeRowsV908(rows){
+ ownerPrepareV908();const index=new Map(rows.map((o,i)=>[o.id,i]));
+ for(const [id,local] of ownerPetLocalV908){const pos=index.get(id),old=pos===undefined?null:rows[pos],pets=new Map((old?.pets||[]).map(p=>[p.id,p])),seen=new Set(pets.keys());for(const p of local.pets||[])if(!pets.has(p.id))pets.set(p.id,p);const merged={...local,...old,pets:[...pets.values()]};if(pos===undefined){index.set(id,rows.length);rows.push(merged);}else rows[pos]=merged;if(old&&(local.pets||[]).every(p=>seen.has(p.id)))ownerPetLocalV908.delete(id);}
+ return rows;
+}
+function ownerCacheUpsertV908(owner,pet){
+ if(!ownerScopeV908()||owner.tenant_id&&String(owner.tenant_id)!==String(CURRENT_TENANT_ID)||pet.tenant_id!==CURRENT_TENANT_ID||pet.owner_id!==owner.id)throw Error('新增資料院所／飼主不符');
+ ownerPrepareV908();const group=globalOwnersPetsData.find(g=>g.owner.id===owner.id),old=allOwnersListForDropdown.find(o=>o.id===owner.id),merged={...old,...group?.owner,...owner};
+ const pets=new Map([...(old?.pets||[]),...(group?.pets||[]),...(ownerPetLocalV908.get(owner.id)?.pets||[])].map(p=>[p.id,p]));pets.set(pet.id,pet);merged.pets=[...pets.values()];const additions=new Map((ownerPetLocalV908.get(owner.id)?.pets||[]).map(p=>[p.id,p]));additions.set(pet.id,pet);ownerPetLocalV908.set(owner.id,{...merged,pets:[...additions.values()]});
+ if(group){group.owner=merged;group.pets=merged.pets;}else globalOwnersPetsData.push({owner:merged,pets:merged.pets});
+ const ownerIndex=allOwnersListForDropdown.findIndex(o=>o.id===owner.id);if(ownerIndex<0)allOwnersListForDropdown.push(merged);else allOwnersListForDropdown[ownerIndex]=merged;
+ const entry={...pet,microchip:pet.microchip||'',weight:roundPetWeight(pet.weight)||0,birthday:pet.birthday||'',owner_id:owner.id,owner_name:merged.name,owner_mobile:merged.mobile||'',owner_phone:merged.phone||'',owner_code:merged.owner_code||'',system_code:merged.system_code||'',owner_system_code:merged.system_code||''};
+ const petIndex=allPetsListForDropdown.findIndex(p=>p.id===pet.id);if(petIndex<0)allPetsListForDropdown.push(entry);else allPetsListForDropdown[petIndex]=entry;
+ const label='[新:'+(merged.system_code||'待產生')+'] '+(merged.owner_code?'[舊:'+merged.owner_code+'] ':'')+merged.name+' ('+(merged.mobile||'')+')';
+ const select=document.getElementById('invoiceOwnerSelect');if(select&&!Array.from(select.options).some(o=>o.value===owner.id)){const option=new Option(label,owner.id);select.add(option);}
+ const list=document.getElementById('checkoutOwnerDatalist');if(list&&!Array.from(list.options).some(o=>o.dataset.ownerId===owner.id)){const option=document.createElement('option');option.value=label;option.dataset.ownerId=owner.id;list.append(option);}
+ filterIntegratedTable();return entry;
+}
+function ownerFormRenderV908(){
+ const owner=ownerFormV908?.owner;for(const id of ownerFieldsV908)document.getElementById(id).readOnly=!!owner;
+ const note=document.getElementById('sameOwnerStatusV908');if(note)note.textContent=owner?'目前新增至：'+owner.name+'｜新編號：'+(owner.system_code||'未記錄')+'。再新增寵物會使用同一位飼主。':'新飼主建檔：先填飼主資料，再填第一隻寵物。';
+ document.querySelectorAll('#owners_pets button[onclick^="saveIntegratedOwnerAndPet"],#sameOwnerNewV908,#differentOwnerV908').forEach(b=>b.disabled=ownerSaveV908);
+}
+function ownerClearPetV908(){
+ for(const id of ['intPetName','intPetMicrochip','intPetBirthday','intPetWeight','newBreedCustomInput'])document.getElementById(id).value='';
+ document.getElementById('intPetGender').selectedIndex=-1;document.getElementById('petBirthdayLabel').innerText='出生日期 (日曆選單)';document.getElementById('intPetName').focus();
+}
+function differentOwnerV908(){
+ if(ownerSaveV908)return;if(ownerFormV908?.request){alert('上筆建立結果尚未完整確認，請先按原儲存按鈕核對；不要另建同一筆。');return;}
+ if(document.getElementById('intPetName').value.trim()&&!confirm('清空目前尚未儲存的寵物欄位，改建另一位飼主？'))return;
+ ownerFormV908=null;for(const id of ownerFieldsV908)document.getElementById(id).value='';ownerClearPetV908();ownerFormRenderV908();document.getElementById('intOwnerName').focus();
+}
+async function ownerConfirmedInsertV908(table,payload,scope){
+ const valid=()=>scope===ownerScopeV908();
+ const result=await _supabase.from(table).insert([payload]).select('*').single();if(!valid())throw Error('登入已變更，請回原院所核對建立結果');
+ if(result.error){
+  // Same UUID on retries prevents duplicate records after a lost response.
+  const check=await _supabase.from(table).select('*').eq('tenant_id',payload.tenant_id).eq('id',payload.id).maybeSingle();if(!valid())throw Error('登入已變更');
+  if(check.error||!check.data)throw result.error;
+  return check.data;
+ }
+ if(!result.data||result.data.id!==payload.id||result.data.tenant_id!==payload.tenant_id)throw Error('沒有取得正確的已儲存資料');return result.data;
+}
+async function saveIntegratedOwnerAndPet(actionType){
+ if(ownerSaveV908)return;const scope=ownerPrepareV908();if(!scope){alert('請先登入');return;}
+ if(CURRENT_PROFILE?.role!=='admin'&&!(CURRENT_PROFILE?.permission_operational??CURRENT_PROFILE?.role==='staff')){alert('此帳號沒有飼主／寵物建檔權限');return;}
+ const value=id=>document.getElementById(id).value.trim();
+ if(!value('intOwnerName')||!value('intOwnerMobile')||!value('intPetName')||!value('intPetGender')){alert('請填飼主姓名、手機、寵物名字及性別。');return;}
+ const weight=value('intPetWeight');if(weight&&(!Number.isFinite(Number(weight))||Number(weight)<0)){alert('體重請填非負數值');return;}
+ const ownerInput={owner_code:value('intOwnerCode')||null,name:value('intOwnerName'),mobile:value('intOwnerMobile'),phone:value('intOwnerPhone'),email:value('intOwnerEmail'),address:value('intOwnerAddress'),notes:value('intOwnerNotes')||null};
+ const petInput={name:value('intPetName'),microchip:value('intPetMicrochip')||null,birthday:value('intPetBirthday')||null,species:value('intPetSpecies'),breed:value('intPetBreed'),gender:value('intPetGender'),weight:weight?roundPetWeight(weight):null};
+ ownerFormV908=ownerFormV908||{scope,owner:null,request:null};const ctx=ownerFormV908;
+ if(ctx.scope!==scope){alert('院所已變更，請重新填寫');return;}
+ const key=JSON.stringify([ownerInput,petInput]);if(ctx.request&&(ctx.request.key!==key||ctx.request.actionType!==actionType)){alert('上筆建立結果待確認；請保留原欄位，先按原儲存按鈕核對，避免重複建檔。');return;}
+ ctx.request=ctx.request||{key,actionType,owner:{id:crypto.randomUUID(),tenant_id:CURRENT_TENANT_ID,...ownerInput},pet:{id:crypto.randomUUID(),tenant_id:CURRENT_TENANT_ID,...petInput},petRow:null,appointmentId:crypto.randomUUID()};const request=ctx.request;
+ ownerSaveV908=true;ownerFormRenderV908();
+ try{
+  if(!ctx.owner)ctx.owner=await ownerConfirmedInsertV908('owners',request.owner,scope);
+  if(scope!==ownerScopeV908())return;request.pet.owner_id=ctx.owner.id;ownerFormRenderV908();
+  if(!request.petRow)request.petRow=await ownerConfirmedInsertV908('pets',request.pet,scope);
+  if(scope!==ownerScopeV908())return;
+  const pet=ownerCacheUpsertV908(ctx.owner,request.petRow);
+  if(actionType==='save_and_waiting'){
+   const active=await _supabase.from('appointments').select('*').eq('tenant_id',CURRENT_TENANT_ID).eq('pet_id',pet.id).in('status',['候診中','診間看診中']).limit(1);if(active.error)throw active.error;if(scope!==ownerScopeV908())return;
+   let appointment=active.data?.[0];if(!appointment){const now=new Date().toISOString();appointment=await ownerConfirmedInsertV908('appointments',{id:request.appointmentId,tenant_id:CURRENT_TENANT_ID,pet_id:pet.id,owner_id:ctx.owner.id,scheduled_at:now,checked_in_at:now,status:'候診中',notes:'[來院目的] 看診',session:document.getElementById('appointmentSession')?.value||'上午診',doctor:null,assigned_doctor_id:null},scope);}
+   if(scope!==ownerScopeV908())return;if(appointment.pet_id!==pet.id)throw Error('掛號寵物資料不符');
+   if(!activeAppointmentsList.some(p=>p.appointment_id===appointment.id))activeAppointmentsList.push(waitingPetFromAppointment(pet,appointment));renderAppointmentTable(activeAppointmentsList);
+  }
+  ctx.request=null;ownerClearPetV908();ownerFormRenderV908();
+  if(actionType==='save_and_consult'){await startConsultationById(pet.id,pet.microchip,pet.name,pet.owner_id,pet.weight,pet.owner_name,pet.birthday,pet.gender,pet.species,pet.breed);}
+  else if(actionType==='save_and_waiting'){switchTab('appointments');alert('已建立並儲存掛號；同飼主資料已保留，可回「飼主與寵物」繼續新增。');}
+  else {document.getElementById('sameOwnerStatusV908').textContent='已建立「'+pet.name+'」。飼主 '+ctx.owner.name+'｜新編號 '+(ctx.owner.system_code||'未記錄')+'；請填下一隻寵物，或按「改建另一位飼主」。';document.getElementById('intPetName').focus();}
+ }catch(e){
+  if(scope===ownerScopeV908()){
+   // A PostgreSQL rejected write is safe to edit; a transport error remains frozen.
+   if(/^(?:22[0-9A-Z]{3}|23[0-9A-Z]{3}|42501|P0001)$/.test(e.code||'')&&!request.petRow)ctx.request=null;
+   alert('尚未完成全部步驟：'+e.message+'。已建立的飼主會保留，不會重建；若屬連線不明，請以原欄位重試核對。');
+  }
+ }finally{ownerSaveV908=false;ownerFormRenderV908();}
+}
+function ownerPetMountV908(){
+ const button=document.querySelector('#owners_pets button[onclick="saveIntegratedOwnerAndPet(\'save_only\')"]');
+ const extra=document.createElement('button');extra.id='sameOwnerNewV908';extra.type='button';extra.className='btn-success';extra.style.cssText='background:#1d4ed8;color:white;padding:12px 20px';extra.textContent='🐾 儲存並同飼主新增下一隻';extra.onclick=()=>saveIntegratedOwnerAndPet('save_and_another');button.parentElement.append(extra);
+ const different=document.createElement('button');different.id='differentOwnerV908';different.type='button';different.className='btn-secondary';different.textContent='＋ 改建另一位飼主';different.onclick=differentOwnerV908;button.parentElement.append(different);
+ const note=document.createElement('p');note.id='sameOwnerStatusV908';note.setAttribute('role','status');note.style.cssText='padding:10px;border:1px solid #cbd5e1;border-radius:8px;color:#1e40af';button.parentElement.after(note);ownerPrepareV908();ownerFormRenderV908();
+ document.getElementById('genblueVersionV84').textContent=' · v90.8';
+}
+const ownerLogoutBeforeV908=logoutSupabase;
+logoutSupabase=function(...args){ownerFormV908=null;ownerPetLocalV908=new Map();ownerPetScopeV908='';for(const id of ownerFieldsV908)document.getElementById(id).value='';ownerFormRenderV908();return ownerLogoutBeforeV908.apply(this,args);};
+addPetToOwnerPrompt=function(ownerId){return openQuickNewPet(ownerId);};
+ownerPetMountV908();
+</script>
 </body></html>
