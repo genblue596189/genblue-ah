@@ -11200,9 +11200,16 @@ function renderFamilyV74(){
   const d=document.createElement('p');d.textContent='折扣：'+familyMoneyV74(e.discount);details.appendChild(d);row.append(details,familyButtonV74('修改明細',()=>restoreFamilyBillV74(e.billingAppointmentId),locked));box.appendChild(row);
  }
 }
+function setHomeVaccineExpandedV9010(expanded){
+ const box=document.getElementById('homeVaccineListV74'),button=document.getElementById('homeVaccineToggleV9010');
+ if(!box||!button)return;
+ box.hidden=!expanded;button.setAttribute('aria-expanded',String(expanded));button.textContent=expanded?'收合提醒':'展開提醒';
+ if(expanded)renderHomeVaccinesV74();
+}
+function changeHomeVaccineRangeV9010(){setHomeVaccineExpandedV9010(false);}
 function renderHomeVaccinesV74(){
  const panel=document.getElementById('homeVaccinesV74'),box=document.getElementById('homeVaccineListV74');if(!panel||!box)return;
- const allowed=!!doctorScopeV51()&&(CURRENT_PROFILE?.role==='admin'||(CURRENT_PROFILE?.permission_clinical??CURRENT_PROFILE?.role==='doctor'));panel.hidden=!allowed;box.replaceChildren();if(!allowed)return;
+ const allowed=!!doctorScopeV51()&&(CURRENT_PROFILE?.role==='admin'||(CURRENT_PROFILE?.permission_clinical??CURRENT_PROFILE?.role==='doctor'));panel.hidden=!allowed;box.replaceChildren();if(!allowed){setHomeVaccineExpandedV9010(false);return;}if(box.hidden)return;
  const rows=currentClinicVaccineRows(),today=vaccineToday(),days=Number(document.getElementById('homeVaccineDaysV74').value)||30;
  const reminders=vaccineReminderRows(rows,today,days,'both');const p=document.createElement('p');p.className='home-vaccine-count-v74';p.textContent='逾期／'+days+' 天內到期 · '+reminders.length+' 筆';p.title='依各寵物同名疫苗的最新紀錄計算。';box.appendChild(p);
  for(const r of reminders.slice(0,10)){
@@ -11234,7 +11241,7 @@ function installFamilyV74(){
  const list=document.getElementById('invoiceItemsList');panel('familyBillingV74','同飼主合併結帳','<p>確認本隻帳單後加入清單，再選下一隻。加入清單尚未收款；整批收款時才扣庫存。待收明細暫存於此分頁，重新整理可保留；關閉分頁前請完成結帳。</p><button type="button" id="familyStageV74" class="btn-secondary" onclick="stageFamilyBillV74()">加入同飼主合併待收</button><div id="familyQueueV74"></div><p id="familyMessageV74" role="status" aria-live="polite"></p><button type="button" id="familyPayV74" class="btn-success" onclick="checkoutFamilyV74()">整批收款並開合併收據</button> <button type="button" id="familyLastReceiptV74" class="btn-secondary" onclick="showFamilyReceiptV74()" hidden>重開最近合併收據</button>',list.parentElement,list);
  const home=document.getElementById('appointments');panel('familyHomeV74','同飼主待收清單','<span id="familyHomeTextV74"></span> <button type="button" class="btn-secondary" onclick="switchTab(\'invoices\')">前往合併結帳</button>',home,home.firstChild);
  const backup=document.getElementById('sb-home');if(backup){const info=document.createElement('p');info.id='manualBackupHomeV74';info.hidden=true;info.setAttribute('role','status');backup.appendChild(info);}
- panel('homeVaccinesV74','疫苗到期提醒','<div class="home-vaccine-controls-v74"><label>提醒範圍 <select id="homeVaccineDaysV74" onchange="renderHomeVaccinesV74()"><option value="7">7 天</option><option value="30" selected>30 天</option><option value="90">90 天</option></select></label> <button type="button" class="btn-secondary" onclick="loadPetVaccines()">更新</button></div><div id="homeVaccineListV74" role="status" aria-live="polite"></div>',home.querySelector('.journal-schedule')||home,home.querySelector('.journal-schedule .journal-memo'));
+ panel('homeVaccinesV74','疫苗到期提醒','<div class="home-vaccine-controls-v74"><label>提醒範圍 <select id="homeVaccineDaysV74" onchange="changeHomeVaccineRangeV9010()"><option value="7">7 天</option><option value="30" selected>30 天</option><option value="90">90 天</option></select></label> <button type="button" class="btn-secondary" onclick="loadPetVaccines()">更新</button></div><button type="button" id="homeVaccineToggleV9010" class="btn-secondary" aria-controls="homeVaccineListV74" aria-expanded="false" onclick="setHomeVaccineExpandedV9010(document.getElementById(\'homeVaccineListV74\').hidden)">展開提醒</button><div id="homeVaccineListV74" role="status" aria-live="polite" hidden></div>',home.querySelector('.journal-schedule')||home,home.querySelector('.journal-schedule .journal-memo'));
 }
 installFamilyV74();
 document.getElementById('invoiceItemsList').addEventListener('input',()=>{familyInvoiceTouchedV74=true;});
@@ -15335,5 +15342,6 @@ ownerPetMountV908();
 #medicalPrescriptionActionsV909>button:focus-visible{outline:3px solid #0f172a;outline-offset:3px;box-shadow:inset 0 0 0 2px #fff}
 #medicalPrescriptionActionsV909>button:disabled{opacity:1!important;background:#64748b!important;border-color:#475569!important;color:#fff!important;cursor:not-allowed;box-shadow:none}
 </style>
-<script id="versionV909">document.getElementById('genblueVersionV84').textContent=' · v90.9';</script>
+<style>#homeVaccineListV74[hidden]{display:none!important}#homeVaccineToggleV9010{margin-top:8px}#homeVaccineListV74{max-height:420px;overflow-y:auto}</style>
+<script id="versionV9010">document.getElementById('genblueVersionV84').textContent=' · v90.10';</script>
 </body></html>
