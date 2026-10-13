@@ -1012,6 +1012,7 @@ body.role-no-appointment #nav-online_booking{display:none!important}
                             <div class="form-group">
                                 <label id="labelRecDoseTitle">建議劑量 (mg/kg)</label>
                                 <input type="text" id="medCustomRecDose" placeholder="10" oninput="runDetailedMathCalculation()">
+<select id="prescriptionDoseUnitV91" aria-label="使用劑量單位"><option value="">請選擇劑量單位</option><option>mg/kg</option><option>ml/kg</option><option>ml</option><option>mg</option><option>μg/kg</option><option>μg</option><option>IU/kg</option><option>IU</option><option>滴</option><option>顆</option><option>錠</option><option>g</option></select>
                             </div>
                             <div class="form-group">
                                 <label>給藥頻率</label>
@@ -3463,7 +3464,7 @@ if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',
                                 pet_chip: rec.pets ? rec.pets.microchip : '',
                                 medicine_name: p.medicine_name,
                                 category: category,
-                                custom_dose: p.custom_dose || '-',
+                                custom_dose: normalizePrescriptionDoseV91(p) || '-',
                                 quantity: p.quantity || 1,
                                 instruction: p.instruction || '-'
                             });
@@ -6945,6 +6946,7 @@ function prescriptionCalculationRouteV68(){
 function onRouteDetailChanged(){
  const route=prescriptionCalculationRouteV68();
  syncInjectionEntryV70(route);
+ syncPrescriptionDoseUnitV91(route);
  const label=document.getElementById('prescribeQuantityLabelV69');if(label)label.textContent=route?.preparedFromSolid?'原藥開立顆數（磨粉前）':'實際開立數量';
  document.getElementById('labelRecDoseTitle').textContent=route?.calc==='tablet'?'建議劑量 (mg/kg)':route?.calc==='ratio'?'建議劑量比率 (ml/kg)':'使用劑量（手動輸入，含單位）';
  runDetailedMathCalculation();
@@ -7001,6 +7003,7 @@ function runDetailedMathCalculation(){
             const route=prescriptionRouteV66();if(!route){alert('請選擇實際給藥方式。');return;}
             const doseText=document.getElementById('medCustomRecDose').value.trim();if(!doseText){alert('請填寫使用劑量。');return;}
             const customDose = formatPrescriptionDoseV763(doseText,route);
+            if(!customDose || /^(?:\d+(?:\.\d+)?|\.\d+)\s*(?:單位)?$/.test(customDose)){alert("請選擇劑量單位，或輸入完整劑量，例如 0.1 ml/kg。");return;}
             const qty = document.getElementById('medPrescribeQty').value;
             if (!Number.isFinite(Number(qty)) || Number(qty) <= 0) { alert('實際開立數量須大於零'); return; }
             const note = route.kind==='injection'?'':document.getElementById('medPrescribeNote').value || '';
@@ -7117,7 +7120,7 @@ async function loadAllMedicalRecords(petId,options={}){
  }
 }
 function medicalPrescriptionListV53(prescriptions,detail){
- const ul=document.createElement('ul');for(const p of Array.isArray(prescriptions)?prescriptions:[]){const li=document.createElement('li');li.textContent=(p.medicine_name||'')+' '+(detail?'－劑量：':'（劑量：')+(p.custom_dose||'-')+(detail?' | 數量：':'）：')+(p.quantity??'')+' '+(p.instruction||'');ul.append(li);}
+ const ul=document.createElement('ul');for(const p of Array.isArray(prescriptions)?prescriptions:[]){const li=document.createElement('li');li.textContent=(p.medicine_name||'')+' '+(detail?'－劑量：':'（劑量：')+(normalizePrescriptionDoseV91(p)||'-')+(detail?' | 數量：':'）：')+(p.quantity??'')+' '+(p.instruction||'');ul.append(li);}
  if(!ul.childNodes.length){const li=document.createElement('li');li.textContent=detail?'無用藥明細':'無用藥紀錄';ul.append(li);}return ul;
 }
 function openMedicalDetailModal(record){
@@ -10836,6 +10839,7 @@ let prescriptionCopyRequestV65=0,prescriptionCopyStateV65=null;
 function prescriptionCopyScopeV65(){return JSON.stringify([CURRENT_TENANT_ID,CURRENT_USER?.id,currentPetId,currentAppointmentId]);}
 function closePrescriptionCopyV65(){prescriptionCopyRequestV65++;prescriptionCopyStateV65=null;document.getElementById('prescriptionCopyModalV65').style.display='none';}
 function makePrescriptionDraftRowV65(p){
+ p={...p,custom_dose:normalizePrescriptionDoseV91(p)};
  const row=document.createElement('div');row.className='list-row prescription-item-row';row.dataset.medicineId=p.medicine_id||'';row.dataset.billingKind=p.billing_kind||prescriptionKindV66(p.medicine_name);
  for(const [value,type,cls,style,title] of [[p.medicine_name,'text','','flex:2;background:#fff','藥品與劑型'],[p.custom_dose,'text','prescribe-custom-dose','flex:1.2','使用劑量'],[p.quantity,'number','prescribe-qty','flex:.8','數量'],[p.instruction,'text','prescribe-note','flex:2','用法說明']]){
   const input=document.createElement('input');input.type=type;input.value=value??'';input.className=cls;input.style.cssText=style;input.title=title;if(!cls)input.readOnly=true;if(type==='number'){input.step='0.1';input.min='0.1';}row.append(input);
@@ -11322,7 +11326,7 @@ function renderDispensingDraftV75(){
  }
  renderDispensingControlsV75();
 }
-function collectPrescriptionDetailsV75(){return dispensingRowsV75().map(row=>({medicine_name:row.querySelector('input[type="text"]').value,medicine_id:row.dataset.medicineId||'',billing_kind:row.dataset.billingKind||'',custom_dose:row.querySelector('.prescribe-custom-dose').value,quantity:row.querySelector('.prescribe-qty').value,instruction:row.querySelector('.prescribe-note').value,dispensing_group:dispensingRowMetaV75(row)}));}
+function collectPrescriptionDetailsV75(){return dispensingRowsV75().map(row=>({medicine_name:row.querySelector('input[type="text"]').value,medicine_id:row.dataset.medicineId||'',billing_kind:row.dataset.billingKind||'',custom_dose:normalizePrescriptionDoseV91({custom_dose:row.querySelector('.prescribe-custom-dose').value,medicine_name:row.querySelector('input[type="text"]').value}),quantity:row.querySelector('.prescribe-qty').value,instruction:row.querySelector('.prescribe-note').value,dispensing_group:dispensingRowMetaV75(row)}));}
 const dispensingMakeOriginalV75=makePrescriptionDraftRowV65;
 makePrescriptionDraftRowV65=function(p){
  const row=dispensingMakeOriginalV75(p),g=dispensingImportV75(p.dispensing_group);row.dataset.dispensingGroupV75=JSON.stringify(g);
@@ -13889,10 +13893,23 @@ appendPatientImageRecord=function(container,record,nativeStudy=false){
 /* v76.3: explicit dose units for configured calculation routes. */
 function formatPrescriptionDoseV763(text,route){
  const value=String(text??'').trim();
- if(!/^(?:\d+(?:\.\d+)?|\.\d+)$/.test(value))return value;
- if(route?.calc==='ratio')return /ml\s*\/\s*kg$/i.test(value)?value:value+' ml/kg';
- if(route?.calc==='tablet')return /mg\s*\/\s*kg$/i.test(value)?value:value+' mg/kg';
- return value;
+ if(!/^(?:\d+(?:\.\d+)?|\.\d+)\s*(?:單位)?$/.test(value))return value;
+ const number=value.replace(/\s*單位$/, '');
+ const unit=route?.calc==='ratio'?'ml/kg':route?.calc==='tablet'?'mg/kg':document.getElementById('prescriptionDoseUnitV91')?.value;
+ return unit?number+' '+unit:number;
+}
+function syncPrescriptionDoseUnitV91(route){
+ const select=document.getElementById('prescriptionDoseUnitV91');if(!select)return;
+ const automatic=route?.calc==='ratio'?'ml/kg':route?.calc==='tablet'?'mg/kg':'';
+ select.value=automatic;select.disabled=!!automatic;
+}
+function normalizePrescriptionDoseV91(p){
+ const value=String(p.custom_dose??'').trim();
+ if(!/^(?:\d+(?:\.\d+)?|\.\d+)\s*(?:單位)?$/.test(value))return value;
+ const name=String(p.medicine_name||'').match(/^\[([^\]]+)\]/)?.[1];
+ const route=prescriptionRoutesV66.find(r=>r.name===name);
+ const unit=route?.calc==='ratio'?'ml/kg':route?.calc==='tablet'?'mg/kg':'';
+ return unit?value.replace(/\s*單位$/, '')+' '+unit:value;
 }
 
 </script>
@@ -15161,15 +15178,13 @@ function paidProgressMatchesV907(q,invoices,from,to){
  const ids=[q.invoice_id,q.paid_invoice_id,q.invoice?.id,q.payment?.invoice_id,q.receipt?.invoice_id,q.result?.invoice_id].filter(Boolean),links=invoices.filter(inv=>ids.includes(inv.id));
  if(ids.length)return links.some(inv=>!inv.voided_at&&paidDayV907(inv.created_at)>=from&&paidDayV907(inv.created_at)<=to);
  if(links.length)return links.some(inv=>!inv.voided_at&&paidDayV907(inv.created_at)>=from&&paidDayV907(inv.created_at)<=to);
- const appointment=q.draft?.billingAppointmentId;
- if(appointment&&invoices.some(inv=>inv.appointment_id===appointment&&!inv.voided_at))return true;
  const date=paidDayV907(q.paid_at||q.paidAt||q.payment?.paid_at||null);
  return !!date&&date>=from&&date<=to;
 }
 async function paidInvoicesV907(from,to,scope,req,offset=null){
  const lower=new Date(from+'T00:00:00+08:00'),upper=new Date(to+'T00:00:00+08:00');upper.setUTCDate(upper.getUTCDate()+1);
  const rows=[];let start=offset??0;
- for(;;){const limit=offset===null?1000:51;const {data,error}=await _supabase.from('invoices').select('id,tenant_id,owner_id,pet_id,appointment_id,created_at,checkout_type,total_amount,voided_at,owners(name,mobile,phone,owner_code,system_code)').eq('tenant_id',CURRENT_TENANT_ID).is('voided_at',null).gte('created_at',lower.toISOString()).lt('created_at',upper.toISOString()).order('created_at',{ascending:false}).order('id',{ascending:false}).range(start,start+limit-1);
+ for(;;){const limit=offset===null?1000:51;const {data,error}=await _supabase.from('invoices').select('id,tenant_id,owner_id,pet_id,created_at,checkout_type,total_amount,voided_at,owners(name,mobile,phone,owner_code,system_code)').eq('tenant_id',CURRENT_TENANT_ID).is('voided_at',null).gte('created_at',lower.toISOString()).lt('created_at',upper.toISOString()).order('created_at',{ascending:false}).order('id',{ascending:false}).range(start,start+limit-1);
   if(scope!==posScopeNowV77()||req!==posWorkRequestV854)return null;if(error)throw error;
   rows.push(...(data||[]));if(offset!==null||(data||[]).length<limit)break;start+=limit;
  }return rows;
@@ -15344,4 +15359,5 @@ ownerPetMountV908();
 </style>
 <style>#homeVaccineListV74[hidden]{display:none!important}#homeVaccineToggleV9010{margin-top:8px}#homeVaccineListV74{max-height:420px;overflow-y:auto}</style>
 <script id="versionV9010">document.getElementById('genblueVersionV84').textContent=' · v90.10';</script>
+<script id="versionV91">document.getElementById("genblueVersionV84").textContent=" · v91.1";</script>
 </body></html>
