@@ -7160,7 +7160,7 @@ function openMedicalDetailModal(record){
             const body=document.getElementById('rxTableBody');body.replaceChildren();
             if(!Array.isArray(prescriptions)||!prescriptions.length){const row=document.createElement('tr'),cell=document.createElement('td');cell.colSpan=6;cell.textContent='尚無處方用藥';cell.style.cssText='text-align:center;color:#64748b';row.append(cell);body.append(row);return;}
             prescriptions.forEach((p,index)=>{const row=document.createElement('tr');row.className='rx-editable-row';const number=document.createElement('td');number.textContent=index+1;row.append(number);
-                for(const [field,cls] of [['medicine_name','rx-input-name'],['custom_dose','rx-input-dose'],['quantity','rx-input-qty'],['instruction','rx-input-inst']]){const td=document.createElement('td'),input=document.createElement('input');input.type='text';input.className=cls;input.value=field==='quantity'?medicalHistoryQuantityV913({...p,quantity:p.quantity??1}):String(p[field]??'');input.style.cssText='width:100%;padding:4px 8px';td.append(input);row.append(td);}
+                for(const [field,cls] of [['medicine_name','rx-input-name'],['custom_dose','rx-input-dose'],['quantity','rx-input-qty'],['instruction','rx-input-inst']]){const td=document.createElement('td'),input=document.createElement('input');input.type='text';input.className=cls;input.value=field==='quantity'?medicalHistoryQuantityV913({...p,quantity:p.quantity??1}):field==='custom_dose'?normalizePrescriptionDoseV91(p):String(p[field]??'');input.style.cssText='width:100%;padding:4px 8px';td.append(input);row.append(td);}
                 const td=document.createElement('td'),button=document.createElement('button');button.className='btn-danger';button.style.cssText='padding:4px 8px;font-size:.75rem';button.textContent='刪';button.type='button';button.onclick=()=>row.remove();td.append(button);row.append(td);body.append(row);
             });
         }
@@ -10822,7 +10822,7 @@ function restoreRawSpansV63(text){let pos=0;const spans={};for(const n of Object
 const medicationGroupLabelsV64={oral:'口服藥',injection:'針劑',other:'其他用藥'};
 let clinicalMedicationGroupsV64=null;
 function prepareMedicationGroupsV64(prescriptions){
- const groups=new Map();for(const p of prescriptions){const medicine=loadedMedicinesMap[p.medicine_id],qty=Number(p.quantity);if(!medicine||!Number.isFinite(qty)||qty<=0)throw Error('請確認每筆處方都已選取藥品，且實際開立數量大於0');const route=p.medicine_name?.match(/^\[([^\]]+)\]/)?.[1]||medicine.route||'',kind=['oral','injection','other'].includes(p.billing_kind)?p.billing_kind:(route.includes('注射')||route==='針劑'?'injection':route.includes('口服')?'oral':'other');if(!groups.has(kind))groups.set(kind,{kind,drugs:[]});groups.get(kind).drugs.push({medicine_id:p.medicine_id,quantity:qty,item_name:p.medicine_name+' ['+p.custom_dose+'] ('+p.instruction+')',label:p.medicine_name});}
+ const groups=new Map();for(const p of prescriptions){const medicine=loadedMedicinesMap[p.medicine_id],qty=Number(p.quantity);if(!medicine||!Number.isFinite(qty)||qty<=0)throw Error('請確認每筆處方都已選取藥品，且實際開立數量大於0');const route=p.medicine_name?.match(/^\[([^\]]+)\]/)?.[1]||medicine.route||'',kind=['oral','injection','other'].includes(p.billing_kind)?p.billing_kind:(route.includes('注射')||route==='針劑'?'injection':route.includes('口服')?'oral':'other');if(!groups.has(kind))groups.set(kind,{kind,drugs:[]});groups.get(kind).drugs.push({medicine_id:p.medicine_id,quantity:qty,item_name:p.medicine_name+' ['+normalizePrescriptionDoseV91(p)+'] 總量：'+medicalHistoryQuantityV913(p)+' ('+p.instruction+')',label:p.medicine_name});}
  if(prescriptions.length>200)throw Error('一次最多200筆處方');return ['oral','injection','other'].filter(k=>groups.has(k)).map(k=>groups.get(k));
 }
 function appendMedicationGroupsV64(groups){
@@ -10883,7 +10883,7 @@ async function openPrescriptionCopyV65(recordId=null){
    let reason='可複製';if(!med)reason='藥品不存在或無法唯一對應，請重新選藥';else if(!String(p.medicine_name||'').trim())reason='缺藥品名稱';else if(!Number.isFinite(Number(p.quantity))||Number(p.quantity)<=0)reason='原數量無效，請重新開立';
    const eligible=reason==='可複製';if(eligible&&!p.medicine_id)reason='依唯一相同藥名對應，請核對規格';
    const row=document.createElement('tr'),cell=document.createElement('td'),checkbox=document.createElement('input');checkbox.type='checkbox';checkbox.checked=eligible;checkbox.disabled=!eligible;cell.append(checkbox);row.append(cell);
-   for(const value of [p.medicine_name,p.custom_dose,p.quantity,p.instruction,reason]){const td=document.createElement('td');td.textContent=value??'';td.style.whiteSpace='pre-wrap';row.append(td);}table.append(row);
+   for(const value of [p.medicine_name,normalizePrescriptionDoseV91(p),medicalHistoryQuantityV913(p),p.instruction,reason]){const td=document.createElement('td');td.textContent=value??'';td.style.whiteSpace='pre-wrap';row.append(td);}table.append(row);
    choices.push({p,med,checkbox,eligible});
   }
   body.append(table);prescriptionCopyStateV65={request,scope,record,choices};
@@ -10905,7 +10905,9 @@ function applyPrescriptionCopyV65(){
 <div id="routeAddModalV66" class="modal-overlay" role="dialog" aria-modal="true" aria-labelledby="routeAddTitleV66"><div style="background:#fff;padding:24px;border-radius:12px;max-width:90vw;width:460px"><h3 id="routeAddTitleV66">新增給藥方式</h3><label for="routeAddNameV66">方式名稱（例如：鼻腔滴入）</label><input id="routeAddNameV66" type="text" maxlength="30" style="width:100%;margin:8px 0"><label for="routeAddKindV66">結帳分類</label><select id="routeAddKindV66"><option value="other">其他用藥（含霧化／外用）</option><option value="oral">口服藥</option><option value="injection">針劑</option></select><p id="routeAddStatusV66" role="status"></p><button id="routeAddSaveV66" type="button" class="btn-success" onclick="savePrescriptionRouteV66()">儲存並選用</button> <button type="button" class="btn-secondary" onclick="document.getElementById('routeAddModalV66').style.display='none'">關閉</button></div></div>
 <script id="prescriptionRoutesV66">
 const prescriptionRouteDefaultsV66=[
+ {name:'口服錠劑/膠囊',kind:'oral',calc:'tablet'},{name:'口服錠劑／膠囊',kind:'oral',calc:'tablet'},
  {name:'口服錠劑',kind:'oral',calc:'tablet'},{name:'口服膠囊',kind:'oral',calc:'tablet'},
+ {name:'口服液/懸浮液',kind:'oral',calc:'manual'},{name:'口服液／懸浮液',kind:'oral',calc:'manual'},
  {name:'口服液',kind:'oral',calc:'manual'},{name:'口服懸浮液',kind:'oral',calc:'manual'},
  {name:'皮下/肌肉注射',kind:'injection',calc:'ratio'},{name:'皮下／肌肉注射',kind:'injection',calc:'ratio'},{name:'皮下注射',kind:'injection',calc:'ratio'},{name:'肌肉注射',kind:'injection',calc:'ratio'},{name:'靜脈注射',kind:'injection',calc:'ratio'},
  {name:'外用滴劑',kind:'other',calc:'manual'},{name:'外用藥膏',kind:'other',calc:'manual'},
@@ -10922,7 +10924,7 @@ function renderPrescriptionRoutesV66(custom=[]){
 function prescriptionRouteV66(){
  const route=prescriptionRoutesV66.find(x=>x.name===document.getElementById('medRouteDetailSelect').value);
  const med=loadedMedicinesMap[document.getElementById('medSelectDropdown').value];
- if(route&&['口服液','口服懸浮液'].includes(route.name)&&medicineStrengthPerUnitV68(med))return {...route,calc:'tablet',preparedFromSolid:true};
+ if(route&&['口服液','口服懸浮液','口服液/懸浮液','口服液／懸浮液'].includes(route.name)&&medicineStrengthPerUnitV68(med))return {...route,calc:'tablet',preparedFromSolid:true};
  return route;
 }
 function prescriptionKindV66(name){return prescriptionRoutesV66.find(x=>x.name===String(name||'').match(/^\[([^\]]+)\]/)?.[1])?.kind||'';}
@@ -11334,7 +11336,7 @@ function renderDispensingDraftV75(){
  }
  renderDispensingControlsV75();
 }
-function collectPrescriptionDetailsV75(){return dispensingRowsV75().map(row=>({medicine_name:row.querySelector('input[type="text"]').value,medicine_id:row.dataset.medicineId||'',billing_kind:row.dataset.billingKind||'',custom_dose:normalizePrescriptionDoseV91({custom_dose:row.querySelector('.prescribe-custom-dose').value,medicine_name:row.querySelector('input[type="text"]').value}),quantity:row.querySelector('.prescribe-qty').value,instruction:row.querySelector('.prescribe-note').value,dispensing_group:dispensingRowMetaV75(row)}));}
+function collectPrescriptionDetailsV75(){const details=dispensingRowsV75().map(row=>({medicine_name:row.querySelector('input[type="text"]').value,medicine_id:row.dataset.medicineId||'',billing_kind:row.dataset.billingKind||'',custom_dose:normalizePrescriptionDoseV91({custom_dose:row.querySelector('.prescribe-custom-dose').value,medicine_name:row.querySelector('input[type="text"]').value}),quantity:row.querySelector('.prescribe-qty').value,instruction:row.querySelector('.prescribe-note').value,dispensing_group:dispensingRowMetaV75(row)}));if(details.some(p=>/劑量待確認|單位/.test(p.custom_dose)||/^(?:\d+(?:\.\d+)?|\.\d+)$/.test(p.custom_dose))){alert('請在處方清單補上正確劑量單位，例如 mg/kg、ml/kg 或 ml，再儲存或結帳。');throw Error('處方劑量單位尚未確認');}return details;}
 const dispensingMakeOriginalV75=makePrescriptionDraftRowV65;
 makePrescriptionDraftRowV65=function(p){
  const row=dispensingMakeOriginalV75(p),g=dispensingImportV75(p.dispensing_group);row.dataset.dispensingGroupV75=JSON.stringify(g);
@@ -13914,10 +13916,16 @@ function syncPrescriptionDoseUnitV91(route){
 function normalizePrescriptionDoseV91(p){
  const value=String(p.custom_dose??'').trim();
  if(!/^(?:\d+(?:\.\d+)?|\.\d+)\s*(?:單位)?$/.test(value))return value;
- const name=String(p.medicine_name||'').match(/^\[([^\]]+)\]/)?.[1];
+ const name=String(p.medicine_name||'').match(/^\[([^\]]+)\]/)?.[1]||'';
  const route=prescriptionRoutesV66.find(r=>r.name===name);
- const unit=route?.calc==='ratio'?'ml/kg':route?.calc==='tablet'?'mg/kg':'';
- return unit?value.replace(/\s*單位$/, '')+' '+unit:value;
+ let unit=route?.calc==='ratio'?'ml/kg':route?.calc==='tablet'?'mg/kg':'';
+ if(!unit&&/^口服錠劑[／/]膠囊$/.test(name))unit='mg/kg';
+ if(!unit&&/^口服(?:液|懸浮液)/.test(name)){
+  const med=loadedMedicinesMap[p.medicine_id];
+  if(medicineStrengthPerUnitV68(med))unit='mg/kg';
+ }
+ const number=value.replace(/\s*單位$/, '');
+ return unit?number+' '+unit:number+'（劑量待確認）';
 }
 
 </script>
@@ -15367,5 +15375,5 @@ ownerPetMountV908();
 </style>
 <style>#homeVaccineListV74[hidden]{display:none!important}#homeVaccineToggleV9010{margin-top:8px}#homeVaccineListV74{max-height:420px;overflow-y:auto}</style>
 <script id="versionV9010">document.getElementById('genblueVersionV84').textContent=' · v90.10';</script>
-<script id="versionV91">document.getElementById("genblueVersionV84").textContent=" · v91.6";</script>
+<script id="versionV91">document.getElementById("genblueVersionV84").textContent=" · v91.7";</script>
 </body></html>
