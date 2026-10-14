@@ -2,7 +2,7 @@
 <meta name="genblue-version" content="v85">
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>吉布動物醫院管理系統 genblue設計版權所有 </title>
+    <title>吉布動物醫院管理系統 genblue設計版權所有 · v85_6</title>
     <!-- 引入 Supabase JS SDK CDN -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
@@ -10905,19 +10905,18 @@ function applyPrescriptionCopyV65(){
 <div id="routeAddModalV66" class="modal-overlay" role="dialog" aria-modal="true" aria-labelledby="routeAddTitleV66"><div style="background:#fff;padding:24px;border-radius:12px;max-width:90vw;width:460px"><h3 id="routeAddTitleV66">新增給藥方式</h3><label for="routeAddNameV66">方式名稱（例如：鼻腔滴入）</label><input id="routeAddNameV66" type="text" maxlength="30" style="width:100%;margin:8px 0"><label for="routeAddKindV66">結帳分類</label><select id="routeAddKindV66"><option value="other">其他用藥（含霧化／外用）</option><option value="oral">口服藥</option><option value="injection">針劑</option></select><p id="routeAddStatusV66" role="status"></p><button id="routeAddSaveV66" type="button" class="btn-success" onclick="savePrescriptionRouteV66()">儲存並選用</button> <button type="button" class="btn-secondary" onclick="document.getElementById('routeAddModalV66').style.display='none'">關閉</button></div></div>
 <script id="prescriptionRoutesV66">
 const prescriptionRouteDefaultsV66=[
- {name:'口服錠劑/膠囊',kind:'oral',calc:'tablet'},{name:'口服錠劑／膠囊',kind:'oral',calc:'tablet'},
  {name:'口服錠劑',kind:'oral',calc:'tablet'},{name:'口服膠囊',kind:'oral',calc:'tablet'},
- {name:'口服液/懸浮液',kind:'oral',calc:'manual'},{name:'口服液／懸浮液',kind:'oral',calc:'manual'},
  {name:'口服液',kind:'oral',calc:'manual'},{name:'口服懸浮液',kind:'oral',calc:'manual'},
- {name:'皮下/肌肉注射',kind:'injection',calc:'ratio'},{name:'皮下／肌肉注射',kind:'injection',calc:'ratio'},{name:'皮下注射',kind:'injection',calc:'ratio'},{name:'肌肉注射',kind:'injection',calc:'ratio'},{name:'靜脈注射',kind:'injection',calc:'ratio'},
+ {name:'皮下注射',kind:'injection',calc:'ratio'},{name:'肌肉注射',kind:'injection',calc:'ratio'},{name:'靜脈注射',kind:'injection',calc:'ratio'},
  {name:'外用滴劑',kind:'other',calc:'manual'},{name:'外用藥膏',kind:'other',calc:'manual'},
  {name:'眼藥水',kind:'other',calc:'manual'},{name:'眼藥膏',kind:'other',calc:'manual'},{name:'耳藥水',kind:'other',calc:'manual'},{name:'耳藥膏',kind:'other',calc:'manual'},
  {name:'霧化吸入',kind:'other',calc:'manual'}
 ];
 let prescriptionRoutesV66=[...prescriptionRouteDefaultsV66],prescriptionRouteSavingV66=false;
+function singlePrescriptionRouteV9111(name){return !/[\/／、+＋]|或|及|與/.test(name);}
 function renderPrescriptionRoutesV66(custom=[]){
  const previous=document.getElementById('medRouteDetailSelect').value;
- const safe=Array.isArray(custom)?custom.filter(x=>x&&typeof x.name==='string'&&['oral','injection','other'].includes(x.kind)):[];
+ const safe=Array.isArray(custom)?custom.filter(x=>x&&typeof x.name==='string'&&singlePrescriptionRouteV9111(x.name)&&['oral','injection','other'].includes(x.kind)):[];
  const map=new Map(prescriptionRouteDefaultsV66.map(x=>[x.name,x]));for(const x of safe)if(!map.has(x.name))map.set(x.name,{name:x.name,kind:x.kind,calc:'manual'});
  prescriptionRoutesV66=[...map.values()];const select=document.getElementById('medRouteDetailSelect');select.replaceChildren(new Option('-- 請選擇實際給藥方式 --',''));for(const r of prescriptionRoutesV66)select.add(new Option(r.name,r.name));if(map.has(previous))select.value=previous;
 }
@@ -10933,6 +10932,7 @@ async function savePrescriptionRouteV66(){
  if(prescriptionRouteSavingV66)return;if(!medicalEditAllowedV53()){alert('此帳號沒有處方編輯權限。');return;}
  const name=document.getElementById('routeAddNameV66').value.trim(),kind=document.getElementById('routeAddKindV66').value,status=document.getElementById('routeAddStatusV66');
  if(!name||name.length>30||/[\[\]\r\n]/.test(name)){status.textContent='名稱請填 1～30 字，不含中括號或換行。';return;}
+ if(!singlePrescriptionRouteV9111(name)){status.textContent='請只新增一種給藥方式，合併方式請分開建立。';return;}
  if(prescriptionRoutesV66.some(x=>x.name===name)){status.textContent='此方式已存在，直接在下拉選單選用即可。';return;}
  const tenant=CURRENT_TENANT_ID,user=CURRENT_USER?.id;prescriptionRouteSavingV66=true;document.getElementById('routeAddSaveV66').disabled=true;status.textContent='儲存中…';
  try{const {data,error}=await _supabase.rpc('add_prescription_route_v66',{p_name:name,p_kind:kind});if(tenant!==CURRENT_TENANT_ID||user!==CURRENT_USER?.id)return;if(error)throw error;if(!Array.isArray(data))throw Error('儲存回應不完整，請重新載入核對。');renderPrescriptionRoutesV66(data);status.textContent='已儲存，其他醫師重新載入後可選用。';document.getElementById('routeAddNameV66').value='';if(document.getElementById('routeAddModalV66').style.display==='flex'){document.getElementById('medRouteDetailSelect').value=name;preservePrescriptionRouteForVisit=true;onRouteDetailChanged();}}
@@ -13920,6 +13920,7 @@ function normalizePrescriptionDoseV91(p){
  const route=prescriptionRoutesV66.find(r=>r.name===name);
  let unit=route?.calc==='ratio'?'ml/kg':route?.calc==='tablet'?'mg/kg':'';
  if(!unit&&/^口服錠劑[／/]膠囊$/.test(name))unit='mg/kg';
+ if(!unit&&/^皮下[／/]肌肉注射$/.test(name))unit='ml/kg';
  if(!unit&&/^口服(?:液|懸浮液)/.test(name)){
   const med=loadedMedicinesMap[p.medicine_id];
   if(medicineStrengthPerUnitV68(med))unit='mg/kg';
@@ -15414,6 +15415,6 @@ async function returnToWaitingWithoutSaveV75_4(){
  }catch(error){if(valid())alert('返回候診未完成：'+error.message+'。目前內容保留，請重試或更新名單確認。');return false;}
  finally{medicalReturnBusyV918=false;medicalSaveBusy=false;}
 }
-document.getElementById('genblueVersionV84').textContent=' · v91.10';
+document.getElementById('genblueVersionV84').textContent=' · v91.11';
 </script>
 </body></html>
