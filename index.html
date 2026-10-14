@@ -697,7 +697,7 @@ body.role-no-appointment #nav-online_booking{display:none!important}
                 <h3 style="margin:0;">搜尋結果：同飼主寵物可複選掛號</h3>
                 <button type="button" class="btn-secondary" onclick="closeGlobalSearchResults()">關閉</button>
             </div>
-            <p id="globalSearchResultsStatus" role="status" aria-live="polite" style="color:#475569;margin:12px 0;"></p><div class="global-batch-toolbar-v73"><label>來院目的 <select id="globalVisitPurposeV74"><option>看診</option><option>疫苗</option><option>回診</option><option>檢查</option></select></label><span id="globalSelectedLabelV73">尚未勾選寵物</span><button type="button" id="globalBatchRegisterV73" class="btn-success" onclick="addSelectedGlobalPetsV73()" disabled>勾選寵物一起加入候診</button><button type="button" class="btn-secondary" onclick="if(!globalRegistrationBusyV73){globalSelectedPetsV73.clear();updateGlobalSelectionV73();}">取消勾選</button><small>每隻寵物各自掛號；一次勾選同一飼主。</small></div>
+            <p id="globalSearchResultsStatus" role="status" aria-live="polite" style="color:#475569;margin:12px 0;"></p><div class="global-batch-toolbar-v73"><label>來院目的 <select id="globalVisitPurposeV74"><option>看診</option><option>疫苗</option><option>回診</option><option>檢查</option><option>拿藥</option><option>急診</option><option>住院</option></select></label><span id="globalSelectedLabelV73">尚未勾選寵物</span><button type="button" id="globalBatchRegisterV73" class="btn-success" onclick="addSelectedGlobalPetsV73()" disabled>勾選寵物一起加入候診</button><button type="button" class="btn-secondary" onclick="if(!globalRegistrationBusyV73){globalSelectedPetsV73.clear();updateGlobalSelectionV73();}">取消勾選</button><small>每隻寵物各自掛號；一次勾選同一飼主。</small></div>
             <div style="overflow:auto;max-height:420px;">
                 <table><thead><tr><th>勾選</th><th>寵物</th><th>種類／品種</th><th>新編號／舊病歷號</th><th>飼主</th><th>聯絡電話</th><th>晶片</th><th>操作</th></tr></thead>
                 <tbody id="globalSearchResultsBody"></tbody></table>
@@ -2146,7 +2146,7 @@ body.role-no-appointment #nav-online_booking{display:none!important}
                             </select>
                         </div>
                         <select id="appointmentDoctor" hidden aria-hidden="true"><option value="">不指定／由現場接診</option></select><p class="form-group" style="font-size:.85rem;color:#64748b">先完成掛號／報到，再從候診卡指定醫師。</p>
-                        <div class="form-group span-2"><label>來院目的</label><select id="appointmentVisitPurposeV74"><option>看診</option><option>疫苗</option><option>回診</option><option>檢查</option></select></div><div class="form-group span-2"><label>初始狀態</label><select id="appointmentStatusSelect"><option value="已預約" selected="">已預約（未報到）</option><option value="候診中">候診中</option></select></div>
+                        <div class="form-group span-2"><label>來院目的</label><select id="appointmentVisitPurposeV74"><option>看診</option><option>疫苗</option><option>回診</option><option>檢查</option><option>拿藥</option><option>急診</option><option>住院</option></select></div><div class="form-group span-2"><label>初始狀態</label><select id="appointmentStatusSelect"><option value="已預約" selected="">已預約（未報到）</option><option value="候診中">候診中</option></select></div>
                     </div>
                     <div style="display: flex; gap: 12px; margin-top: 15px;">
                         <button id="saveAppointmentBtn" onclick="saveAppointment()">建立預約</button>
@@ -11068,8 +11068,8 @@ function scheduledDueV72(c,now=new Date()){if(!c.enabled||!/^\d{2}:\d{2}$/.test(
 <style>.family-panel-v74{padding:16px;margin:14px 0;border:1px solid #d7dfd1;border-radius:12px;background:#fcfdf9}.family-panel-v74[hidden]{display:none!important}.family-panel-v74 h3{margin:0 0 10px}.family-panel-v74 p{font-size:.9rem;line-height:1.6}.family-panel-v74 select{max-width:100%;padding:8px}.family-row-v74{padding:8px 0;border-bottom:1px solid #e1e7da;display:flex;gap:12px;align-items:center;justify-content:space-between}.family-row-v74 details{flex:1;min-width:0}.family-row-v74 p{overflow-wrap:anywhere}.family-purpose-v74{font-size:.85rem;color:#58724f;margin-top:5px}@media(max-width:640px){.family-row-v74{flex-wrap:wrap}.family-panel-v74 button{margin:4px 0}}</style>
 <script id="familyFeaturesV74">
 // v74: same-owner visits, durable per-tab checkout drafts and atomic family checkout.
-function visitPurposeV74(notes){return String(notes||'').match(/^\[來院目的\] (看診|疫苗|回診|檢查)$/m)?.[1]||'未註記';}
-function purposeNotesV74(notes,control='globalVisitPurposeV74'){const purpose=document.getElementById(control)?.value||'看診';return '[來院目的] '+(['看診','疫苗','回診','檢查'].includes(purpose)?purpose:'看診')+(String(notes||'').replace(/^\[來院目的\] .*\n?/gm,'').trim()?'\n'+String(notes||'').replace(/^\[來院目的\] .*\n?/gm,'').trim():'');}
+function visitPurposeV74(notes){return String(notes||'').match(/^\[來院目的\] (看診|疫苗|回診|檢查|拿藥|急診|住院)$/m)?.[1]||'未註記';}
+function purposeNotesV74(notes,control='globalVisitPurposeV74'){const purpose=document.getElementById(control)?.value||'看診';return '[來院目的] '+(['看診','疫苗','回診','檢查','拿藥','急診','住院'].includes(purpose)?purpose:'看診')+(String(notes||'').replace(/^\[來院目的\] .*\n?/gm,'').trim()?'\n'+String(notes||'').replace(/^\[來院目的\] .*\n?/gm,'').trim():'');}
 let familyStateV74=null,familyScopeV74='',familyBusyV74=false,familyNextPetV74=null;
 function familyAllowedV74(){return !!doctorScopeV51()&&(CURRENT_PROFILE?.role==='admin'||(CURRENT_PROFILE?.permission_checkout??(CURRENT_PROFILE?.role==='staff'||(CURRENT_PROFILE?.role==='doctor'&&CURRENT_PROFILE?.can_checkout===true))));}
 function familyKeyV74(scope=doctorScopeV51()){return 'genblue-family-v74:'+scope;}
@@ -15414,6 +15414,6 @@ async function returnToWaitingWithoutSaveV75_4(){
  }catch(error){if(valid())alert('返回候診未完成：'+error.message+'。目前內容保留，請重試或更新名單確認。');return false;}
  finally{medicalReturnBusyV918=false;medicalSaveBusy=false;}
 }
-document.getElementById('genblueVersionV84').textContent=' · v91.8';
+document.getElementById('genblueVersionV84').textContent=' · v91.9';
 </script>
 </body></html>
