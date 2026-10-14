@@ -2,7 +2,7 @@
 <meta name="genblue-version" content="v85">
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>吉布動物醫院管理系統 genblue設計版權所有 · v85_6</title>
+    <title>吉布動物醫院管理系統 genblue設計版權所有 </title>
     <!-- 引入 Supabase JS SDK CDN -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
@@ -7505,12 +7505,12 @@ function openMedicalDetailModal(record){
         }
 
         function editAppointment(key) {
-            document.getElementById("journalAppointmentForm").open = true;
             const appointment = activeAppointmentsList.find(p => appointmentKey(p) === key);
             if (!appointment) { alert('找不到此預約資料。'); return; }
             if (appointment.status !== '已預約') { alert('只有尚未報到的預約可以修改。'); return; }
             if (!appointment.appointment_id) { alert('此筆不是正式預約，無法使用修改預約功能。'); return; }
 
+            const form=document.getElementById("journalAppointmentForm");form.open=true;
             chooseAppointmentPet(appointment, true);
             editingAppointmentPetId = key;
             const petSelect = document.getElementById('appointmentPetSelect');
@@ -7529,8 +7529,8 @@ function openMedicalDetailModal(record){
             document.getElementById('appointmentStatusSelect').disabled = true;
             document.getElementById('saveAppointmentBtn').textContent = '儲存修改';
             document.getElementById('cancelEditAppointmentBtn').style.display = 'inline-block';
-            document.getElementById('appointmentTime').focus();
-            document.getElementById('appointments').scrollIntoView({ behavior: 'smooth', block: 'start' });
+            document.getElementById('appointmentTime').focus({preventScroll:true});
+            form.scrollIntoView({behavior:'smooth',block:'start'});
         }
 
         function cancelEditAppointment() {
@@ -15414,6 +15414,6 @@ async function returnToWaitingWithoutSaveV75_4(){
  }catch(error){if(valid())alert('返回候診未完成：'+error.message+'。目前內容保留，請重試或更新名單確認。');return false;}
  finally{medicalReturnBusyV918=false;medicalSaveBusy=false;}
 }
-document.getElementById('genblueVersionV84').textContent=' · v91.9';
+document.getElementById('genblueVersionV84').textContent=' · v91.10';
 </script>
 </body></html>
