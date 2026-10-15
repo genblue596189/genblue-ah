@@ -1127,7 +1127,7 @@ body.role-no-appointment #nav-online_booking{display:none!important}
                         </div>
                         <div class="form-group span-2">
                             <label>下次預計施打日期</label>
-                            <input type="date" id="vacNextDueDate">
+                            <input type="date" id="vacNextDueDate"><small id="vaccineDueHintV9114" role="status">選擇疫苗後依本次施打日期帶入，可手動修改。</small>
                         </div>
                         <div class="form-group span-2"><label>本次疫苗費用 (NT$)</label><input type="number" id="vacServiceFee" min="0" step="0.01" placeholder="請填本次金額；免費填 0"></div>
                         <div class="form-group span-4">
@@ -2540,9 +2540,7 @@ body.role-no-appointment #nav-online_booking{display:none!important}
         
     const todayStr = new Date().toISOString().split('T')[0];
 
-            let nextYearDate = new Date();
-            nextYearDate.setDate(nextYearDate.getDate() + 365);
-            document.getElementById('vacNextDueDate').value = nextYearDate.toISOString().split('T')[0];
+            document.getElementById('vacNextDueDate').value = '';
 
             await loadCategoriesFromSupabase();
             await loadBreedsFromSupabase();
@@ -3765,6 +3763,7 @@ if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',
                 if(vacTypeSelect) {
                     const opt = document.createElement('option');
                     opt.value = vt.name;
+                    opt.dataset.intervalDays=String(vt.interval_days??'');
                     opt.textContent = `${vt.name} (${vt.target}用)`;
                     vacTypeSelect.appendChild(opt);
                 }
@@ -15488,5 +15487,54 @@ const status=document.createElement('p');status.id='rabiesDefaultStatusV9112';st
 document.getElementById('rabiesRecordEnabled').addEventListener('change',()=>syncRabiesForm());
 rabiesDefaultScopeCheckV9112();
 document.getElementById('genblueVersionV84').textContent=' · v91.13';
+</script>
+
+<script id="vaccineDueV9114">
+function vaccineIntervalV9114(name,days){
+ const value=String(name||'').normalize('NFKC');
+ const month=/(?:一個月|一月期|1個月|1月期|一個月期|1個月期)/.test(value),year=/(?:一年|1年)/.test(value);
+ if(month&&year)return null;if(month)return {months:1};if(year)return {months:12};
+ const n=Number(days);return Number.isInteger(n)&&n>0&&n<=3650?{days:n}:null;
+}
+function vaccineDueDateV9114(date,interval){
+ if(!/^\d{4}-\d{2}-\d{2}$/.test(date)||!interval)return '';
+ const original=new Date(date+'T12:00:00Z');if(!Number.isFinite(original.getTime())||original.toISOString().slice(0,10)!==date)return '';
+ if(interval.months){const day=original.getUTCDate();original.setUTCDate(1);original.setUTCMonth(original.getUTCMonth()+interval.months);const last=new Date(Date.UTC(original.getUTCFullYear(),original.getUTCMonth()+1,0)).getUTCDate();original.setUTCDate(Math.min(day,last));}
+ else original.setUTCDate(original.getUTCDate()+interval.days);
+ return original.toISOString().slice(0,10);
+}
+function syncVaccineDueV9114(fromSelection=false){
+ const select=document.getElementById('vacTypeSelect'),administered=document.getElementById('vacAdministeredDate'),due=document.getElementById('vacNextDueDate'),hint=document.getElementById('vaccineDueHintV9114');
+ if(!select.value){if(fromSelection)due.value='';hint.textContent='選擇疫苗後依本次施打日期帶入，可手動修改。';return;}
+ if(!administered.value&&fromSelection)administered.value=new Intl.DateTimeFormat('sv-SE',{timeZone:'Asia/Taipei'}).format(new Date());
+ const interval=vaccineIntervalV9114(select.value,select.selectedOptions[0]?.dataset.intervalDays),date=vaccineDueDateV9114(administered.value,interval);
+ if(date){due.value=date;hint.textContent='已依本次施打日期帶入'+(interval.months===1?'一個月':interval.months===12?'一年':interval.days+'天')+'後日期，可手動修改。';}
+ else{if(fromSelection)due.value='';hint.textContent=interval?'請填寫有效的本次施打日期。':'此疫苗未設定明確間隔，請手動填寫下次日期。';}
+}
+document.getElementById('vacTypeSelect').addEventListener('change',()=>syncVaccineDueV9114(true));
+document.getElementById('vacAdministeredDate').addEventListener('change',()=>syncVaccineDueV9114());
+document.getElementById('genblueVersionV84').textContent=' · v91.14';
+</script>
+
+<script id="vaccineCheckoutResetV9115">
+function clearPaidVaccineFormV9115(petIds){
+ const value=id=>document.getElementById(id)?.value||'',petId=value('selectedVacPetId');
+ if(vaccineRecordSaveBusy||!petId||!petIds.includes(petId))return false;
+ // Do not erase a new vaccine entry that is already being filled.
+ if(value('vacTypeSelect')||value('vacServiceFee')||value('vacNotes')||value('rabiesTag')||document.getElementById('rabiesRecordEnabled')?.checked)return false;
+ for(const id of ['vacPetSearchInput','selectedVacPetId','vacTypeSelect','vacAdministeredDate','vacNextDueDate','vacServiceFee','vacNotes'])document.getElementById(id).value='';
+ clearRabiesFields();
+ const hint=document.getElementById('vaccineDueHintV9114');if(hint)hint.textContent='選擇疫苗後依本次施打日期帶入，可手動修改。';
+ return true;
+}
+const vaccineMarkPaidOriginalV9115=markServiceChargesPaid;
+markServiceChargesPaid=function(ids,invoiceId){
+ const tenant=CURRENT_TENANT_ID;
+ const petIds=[...new Set(readServiceDrafts().filter(x=>x.tenantId===tenant&&x.kind==='vaccine'&&ids.includes(x.id)).map(x=>x.petId))];
+ const result=vaccineMarkPaidOriginalV9115.apply(this,arguments);
+ if(tenant===CURRENT_TENANT_ID)clearPaidVaccineFormV9115(petIds);
+ return result;
+};
+document.getElementById('genblueVersionV84').textContent=' · v91.15';
 </script>
 </body></html>
