@@ -2582,21 +2582,7 @@ body.role-no-appointment #nav-online_booking{display:none!important}
             }
 
             const labInput = document.getElementById('labPetSearchInput');
-            if (labInput) {
-                labInput.addEventListener('input', function(e) {
-                    const val = e.target.value;
-                    const datalist = document.getElementById('labPetDatalist');
-                    const options = datalist.querySelectorAll('option');
-                    let foundId = "";
-                    options.forEach(opt => {
-                        if (opt.value === val) {
-                            foundId = opt.dataset.petId;
-                        }
-                    });
-                    document.getElementById('selectedLabPetId').value = foundId;
-                    renderLabSpeciesTemplates();
-                });
-            }
+            if(labInput){labInput.removeAttribute('oninput');labInput.oninput=()=>{void onLabPetSelectedForTrend();};}
 
             const rapidInput = document.getElementById('rapidPetSearchInput');
             if (rapidInput) {
@@ -6733,24 +6719,30 @@ async function loadOwnersAndPetsIntegrated() {
                 const matchedPetOption = allPetsListForDropdown.find(p => p.id === currentPetId);
                 if (matchedPetOption) {
                     const codeStr = matchedPetOption.owner_code ? `[編號:${matchedPetOption.owner_code}] ` : '';
-                    labSearchInput.value = `${matchedPetOption.name} (${codeStr}飼主: ${matchedPetOption.owner_name} / 晶片: ${matchedPetOption.microchip || '無'})`;
+                    const selectedOption=[...document.getElementById('labPetDatalist').options].find(o=>o.dataset.petId===currentPetId);
+                    labSearchInput.value=selectedOption?.value||`${matchedPetOption.name} (${codeStr}飼主: ${matchedPetOption.owner_name} / 晶片: ${matchedPetOption.microchip || '無'})`;
                     hiddenLabPetId.value = currentPetId;
-                    onLabPetSelectedForTrend();
-                }
+                    onLabPetSelectedForTrend(currentPetId);
+                }else{labSearchInput.value=currentPetName;hiddenLabPetId.value=currentPetId;void onLabPetSelectedForTrend(currentPetId);}
             }
         }
 
-        function onLabPetSelectedForTrend() {
-            const labInput = document.getElementById('labPetSearchInput');
-            const datalist = document.getElementById('labPetDatalist');
-            const options = datalist.querySelectorAll('option');
-            let foundId = "";
-            options.forEach(opt => {
-                if (opt.value === labInput.value) {
-                    foundId = opt.dataset.petId;
-                }
-            });
-            document.getElementById('selectedLabPetId').value = foundId;
+        let labSelectionRequestV9116=0;
+        async function onLabPetSelectedForTrend(explicitPetId=null) {
+            const input=document.getElementById('labPetSearchInput'),options=[...document.getElementById('labPetDatalist').querySelectorAll('option')];
+            const option=options.find(o=>o.value===input.value);
+            const foundId=typeof explicitPetId==='string'?explicitPetId:option?.dataset.petId||'';
+            const tenant=CURRENT_TENANT_ID,user=CURRENT_USER?.id,request=++labSelectionRequestV9116;
+            document.getElementById('selectedLabPetId').value=foundId;
+            const valid=()=>request===labSelectionRequestV9116&&tenant===CURRENT_TENANT_ID&&user===CURRENT_USER?.id&&document.getElementById('selectedLabPetId').value===foundId;
+            if(foundId&&!getSelectedLabSpecies()){
+                try{
+                    const {data,error}=await _supabase.from('pets').select('id,name,species').eq('tenant_id',tenant).eq('id',foundId).single();
+                    if(!valid())return;if(error)throw error;if(!data||data.id!==foundId)throw Error('無法確認寵物資料');
+                    const cached=allPetsListForDropdown.find(p=>p.id===foundId);if(cached)cached.species=data.species;else allPetsListForDropdown.push(data);
+                }catch(error){if(valid()){renderLabSpeciesTemplates();document.getElementById('cbcLabRows').textContent='寵物物種讀取失敗，請重新選取寵物重試：'+error.message;document.getElementById('bioLabRows').textContent='寵物物種讀取失敗，請重新選取寵物重試。';renderedLabPatientKey='';}return;}
+            }
+            if(!valid())return;
             renderLabSpeciesTemplates();
 
             const trendContainer = document.getElementById('petLabTrendContainer');
@@ -7849,12 +7841,14 @@ function openMedicalDetailModal(record){
         };
         let renderedLabPatientKey = '';
         function getSelectedLabSpecies() {
-            const petId = document.getElementById('selectedLabPetId').value;
-            const pet = allPetsListForDropdown.find(item => item.id === petId);
-            if (pet?.species === '犬' || pet?.species === '狗' || pet?.species?.toLowerCase() === 'dog') return 'dog';
-            if (pet?.species === '貓' || pet?.species?.toLowerCase() === 'cat') return 'cat';
+            const petId=document.getElementById('selectedLabPetId').value;
+            const pet=allPetsListForDropdown.find(item=>item.id===petId);
+            const species=String(pet?.species||'').normalize('NFKC').trim().toLowerCase();
+            if(/^(犬|狗|犬類|狗狗|dog|canine)$/.test(species))return 'dog';
+            if(/^(貓|猫|貓類|貓咪|cat|feline)$/.test(species))return 'cat';
             return '';
         }
+
         function renderLabSpeciesTemplates() {
             const species = getSelectedLabSpecies();
             const patientKey = document.getElementById('selectedLabPetId').value + ':' + species;
@@ -15535,6 +15529,6 @@ markServiceChargesPaid=function(ids,invoiceId){
  if(tenant===CURRENT_TENANT_ID)clearPaidVaccineFormV9115(petIds);
  return result;
 };
-document.getElementById('genblueVersionV84').textContent=' · v91.15';
+document.getElementById('genblueVersionV84').textContent=' · v91.16';
 </script>
 </body></html>
