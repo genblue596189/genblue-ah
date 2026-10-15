@@ -1012,7 +1012,7 @@ body.role-no-appointment #nav-online_booking{display:none!important}
                             <div class="form-group">
                                 <label id="labelRecDoseTitle">建議劑量 (mg/kg)</label>
                                 <input type="text" id="medCustomRecDose" placeholder="10" oninput="runDetailedMathCalculation()">
-<select id="prescriptionDoseUnitV91" aria-label="使用劑量單位"><option value="">請選擇劑量單位</option><option>mg/kg</option><option>ml/kg</option><option>ml</option><option>mg</option><option>μg/kg</option><option>μg</option><option>IU/kg</option><option>IU</option><option>滴</option><option>顆</option><option>錠</option><option>g</option></select>
+<select id="prescriptionDoseUnitV91" aria-label="使用劑量單位" onchange="runDetailedMathCalculation()"><option value="">請選擇劑量單位</option><option>mg/kg</option><option>ml/kg</option><option>ml</option><option>mg</option><option>μg/kg</option><option>μg</option><option>IU/kg</option><option>IU</option><option>滴</option><option>顆</option><option>錠</option><option>g</option></select>
                             </div>
                             <div class="form-group">
                                 <label>給藥頻率</label>
@@ -4036,6 +4036,7 @@ if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',
                 charge=prepareServiceCharge('vacServiceFee',petId,'vaccine','疫苗：'+vaccineName);
                 const {data,error}=await _supabase.from('vaccination_records').insert([{tenant_id:CURRENT_TENANT_ID,pet_id:petId,vaccine_name:vaccineName,last_date:administeredDate,next_due_date:nextDueDate||null,notes:notes||'',...(rabiesDetails?{rabies_details:rabiesDetails}:{})}]).select('id').single();
                 if (error) { cancelServiceCharge(charge); alert('紀錄儲存失敗：'+error.message); return; }
+                if(rabiesDetails)rememberRabiesDefaultsV9112(rabiesDetails);
                 finishServiceCharge(charge,data.id);
                 document.getElementById('vacTypeSelect').value='';
                 clearRabiesFields();
@@ -6948,7 +6949,7 @@ function onRouteDetailChanged(){
  syncInjectionEntryV70(route);
  syncPrescriptionDoseUnitV91(route);
  const label=document.getElementById('prescribeQuantityLabelV69');if(label)label.textContent=route?.preparedFromSolid?'原藥開立顆數（磨粉前）':'實際開立數量';
- document.getElementById('labelRecDoseTitle').textContent=route?.calc==='tablet'?'建議劑量 (mg/kg)':route?.calc==='ratio'?'建議劑量比率 (ml/kg)':'使用劑量（手動輸入，含單位）';
+ document.getElementById('labelRecDoseTitle').textContent=route?.calc==='tablet'?'建議劑量 (mg/kg)':route?.calc==='ratio'?'使用劑量（依所選單位換算 ml）':'使用劑量（手動輸入，含單位）';
  runDetailedMathCalculation();
 }
 function onMedicineSelectedForDoseCalculation(){
@@ -6971,7 +6972,7 @@ function runDetailedMathCalculation(){
  if(frequency===0){stop('PRN 請手動確認實際開立數量');return;}
  if(![dose,frequency,days,weight].every(n=>Number.isFinite(n)&&n>0)||!Number.isInteger(days)){stop('請填寫有效的體重、劑量、頻率及整數天數');return;}
  const total=dose*weight*frequency*days;
- if(route.calc==='ratio'){setCalculatedPrescriptionTotal(total,'ml',injection?'建議單次用量':'建議總需');return;}
+ if(route.calc==='ratio'){const unit=document.getElementById('prescriptionDoseUnitV91').value;const volume=injectionVolumeV9113(dose,weight,unit,med.usage_dose||med.strength);if(volume===null){stop('劑量單位與規格濃度不符，請核對例如 2000IU/0.3ml；不自動推測');return;}setInjectionVolumeV9113(volume);return;}
  const mgPerUnit=medicineStrengthPerUnitV68(med);if(!mgPerUnit){stop('請確認每顆含量，例如 250mg/顆；無法自動換算');return;}
  setCalculatedPrescriptionTotal(total/mgPerUnit,'顆');
  if(route.preview&&qty.value)result.value+='（加入前請選給藥方式）';
@@ -10850,7 +10851,7 @@ function makePrescriptionDraftRowV65(p){
  p={...p,custom_dose:normalizePrescriptionDoseV91(p)};
  const row=document.createElement('div');row.className='list-row prescription-item-row';row.dataset.medicineId=p.medicine_id||'';row.dataset.billingKind=p.billing_kind||prescriptionKindV66(p.medicine_name);
  for(const [value,type,cls,style,title] of [[p.medicine_name,'text','','flex:2;background:#fff','藥品與劑型'],[p.custom_dose,'text','prescribe-custom-dose','flex:1.2','使用劑量'],[p.quantity,'number','prescribe-qty','flex:.8','數量'],[p.instruction,'text','prescribe-note','flex:2','用法說明']]){
-  const input=document.createElement('input');input.type=type;input.value=value??'';input.className=cls;input.style.cssText=style;input.title=title;if(!cls)input.readOnly=true;if(type==='number'){input.step='0.1';input.min='0.1';}row.append(input);
+  const input=document.createElement('input');input.type=type;input.value=value??'';input.className=cls;input.style.cssText=style;input.title=title;if(!cls)input.readOnly=true;if(type==='number'){input.step=row.dataset.billingKind==='injection'?'any':'0.1';input.min=row.dataset.billingKind==='injection'?'0.001':'0.1';}row.append(input);
  }
  const remove=document.createElement('button');remove.type='button';remove.className='btn-danger';remove.textContent='刪除';remove.addEventListener('click',()=>row.remove());row.append(remove);return row;
 }
@@ -13905,14 +13906,45 @@ function formatPrescriptionDoseV763(text,route){
  const value=String(text??'').trim();
  if(!/^(?:\d+(?:\.\d+)?|\.\d+)\s*(?:單位)?$/.test(value))return value;
  const number=value.replace(/\s*單位$/, '');
- const unit=route?.calc==='ratio'?'ml/kg':route?.calc==='tablet'?'mg/kg':document.getElementById('prescriptionDoseUnitV91')?.value;
+ const unit=route?.calc==='tablet'?'mg/kg':document.getElementById('prescriptionDoseUnitV91')?.value;
  return unit?number+' '+unit:number;
+}
+function injectionConcentrationV9113(text){
+ const value=String(text||'').normalize('NFKC').replace(/\s/g,'');
+ const match=value.match(/^(\d+(?:\.\d+)?|\.\d+)(IU|mg|mcg|μg|ug|g)\/(\d+(?:\.\d+)?|\.\d+)?ml$/i);
+ if(!match)return null;const amount=Number(match[1]),volume=match[3]?Number(match[3]):1;
+ if(!(amount>0&&volume>0))return null;
+ const raw=match[2].toLowerCase(),unit=raw==='iu'?'IU':'mg',factor=raw==='g'?1000:['mcg','μg','ug'].includes(raw)?.001:1;
+ return {unit,perMl:amount*factor/volume};
+}
+function injectionDefaultUnitV9113(med){
+ const recommended=String(med?.recommended_dose||'').match(/(IU|mg|ml)\s*\/\s*kg/i);
+ if(recommended)return recommended[1].toLowerCase()==='iu'?'IU/kg':recommended[1].toLowerCase()+'/kg';
+ return injectionConcentrationV9113(med?.usage_dose||med?.strength)?.unit==='IU'?'IU/kg':'ml/kg';
+}
+function injectionVolumeV9113(dose,weight,unit,strength){
+ if(!Number.isFinite(dose)||dose<=0||!Number.isFinite(weight)||weight<=0)return null;
+ if(unit==='ml')return dose;if(unit==='ml/kg')return dose*weight;
+ if(!['IU/kg','mg/kg'].includes(unit))return null;
+ const concentration=injectionConcentrationV9113(strength);
+ if(!concentration||concentration.unit!==unit.split('/')[0])return null;
+ const volume=dose*weight/concentration.perMl;return Number.isFinite(volume)&&volume>0?volume:null;
+}
+function setInjectionVolumeV9113(volume){
+ const result=document.getElementById('calculatedDoseResult'),qty=document.getElementById('medPrescribeQty');
+ if(!Number.isFinite(volume)||volume<=0){result.value='請核對劑量單位及規格濃度，無法換算 ml';qty.value='';return;}
+ const rounded=Math.round((volume+Number.EPSILON)*1000)/1000;
+ if(rounded===0){result.value='用量少於 0.001 ml，請手動核對可量取用量';qty.value='';return;}
+ qty.value=String(rounded);qty.step='any';result.value='建議單次用量 '+rounded+' ml';
 }
 function syncPrescriptionDoseUnitV91(route){
  const select=document.getElementById('prescriptionDoseUnitV91');if(!select)return;
- const automatic=route?.calc==='ratio'?'ml/kg':route?.calc==='tablet'?'mg/kg':'';
- select.value=automatic;select.disabled=!!automatic;
+ const med=loadedMedicinesMap[document.getElementById('medSelectDropdown').value];
+ const automatic=route?.calc==='ratio'?injectionDefaultUnitV9113(med):route?.calc==='tablet'?'mg/kg':'';
+ select.value=automatic;select.disabled=route?.calc==='tablet';
+ if(route?.calc==='ratio')document.getElementById('labelRecDoseTitle').textContent='使用劑量（依所選單位換算 ml）';
 }
+
 function normalizePrescriptionDoseV91(p){
  const value=String(p.custom_dose??'').trim();
  if(!/^(?:\d+(?:\.\d+)?|\.\d+)\s*(?:單位)?$/.test(value))return value;
@@ -15416,5 +15448,45 @@ async function returnToWaitingWithoutSaveV75_4(){
  finally{medicalReturnBusyV918=false;medicalSaveBusy=false;}
 }
 document.getElementById('genblueVersionV84').textContent=' · v91.11';
+</script>
+
+<script id="rabiesDefaultsV9112">
+const rabiesDefaultFieldsV9112={product:'rabiesProduct',manufacturer:'rabiesManufacturer',batch:'rabiesBatch',expiry_date:'rabiesExpiry',doctor:'rabiesDoctor'};
+let rabiesDefaultScopeV9112='';
+function rabiesDefaultKeyV9112(){return CURRENT_TENANT_ID&&CURRENT_USER?.id?'genblue-rabies-defaults-v1:'+JSON.stringify([CURRENT_TENANT_ID,CURRENT_USER.id]):'';}
+function rabiesDefaultStatusV9112(text){document.getElementById('rabiesDefaultStatusV9112').textContent=text;}
+function rabiesDefaultScopeCheckV9112(){
+ const key=rabiesDefaultKeyV9112();
+ if(key!==rabiesDefaultScopeV9112){for(const id of Object.values(rabiesDefaultFieldsV9112))document.getElementById(id).value='';document.getElementById('rabiesTag').value='';rabiesDefaultScopeV9112=key;}
+ return key;
+}
+function rememberRabiesDefaultsV9112(details=null){
+ const key=rabiesDefaultKeyV9112();if(!key)return false;
+ const data={};for(const [field,id] of Object.entries(rabiesDefaultFieldsV9112))data[field]=String(details?details[field]??'':document.getElementById(id).value).trim();
+ try{localStorage.setItem(key,JSON.stringify(data));rabiesDefaultScopeV9112=key;rabiesDefaultStatusV9112('已記住常用資料；下次自動帶入，犬牌號碼不保留。');return true;}
+ catch(error){rabiesDefaultStatusV9112('常用資料未能記住；本次施打紀錄請依原流程儲存。');return false;}
+}
+function applyRabiesDefaultsV9112(){
+ const key=rabiesDefaultScopeCheckV9112();if(!key)return;
+ try{const data=JSON.parse(localStorage.getItem(key)||'null');if(!data||typeof data!=='object')return;
+  for(const [field,id] of Object.entries(rabiesDefaultFieldsV9112)){const input=document.getElementById(id);if(!input.value&&typeof data[field]==='string')input.value=data[field];}
+  rabiesDefaultStatusV9112('已帶入常用資料，請核對批號、效期與施打醫師；犬牌號碼另填。');
+ }catch(error){rabiesDefaultStatusV9112('常用資料無法讀取，請重新填寫。');}
+}
+function clearRabiesDefaultsV9112(){
+ const key=rabiesDefaultScopeCheckV9112();
+ try{if(key)localStorage.removeItem(key);}catch(error){rabiesDefaultStatusV9112('常用資料未能清除，請重試。');return;}
+ for(const id of Object.values(rabiesDefaultFieldsV9112))document.getElementById(id).value='';
+ rabiesDefaultStatusV9112('已清空常用資料，請輸入新批次，並按「記住常用資料」。');document.getElementById('rabiesProduct').focus();
+}
+const rabiesSyncOriginalV9112=syncRabiesForm;
+syncRabiesForm=function(...args){rabiesDefaultScopeCheckV9112();rabiesSyncOriginalV9112.apply(this,args);if(document.getElementById('rabiesRecordEnabled').checked)applyRabiesDefaultsV9112();};
+const rabiesPanelV9112=document.createElement('div');rabiesPanelV9112.style.cssText='grid-column:1/-1;margin:10px 0';
+for(const [label,action] of [['記住常用資料',()=>rememberRabiesDefaultsV9112()],['清空常用資料／換批',clearRabiesDefaultsV9112]]){const button=document.createElement('button');button.type='button';button.className='btn-secondary';button.textContent=label;button.onclick=action;button.style.marginRight='8px';rabiesPanelV9112.append(button);}
+const hint=document.createElement('p');hint.textContent='同一帳號在此瀏覽器下次自動帶入；更換疫苗批次或施打醫師時請修改。每次成功儲存施打紀錄後，也會更新常用資料。';hint.style.fontSize='.85rem';rabiesPanelV9112.append(hint);
+const status=document.createElement('p');status.id='rabiesDefaultStatusV9112';status.setAttribute('role','status');rabiesPanelV9112.append(status);document.getElementById('rabiesExtraFields').append(rabiesPanelV9112);
+document.getElementById('rabiesRecordEnabled').addEventListener('change',()=>syncRabiesForm());
+rabiesDefaultScopeCheckV9112();
+document.getElementById('genblueVersionV84').textContent=' · v91.13';
 </script>
 </body></html>
