@@ -6458,6 +6458,7 @@ async function loadOwnersAndPetsIntegrated() {
         processInvoiceCheckoutToArchive
         async function startConsultationById(petId, chipId, petNameStr, ownerId, weight, ownerName, birthday, gender, species, breed) {
             currentPetId = petId;
+            medicalWeightConfirmedV9121=null;
             setMedicalWeightStatus('');
             resetCurrentPetClinicalHistories();
             const vaccinePanel=document.getElementById('medicalVaccineHistoryPanel');if(vaccinePanel)vaccinePanel.open=false;
@@ -7208,6 +7209,7 @@ function openMedicalDetailModal(record){
         }
 
         function clearMedicalFormInputs() {
+            medicalWeightConfirmedV9121=null;
             setMedicalWeightStatus('');
             medicalTemperatureRevision++;setMedicalTemperatureStatus('');
             document.getElementById("journalMedicalAvatar")?.replaceChildren();
@@ -7241,22 +7243,22 @@ function openMedicalDetailModal(record){
             document.getElementById('cardPetBreed').innerText = "-";
         }
 
+        // Keep the visit's values inside its own medical text; later pet updates cannot change them.
+        let medicalWeightConfirmedV9121=null;
         function medicalChiefComplaintWithTemperature() {
-            const chiefComplaint = document.getElementById('medicalDiagnosis').value;
-            const input = document.getElementById('medicalTemperatureInput');
-            const raw = input.value.trim();
-            if (input.validity?.badInput) {
-                alert('請輸入有效的體溫數值，或未量時留空。');
-                input.focus(); return null;
-            }
-            if (!raw) return chiefComplaint;
-            const temperature = Number(raw);
-            if (!Number.isFinite(temperature) || temperature<=0 || temperature>100) {
-                alert('體溫需為大於 0、且不超過 100 的 °C 數值；未量時請留空。');
-                input.focus(); return null;
-            }
-            // 隨本次病歷文字保存；不新增資料庫欄位，沿用備份與歷史查閱。
-            return '體溫：'+temperature+' °C'+(chiefComplaint ? '\n'+chiefComplaint : '');
+            const chief=document.getElementById('medicalDiagnosis').value;
+            let weight,temperature;
+            try {weight=readMedicalWeightForSave();temperature=readMedicalTemperatureForSave();}
+            catch(error){alert(error.message);return null;}
+            const confirmed=medicalWeightConfirmedV9121?.scope===medicalWeightScope() && medicalWeightConfirmedV9121?.weight===weight;
+            // Reading an old chart without new content must not create a measurement record.
+            if(!chief.trim() && temperature===null && !confirmed)return chief;
+            const lines=[];
+            if(weight!==null)lines.push('體重：'+formatPetWeight(weight)+' kg'+(confirmed?'（本次輸入／確認）':'（沿用先前資料，未重新確認）'));
+            if(temperature!==null)lines.push('體溫：'+temperature+' °C');
+            else lines.push('體溫：本次未量');
+            if(chief)lines.push(chief);
+            return lines.join('\n');
         }
 
         const archiveOnlyAttempts=new Map();
@@ -15361,8 +15363,22 @@ async function saveIntegratedOwnerAndPet(actionType){
    if(scope!==ownerScopeV908())return;if(appointment.pet_id!==pet.id)throw Error('掛號寵物資料不符');
    if(!activeAppointmentsList.some(p=>p.appointment_id===appointment.id))activeAppointmentsList.push(waitingPetFromAppointment(pet,appointment));renderAppointmentTable(activeAppointmentsList);
   }
-  ctx.request=null;ownerClearPetV908();ownerFormRenderV908();
-  if(actionType==='save_and_consult'){await startConsultationById(pet.id,pet.microchip,pet.name,pet.owner_id,pet.weight,pet.owner_name,pet.birthday,pet.gender,pet.species,pet.breed);}
+  if(actionType==='save_and_consult'){
+   // Keep the confirmed UUIDs and form until the new patient's consultation is actually open.
+   await startConsultationById(pet.id,pet.microchip,pet.name,pet.owner_id,pet.weight,pet.owner_name,pet.birthday,pet.gender,pet.species,pet.breed);
+   if(scope!==ownerScopeV908())return;
+   if(currentPetId!==pet.id||!document.getElementById('medical').classList.contains('active'))return;
+   ctx.request=null;ownerFormV908=null;
+   for(const id of ownerFieldsV908)document.getElementById(id).value='';
+   for(const id of ['intPetName','intPetMicrochip','intPetBirthday','intPetWeight','newBreedCustomInput'])document.getElementById(id).value='';
+   document.getElementById('intPetSpecies').value='貓';onSpeciesChanged();
+   document.getElementById('intPetBreed').selectedIndex=-1;
+   document.getElementById('intPetGender').selectedIndex=-1;
+   document.getElementById('petBirthdayLabel').innerText='出生日期 (日曆選單)';
+   ownerFormRenderV908();
+  }
+  else {ctx.request=null;ownerClearPetV908();ownerFormRenderV908();}
+  if(actionType==='save_and_consult'){ /* Form cleared only after successful navigation above. */ }
   else if(actionType==='save_and_waiting'){switchTab('appointments');alert('已建立並儲存掛號；同飼主資料已保留，可回「飼主與寵物」繼續新增。');}
   else {document.getElementById('sameOwnerStatusV908').textContent='已建立「'+pet.name+'」。飼主 '+ctx.owner.name+'｜新編號 '+(ctx.owner.system_code||'未記錄')+'；請填下一隻寵物，或按「改建另一位飼主」。';document.getElementById('intPetName').focus();}
  }catch(e){
@@ -15720,4 +15736,14 @@ document.getElementById('genblueVersionV84').textContent=' · v91.19';
 })();
 </script>
 
+
+<script id="medicalVitalsV9121">
+(function(){
+ function confirmWeight(){try{medicalWeightConfirmedV9121={scope:medicalWeightScope(),weight:readMedicalWeightForSave()};}catch(e){medicalWeightConfirmedV9121=null;}}
+ const input=document.getElementById('medicalPetWeightInput');
+ input.addEventListener('input',confirmWeight);
+ input.parentElement.querySelector('button[onclick="saveMedicalWeightOnBlur()"]')?.addEventListener('click',confirmWeight);
+ document.getElementById('genblueVersionV84').textContent=' · v91.22';
+})();
+</script>
 </body></html>
