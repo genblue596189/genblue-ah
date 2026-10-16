@@ -10722,10 +10722,25 @@ async function backupReadPagedV851(tenant,signal,ensure,progress){
  progress('正在讀取備份範圍與資料筆數…');const manifest=await readManifest(),initialKey=backupManifestKeyV851(manifest),rawGroups={},sections=[['tables','public'],['private_tables','private'],['booking_tables','booking']];let done=0;
  for(const [group,schema] of sections){if(!manifest[group]||typeof manifest[group]!=='object')throw Error('備份缺少 '+group);rawGroups[group]={};for(const [name,table]of Object.entries(manifest[group])){
   if(!Number.isSafeInteger(table.row_count)||table.row_count<0||!/^[a-f0-9]{32}$/.test(table.signature)||!Array.isArray(table.rows)||table.rows.length)throw Error('備份清單資料不完整：'+name);
-  let offset=0,limit=50;const pieces=[];
+  let offset=0,limit=50,failedAttempts=0;const pieces=[];
   while(offset<table.row_count){ensure();progress('正在備份 '+name+'：'+offset.toLocaleString()+'／'+table.row_count.toLocaleString()+' 筆（全部已讀 '+done.toLocaleString()+' 筆）');
-   const {data,error}=await _supabase.rpc('genblue_backup_page_v851',{p_expected_tenant:tenant,p_schema:schema,p_table:name,p_signature:table.signature,p_offset:offset,p_limit:limit}).abortSignal(signal);ensure();
-   if(error){if((error.code==='57014'||/statement timeout/i.test(error.message))&&limit>1){limit=Math.max(1,Math.floor(limit/2));progress(name+' 讀取較慢，改以每批 '+limit+' 筆繼續…');continue;}throw Error(error.message);}
+   let reply;
+   try{reply=await _supabase.rpc('genblue_backup_page_v851',{p_expected_tenant:tenant,p_schema:schema,p_table:name,p_signature:table.signature,p_offset:offset,p_limit:limit}).abortSignal(signal);}
+   catch(error){reply={error};}
+   ensure();if(signal.aborted)throw Error('備份已取消');
+   const {data,error}=reply;
+   if(error){
+    const text=error.message||String(error),slow=error.code==='57014'||/statement timeout|upstream request timeout|gateway.*timeout|504/i.test(text);
+    const temporary=slow||/failed to fetch|fetch failed|network|connection.*(?:closed|reset)|502|503|temporarily unavailable/i.test(text)||[502,503,504].includes(reply.status);
+    failedAttempts++;
+    if(temporary&&failedAttempts<=8){
+     if(slow&&limit>1)limit=Math.max(1,Math.floor(limit/2));
+     progress(name+' 連線逾時或暫時中斷，保留已讀資料，從第 '+offset+' 筆重試 '+failedAttempts+'/8（每批 '+limit+' 筆）…');
+     await new Promise(resolve=>setTimeout(resolve,Math.min(2000,failedAttempts*300)));ensure();if(signal.aborted)throw Error('備份已取消');continue;
+    }
+    throw Error(name+' 第 '+offset+' 筆讀取未完成：'+text+(temporary?'（已重試8次，本次未產生完整備份）':''));
+   }
+   failedAttempts=0;
    if(typeof data!=='string')throw Error('備份分批格式不符');const page=JSON.parse(data),raw=backupRawRowsV851(data);
    if(page.tenant_id!==tenant||page.schema!==schema||page.table!==name||page.signature!==table.signature||page.total!==table.row_count||page.offset!==offset||!Array.isArray(page.rows)||page.rows.length!==Math.min(limit,table.row_count-offset))throw Error('備份分批院所／筆數不符：'+name);
    pieces.push(raw.slice(1,-1));offset+=page.rows.length;done+=page.rows.length;
@@ -15814,7 +15829,7 @@ document.getElementById('genblueVersionV84').textContent=' · v91.19';
  });
  const hint=document.createElement('p');hint.style.cssText='font-size:.85rem;color:#475569;margin:8px 0';hint.textContent='鍵盤操作：Enter 下一欄、Shift＋Enter 上一欄；下拉選項可用方向鍵選擇。最後一欄會移到「僅儲存資料」，請確認後再按 Enter。';
  document.getElementById('intOwnerName').closest('.card')?.prepend(hint);
- document.getElementById('genblueVersionV84').textContent=' · v91.29';
+ document.getElementById('genblueVersionV84').textContent=' · v91.30';
 })();
 </script>
 <style id="bookingButtonColorsV9128">
