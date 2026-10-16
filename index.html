@@ -2081,7 +2081,7 @@ body.role-no-appointment #nav-online_booking{display:none!important}
             </div>
 
 <div id="lab_tests" class="tab-content"><div class="card"><h2>檢驗、影像及附件</h2><p>超音波與 X 光圖片、影片已整合至影像上傳入口。</p><button type="button" onclick="switchTab('diagnostic_exchange');document.getElementById('im61-card').scrollIntoView({block:'start'})">開啟影像上傳與查閱 ↗</button></div></div>
-            <div id="online_booking" class="tab-content"><h1>院內線上預約管理 <small>30 分鐘預約日曆</small></h1><p class="notice">沿用目前院內登入。核對飼主與寵物後才確認預約；新病患請先回管理系統建立飼主、寵物，再回來確認。</p><div id="ob59-message" class="msg" role="status" aria-live="polite">開啟後將讀取本院線上預約。</div>
+            <div id="online_booking" class="tab-content"><h1>院內線上預約管理 <small>30 分鐘預約日曆</small></h1><p class="notice">沿用目前院內登入。線上預約僅限會員（已在本院建立飼主與寵物資料）。核對既有病歷後才確認預約；確認成功後自動關閉該時段。非會員請現場或透過 LINE 訊息掛號。同一寵物同日重複申請會阻擋送單或確認；既有重複預約請先聯絡飼主，再人工取消多餘紀錄。</p><div id="ob59-message" class="msg" role="status" aria-live="polite">開啟後將讀取本院線上預約。</div>
 
 <section id="ob59-app" hidden><div class="row"><button id="ob59-reload">重新讀取</button><button type="button" onclick="switchTab('appointments')">回今天的院務</button><a id="ob59-public-link" target="_blank" rel="noopener">開啟飼主預約頁</a></div>
 <details id="ob59-settings" hidden><summary>管理者：院所設定與開放時段</summary><form id="ob59-config" class="card"><div class="row"><label>院所名稱<input id="ob59-clinic-name" required maxlength="100"></label><label>網址代號<input id="ob59-slug" value="genblue-ah" required pattern="[a-z0-9-]{3,60}"></label><label><input id="ob59-enabled" type="checkbox">開放線上預約</label></div><label for="ob59-notice">飼主提醒文字</label><textarea id="ob59-notice" maxlength="1000">預約需由醫院確認；急症請直接聯絡醫院。</textarea><button>儲存院所設定</button></form>
@@ -10459,7 +10459,18 @@ $('search-form').onsubmit=async e=>{e.preventDefault();if(busy||!review)return;c
  for(const p of result.data.slice(0,50)){const o=p.owners;const text=p.name+'（'+p.species+'）｜'+o.name+'｜'+(o.mobile||o.phone||'無電話')+'｜系統碼 '+(o.system_code||'無')+'｜舊號 '+(o.owner_code||'無')+'｜晶片 '+(p.microchip||'無');$('pet-results').append(button(text,()=>{pet=p;$('selected-pet').textContent='選擇：'+text;$('approve').disabled=false;}));}
  if(result.data.length>50){const p=document.createElement('p');p.textContent='結果較多，最多顯示50筆；請增加關鍵字核對。';$('pet-results').append(p);}
  }catch(e){if(gen===searchGeneration)$('pet-results').textContent=e.message;}};
-$('approve').onclick=()=>action(async()=>{if(!review||!pet)return;if(!confirm('確認將此申請連到 '+pet.owners.name+' 的 '+pet.name+'？'))return;await rpc('approve',{id:review.id,pet_id:pet.id});await load();try{await loadAppointments();}catch(e){message('預約已確認；院內列表更新失敗，請按更新資料。');return;}message('預約已確認並寫入院內預約；請聯絡飼主。到院報到後才會進入候診。');});
+$('approve').onclick=()=>action(async()=>{
+ if(!review||!pet)return;
+ if(!confirm('確認將此申請連到 '+pet.owners.name+' 的 '+pet.name+'？確認成功後，此時段會停止接受新申請。'))return;
+ const selected={id:review.id,pet_id:pet.id,slot_id:review.slot_id};
+ await rpc('approve',{id:selected.id,pet_id:selected.pet_id});
+ let closed=false;
+ try{await load();closed=state.slots.some(s=>s.id===selected.slot_id&&s.enabled===false);}
+ catch(e){message('預約已確認；畫面更新未完成：'+e.message+'。請按重新讀取核對，勿重複建立預約。');return;}
+ const closing=closed?'此時段已自動關閉，不再接受新申請。':'尚未確認此時段已關閉，請管理者執行 booking_auto_close_v91_24.sql，並重新讀取核對。';
+ try{await loadAppointments();}catch(e){message('預約已確認；'+closing+' 院內列表更新失敗，請按更新資料。');return;}
+ message('預約已確認並寫入院內預約；'+closing+' 請聯絡飼主，到院報到後才會進入候診。');
+});
 $('export').onclick=()=>action(async()=>{const d=await rpc('export');const url=globalThis.URL.createObjectURL(new Blob([JSON.stringify(d,null,2)],{type:'application/json'}));const a=document.createElement('a');a.href=url;a.download='線上預約資料_'+new Date().toISOString().slice(0,10)+'.json';a.click();setTimeout(()=>globalThis.URL.revokeObjectURL(url),5000);message('線上預約資料已送往瀏覽器下載；請確認下載檔。');});
 
 let calendarV60=null,weekV60=weekStartV60(dayV60(new Date())),selectedDayV60=dayV60(new Date());
@@ -15786,7 +15797,7 @@ document.getElementById('genblueVersionV84').textContent=' · v91.19';
  });
  const hint=document.createElement('p');hint.style.cssText='font-size:.85rem;color:#475569;margin:8px 0';hint.textContent='鍵盤操作：Enter 下一欄、Shift＋Enter 上一欄；下拉選項可用方向鍵選擇。最後一欄會移到「僅儲存資料」，請確認後再按 Enter。';
  document.getElementById('intOwnerName').closest('.card')?.prepend(hint);
- document.getElementById('genblueVersionV84').textContent=' · v91.23';
+ document.getElementById('genblueVersionV84').textContent=' · v91.25';
 })();
 </script>
 </body></html>
