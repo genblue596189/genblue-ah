@@ -2081,7 +2081,7 @@ body.role-no-appointment #nav-online_booking{display:none!important}
             </div>
 
 <div id="lab_tests" class="tab-content"><div class="card"><h2>檢驗、影像及附件</h2><p>超音波與 X 光圖片、影片已整合至影像上傳入口。</p><button type="button" onclick="switchTab('diagnostic_exchange');document.getElementById('im61-card').scrollIntoView({block:'start'})">開啟影像上傳與查閱 ↗</button></div></div>
-            <div id="online_booking" class="tab-content"><h1>院內線上預約管理 <small>30 分鐘預約日曆</small></h1><p class="notice">沿用目前院內登入。線上預約僅限會員（已在本院建立飼主與寵物資料）。核對既有病歷後才確認預約；確認成功後自動關閉該時段。非會員請現場或透過 LINE 訊息掛號。同一寵物同日重複申請會阻擋送單或確認；既有重複預約請先聯絡飼主，再人工取消多餘紀錄。</p><div id="ob59-message" class="msg" role="status" aria-live="polite">開啟後將讀取本院線上預約。</div>
+            <div id="online_booking" class="tab-content"><h1>院內線上預約管理 <small>30 分鐘預約日曆</small></h1><p class="notice">沿用目前院內登入。線上申請受理時間為每日09:00至22:00前；上午時段須於前一天22:00前申請。線上預約僅限會員（已在本院建立飼主與寵物資料）。核對既有病歷後才確認預約；確認成功後自動關閉該時段。非會員請現場或透過 LINE 訊息掛號。同一寵物同日重複申請會阻擋送單或確認；既有重複預約請先聯絡飼主，再人工取消多餘紀錄。</p><div id="ob59-message" class="msg" role="status" aria-live="polite">開啟後將讀取本院線上預約。</div>
 
 <section id="ob59-app" hidden><div class="row"><button id="ob59-reload">重新讀取</button><button type="button" onclick="switchTab('appointments')">回今天的院務</button><a id="ob59-public-link" target="_blank" rel="noopener">開啟飼主預約頁</a></div>
 <details id="ob59-settings" hidden><summary>管理者：院所設定與開放時段</summary><form id="ob59-config" class="card"><div class="row"><label>院所名稱<input id="ob59-clinic-name" required maxlength="100"></label><label>網址代號<input id="ob59-slug" value="genblue-ah" required pattern="[a-z0-9-]{3,60}"></label><label><input id="ob59-enabled" type="checkbox">開放線上預約</label></div><label for="ob59-notice">飼主提醒文字</label><textarea id="ob59-notice" maxlength="1000">預約需由醫院確認；急症請直接聯絡醫院。</textarea><button>儲存院所設定</button></form>
@@ -10504,6 +10504,18 @@ async function renderCalendarV60(){calendarV60=await rpc('calendar',{start:weekV
  }renderCalendarDaysV60();
 }
 function beginReviewV60(r){closeReview();review=r;$('review').hidden=false;$('review-text').textContent=r.name+'／'+r.phone+'／'+r.pet_name+'／'+labelDate(r.starts_at)+'／原登記資訊：'+(r.registered_hint||'未填');$('pet-query').value=r.pet_name;$('review').scrollIntoView({behavior:'smooth'});}
+async function restoreSlotV9126(slot){
+ const expected=activeScope;
+ if(!state.admin||!allowed()||!expected||expected!==scope())throw Error('請管理者重新開啟線上預約管理。');
+ if(Number(slot.used)>=1)throw Error('此時段已有預約或待審核申請，請先核對並處理原預約。');
+ if(!confirm('恢復 '+labelDate(slot.starts_at)+' 接受新預約申請？其他時段與原預約不變。'))return;
+ const {data,error}=await db.rpc('ob_restore_slot_v91_26',{p_slot_id:slot.id});
+ if(expected!==activeScope||expected!==scope())throw Error('登入已變更，請重新開啟核對恢復結果。');
+ if(error)throw Error(error.code==='PGRST202'?'尚未安裝恢復時段功能，請先執行 booking_restore_slot_v91_26.sql。':error.message);
+ if(!data?.ok||data.slot_id!==slot.id||data.enabled!==true)throw Error('尚未確認時段已恢復，請重新讀取核對。');
+ try{await load();}catch(e){message('此時段已恢復，畫面更新未完成，請按重新讀取核對。');return;}
+ message('此時段已恢復接受新申請，每格限1位。');
+}
 function renderCalendarDaysV60(){if(!calendarV60)return;$('calendar-date').value=selectedDayV60;
  for(const b of $('calendar-grid').children)b.classList.toggle('selected',b.dataset.day===selectedDayV60);
  $('day-title').textContent=selectedDayV60+' 的預約與時段';$('day-controls').hidden=!state.admin;$('day-info').replaceChildren();
@@ -10521,6 +10533,10 @@ function renderCalendarDaysV60(){if(!calendarV60)return;$('calendar-date').value
   for(const r of reqs.filter(x=>new Date(x.starts_at).getTime()>=lo&&new Date(x.starts_at).getTime()<hi&&x.status==='pending')){const p=document.createElement('p');p.className='pending-v60';p.textContent='待審核｜'+r.pet_name+'｜聯絡人 '+r.name;info.append(p,button('核對並審核',()=>beginReviewV60(r)));}
   for(const a of apps.filter(x=>new Date(x.starts_at).getTime()>=lo&&new Date(x.starts_at).getTime()<hi)){if(covered.has(a.id))continue;covered.add(a.id);const p=document.createElement('p');p.className='confirmed-v60';p.textContent=timeV60(a.starts_at)+'｜'+(a.pet_name||'未指定寵物')+'｜'+(a.owner_name||'未指定飼主')+'｜'+a.status;info.append(p);}
   if(s&&state.admin&&s.enabled)info.append(button('關閉此時段',()=>action(async()=>{await rpc('close_slot',{id:s.id});await load();message('此時段停止新申請；原本申請與預約保留。');})));
+  if(s&&state.admin&&!s.enabled){
+   if(Number(s.used)>=1){const note=document.createElement('small');note.textContent='已有預約／待審核申請，請先處理原預約後再恢復。';info.append(note);}
+   else info.append(button('恢復此時段',()=>action(()=>restoreSlotV9126(s))));
+  }
   row.append(left,info);$('day-info').append(row);
  }
 }
@@ -15797,7 +15813,7 @@ document.getElementById('genblueVersionV84').textContent=' · v91.19';
  });
  const hint=document.createElement('p');hint.style.cssText='font-size:.85rem;color:#475569;margin:8px 0';hint.textContent='鍵盤操作：Enter 下一欄、Shift＋Enter 上一欄；下拉選項可用方向鍵選擇。最後一欄會移到「僅儲存資料」，請確認後再按 Enter。';
  document.getElementById('intOwnerName').closest('.card')?.prepend(hint);
- document.getElementById('genblueVersionV84').textContent=' · v91.25';
+ document.getElementById('genblueVersionV84').textContent=' · v91.27';
 })();
 </script>
 </body></html>
