@@ -10535,7 +10535,7 @@ function renderCalendarDaysV60(){if(!calendarV60)return;$('calendar-date').value
   if(s&&state.admin&&s.enabled)info.append(button('關閉此時段',()=>action(async()=>{await rpc('close_slot',{id:s.id});await load();message('此時段停止新申請；原本申請與預約保留。');})));
   if(s&&state.admin&&!s.enabled){
    if(Number(s.used)>=1){const note=document.createElement('small');note.textContent='已有預約／待審核申請，請先處理原預約後再恢復。';info.append(note);}
-   else info.append(button('恢復此時段',()=>action(()=>restoreSlotV9126(s))));
+   else {const restoreButton=button('恢復此時段',()=>action(()=>restoreSlotV9126(s)));restoreButton.classList.add('booking-restore-v9128');info.append(restoreButton);}
   }
   row.append(left,info);$('day-info').append(row);
  }
@@ -15813,7 +15813,11 @@ document.getElementById('genblueVersionV84').textContent=' · v91.19';
  });
  const hint=document.createElement('p');hint.style.cssText='font-size:.85rem;color:#475569;margin:8px 0';hint.textContent='鍵盤操作：Enter 下一欄、Shift＋Enter 上一欄；下拉選項可用方向鍵選擇。最後一欄會移到「僅儲存資料」，請確認後再按 Enter。';
  document.getElementById('intOwnerName').closest('.card')?.prepend(hint);
- document.getElementById('genblueVersionV84').textContent=' · v91.27';
+ document.getElementById('genblueVersionV84').textContent=' · v91.28';
 })();
 </script>
-</body></html>
+<style id="bookingButtonColorsV9128">
+#online_booking button.booking-restore-v9128{background:#c2410c!important;color:#fff!important;border:1px solid #9a3412!important;}
+#online_booking button.booking-restore-v9128:hover:not(:disabled){background:#9a3412!important;}
+#online_booking button.booking-restore-v9128:focus-visible{outline:3px solid #fb923c;outline-offset:3px;}
+</style></body></html>
