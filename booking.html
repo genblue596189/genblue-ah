@@ -1,6 +1,6 @@
 <!doctype html><html lang="zh-Hant"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>動物醫院線上預約</title>
 <style>body{margin:0;background:#f1f6f5;color:#203b36;font:16px system-ui,sans-serif}main{max-width:560px;margin:30px auto;padding:24px;background:white;border-radius:16px;box-shadow:0 4px 20px #173d3410}h1{font-size:24px;margin-top:0}label{display:block;margin:16px 0 6px;font-weight:600}input,select,textarea,button{box-sizing:border-box;width:100%;font:inherit;padding:12px;border:1px solid #b8cbc5;border-radius:8px}textarea{min-height:85px}button{background:#176b57;color:white;border:0;cursor:pointer;margin-top:16px}button:disabled{opacity:.5;cursor:default}.notice{background:#edf6f2;padding:14px;border-radius:8px;line-height:1.7}.small{font-size:14px;color:#546a64}#message{white-space:pre-wrap;line-height:1.7}.check{display:flex;align-items:flex-start;gap:8px;font-weight:400}.check input{width:auto;margin-top:5px}.trap{position:absolute;left:-10000px}#success{background:#edf6f2;padding:18px;border-radius:12px}a{color:#176b57}@media(max-width:600px){main{margin:12px;padding:20px}}</style>
-<main><h1 id="title">線上預約</h1><p id="member-notice" class="notice" style="border:2px solid #b91c1c;background:#fff1f2;color:#991b1b"><strong>線上預約僅限會員</strong><br>會員指已在本院建立飼主與寵物資料的既有客戶。<br><strong>非會員／初次來院，請現場或透過 LINE 訊息掛號。</strong><br>家人代約請填寫原登記飼主姓名或病歷號，方便院方核對。申請須經院方確認後才成立。<br><strong>同一隻寵物同一天請勿重複申請；如需取消或更改時間，請來電或透過 LINE 訊息通知本院。</strong></p><p class="notice" id="notice">正在讀取可預約時段…</p><p id="message" role="status" aria-live="polite"></p>
+<main><h1 id="title">線上預約</h1><p id="booking-hours-notice" class="notice"><strong>線上申請受理時間：每日09:00～21:00前（台灣時間）。</strong><br>上午時段須於前一天21:00前申請；當日上午請來電或透過 LINE 訊息聯絡。送出申請後仍須經院方審核，請確認預約狀態再到院。</p><p id="booking-hours-status" role="status" aria-live="polite" style="color:#991b1b;font-weight:bold;white-space:pre-line;background:#fff7ed;border:2px solid #c2410c;border-radius:10px;padding:16px;line-height:1.8"></p><p id="member-notice" class="notice" style="border:2px solid #b91c1c;background:#fff1f2;color:#991b1b"><strong>線上預約僅限會員</strong><br>會員指已在本院建立飼主與寵物資料的既有客戶。<br><strong>非會員／初次來院，請現場或透過 LINE 訊息掛號。</strong><br>家人代約請填寫原登記飼主姓名或病歷號，方便院方核對。申請須經院方確認後才成立。<br><strong>同一隻寵物同一天請勿重複申請；如需取消或更改時間，請來電或透過 LINE 訊息通知本院。</strong></p><p class="notice" id="notice">正在讀取可預約時段…</p><p id="message" role="status" aria-live="polite"></p>
 <form id="form" hidden><p class="notice">每半小時限1位，送出後先保留名額，待院方確認。當天上午可約下午／晚上，下午可約晚上；晚上請約隔天以後。至少提前1小時。請使用申請編號與本次聯絡電話查詢審核狀態。</p><label for="booking-date">預約日期（台灣時間）</label><input id="booking-date" type="date" required><p id="date-hint" class="small"></p><label for="slot">預約時間（每格 30 分鐘）</label><select id="slot" required></select>
 <label for="name">聯絡人姓名</label><input id="name" autocomplete="name" maxlength="100" required>
 <label for="phone">聯絡電話</label><input id="phone" type="tel" autocomplete="tel" maxlength="30" required placeholder="方便醫院聯絡您的電話">
@@ -17,7 +17,24 @@ const API='https://rfprsbftkwtwjqrjcalq.supabase.co/functions/v1/online-booking'
 const clinic=new URLSearchParams(location.search).get('clinic')||'genblue-ah';
 const $=id=>document.getElementById(id);let token='',widget=null,busy=false,lastFingerprint='',requestID='';let availableSlots=[];let lookupToken='',lookupWidget=null,lookupBusy=false;
 const dateLabel=x=>new Intl.DateTimeFormat('zh-TW',{timeZone:'Asia/Taipei',month:'2-digit',day:'2-digit',weekday:'short',hour:'2-digit',minute:'2-digit',hour12:false}).format(new Date(x));
-function turnstileReady(){lookupWidget=turnstile.render('#lookup-captcha',{sitekey:window.bookingSiteKey,action:'booking',callback:t=>{lookupToken=t;$('lookup-submit').disabled=lookupBusy;},'expired-callback':()=>{lookupToken='';$('lookup-submit').disabled=true;},'error-callback':()=>{lookupToken='';$('lookup-submit').disabled=true;}});widget=turnstile.render('#captcha',{sitekey:window.bookingSiteKey,action:'booking',callback:t=>{token=t;$('submit').disabled=busy;},'expired-callback':()=>{token='';$('submit').disabled=true;},'error-callback':()=>{token='';$('submit').disabled=true;$('message').textContent='驗證未完成，請重新整理後再試。';}});}
+function bookingHoursStateV9131(now=new Date()){
+ const parts=new Intl.DateTimeFormat('en-CA',{timeZone:'Asia/Taipei',year:'numeric',month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit',hourCycle:'h23'}).formatToParts(now);
+ const value=kind=>parts.find(p=>p.type===kind).value;
+ const hour=Number(value('hour')),open=hour>=9&&hour<21;
+ const day=value('year')+'-'+value('month')+'-'+value('day');
+ const nextDay=hour>=21?new Date(Date.parse(day+'T12:00:00Z')+86400000).toISOString().slice(0,10):day;
+ const next=nextDay.replaceAll('-','/')+' 09:00';
+ return {open,message:open?'':(hour<9?'目前尚未開放線上預約申請。':'今日線上預約申請已截止。')+'\n申請受理時間：每日09:00至21:00前（台灣時間）。\n下次開放申請：'+next+'（台灣時間）。\n上午時段須於前一天21:00前申請。您仍可查詢既有預約；取消或改期請來電或透過 LINE 訊息通知本院。'};
+}
+function bookingAcceptingNowV9127(now=new Date()){return bookingHoursStateV9131(now).open;}
+function updateBookingHoursV9127(){
+ const state=bookingHoursStateV9131();
+ $('submit').disabled=busy||!token||!state.open;
+ $('submit').textContent=state.open?'送出預約申請':'目前非受理時間，請於開放後送出';
+ $('booking-hours-status').textContent=state.message;
+ $('booking-hours-status').hidden=state.open;
+}
+function turnstileReady(){lookupWidget=turnstile.render('#lookup-captcha',{sitekey:window.bookingSiteKey,action:'booking',callback:t=>{lookupToken=t;$('lookup-submit').disabled=lookupBusy;},'expired-callback':()=>{lookupToken='';$('lookup-submit').disabled=true;},'error-callback':()=>{lookupToken='';$('lookup-submit').disabled=true;}});widget=turnstile.render('#captcha',{sitekey:window.bookingSiteKey,action:'booking',callback:t=>{token=t;updateBookingHoursV9127();},'expired-callback':()=>{token='';$('submit').disabled=true;},'error-callback':()=>{token='';$('submit').disabled=true;$('message').textContent='驗證未完成，請重新整理後再試。';}});}
 async function load(){try{const r=await fetch(API+'?clinic='+encodeURIComponent(clinic),{signal:AbortSignal.timeout(15000)});const d=await r.json();if(!r.ok)throw Error(d.error||'無法讀取時段');$('title').textContent=d.name+'｜線上預約';$('notice').textContent=d.notice;
  if(!d.slots.length){$('message').textContent='目前沒有可預約時段，您仍可查詢既有申請。';}
  availableSlots=d.slots;
@@ -29,13 +46,19 @@ async function load(){try{const r=await fetch(API+'?clinic='+encodeURIComponent(
 function taiwanDay(x){const p=new Intl.DateTimeFormat('en-CA',{timeZone:'Asia/Taipei',year:'numeric',month:'2-digit',day:'2-digit'}).formatToParts(new Date(x));return ['year','month','day'].map(k=>p.find(v=>v.type===k).value).join('-');}
 function renderTimes(){const slots=availableSlots.filter(s=>taiwanDay(s.starts_at)===$('booking-date').value);$('slot').replaceChildren(new Option('請選擇時間',''));for(const s of slots)$('slot').append(new Option(dateLabel(s.starts_at)+'（尚有 '+s.remaining+' 個名額）',s.id));$('date-hint').textContent=slots.length?'請選擇下方時間；送出後需由醫院確認。':'這天休診、已額滿或未開放，請改選其他日期。';}
 $('booking-date').onchange=renderTimes;
-$('form').onsubmit=async e=>{e.preventDefault();if(busy||!token)return;busy=true;$('submit').disabled=true;$('message').textContent='正在送出，請稍候…';
+$('form').onsubmit=async e=>{e.preventDefault();if(!bookingAcceptingNowV9127()){updateBookingHoursV9127();$('message').textContent=bookingHoursStateV9131().message;$('booking-hours-status').scrollIntoView({block:'center',behavior:'smooth'});return;}if(busy||!token)return;busy=true;$('submit').disabled=true;$('message').textContent='正在送出，請稍候…';
  const draft={clinic,slot_id:$('slot').value,name:$('name').value.trim(),phone:$('phone').value.trim(),pet_name:$('pet').value.trim(),species:$('species').value,reason:$('reason').value.trim(),registered_hint:$('registered-hint').value.trim()};
  const fingerprint=JSON.stringify(draft);if(lastFingerprint!==fingerprint){requestID=crypto.randomUUID();lastFingerprint=fingerprint;}
  try{const r=await fetch(API,{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({...draft,request_id:requestID,token,consent:$('consent').checked,website:$('website').value}),signal:AbortSignal.timeout(20000)});const d=await r.json();if(!r.ok)throw Error(d.error||'送出失敗');
  $('form').hidden=true;$('message').textContent='';$('success').hidden=false;$('success').textContent=(d.status==='approved'?'醫院已確認此申請。':d.status==='rejected'?'此申請已由醫院取消，請聯絡醫院。':'已收到申請，尚待醫院確認。')+'\n申請編號：'+d.reference+'\n時段：'+$('slot').selectedOptions[0].textContent+(d.status==='pending'?'\n時段暫時保留，待醫院確認後才成立。':'')+'\n請記下申請編號，並使用下方查詢查看狀態；如需確認或變更，請聯絡醫院。';$('success').style.whiteSpace='pre-wrap';$('lookup-reference').value=d.reference;$('lookup-phone').value=draft.phone;
- }catch(e){const duplicate=/已有本日預約|此寵物已有同時段申請/.test(e.message);$('message').textContent=duplicate?'您已有本日預約申請，請勿重複送出。如需取消或更改時間，請來電或透過 LINE 訊息通知本院。':e.message+'。若網路中斷，請保留原內容重試；同一份申請重試不會重複建立。';}
+ }catch(e){
+ const state=bookingHoursStateV9131(),duplicate=/已有本日預約|此寵物已有同時段申請/.test(e.message),hours=/申請受理時間|上午時段須/.test(e.message);
+ const network=e.name==='TimeoutError'||e.name==='AbortError'||e instanceof TypeError||navigator.onLine===false;
+ $('message').textContent=!state.open?state.message:hours?e.message:duplicate?'您已有本日預約申請，請勿重複送出。如需取消或更改時間，請來電或透過 LINE 訊息通知本院。':network?'連線未完成，請保留原填寫內容，稍後以同一份申請重試，避免重複建立。':e.message+'。請核對申請內容或聯絡醫院。';
+ updateBookingHoursV9127();
+ }
  finally{busy=false;token='';if(widget!==null)turnstile.reset(widget);$('submit').disabled=true;}};
 $('lookup-form').onsubmit=async e=>{e.preventDefault();if(lookupBusy||!lookupToken)return;lookupBusy=true;$('lookup-submit').disabled=true;$('lookup-result').textContent='查詢中…';try{const r=await fetch(API,{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({action:'status',clinic,reference:$('lookup-reference').value.trim(),phone:$('lookup-phone').value.trim(),token:lookupToken,website:'',consent:true}),signal:AbortSignal.timeout(20000)});const d=await r.json();if(!r.ok)throw Error(d.error||'查詢失敗');const labels={pending:'待醫院確認：時段暫時保留，尚未成立。',approved:'醫院已確認：預約已成立。',rejected:'申請未通過，請聯絡醫院。',cancelled:'預約已取消。'};$('lookup-result').textContent=(labels[d.status]||'請聯絡醫院確認。')+'\n預約時間：'+dateLabel(d.starts_at);}catch(e){$('lookup-result').textContent=e.message;}finally{lookupBusy=false;lookupToken='';if(lookupWidget!==null)turnstile.reset(lookupWidget);$('lookup-submit').disabled=true;}};
+updateBookingHoursV9127();setInterval(updateBookingHoursV9127,15000);document.addEventListener('visibilitychange',updateBookingHoursV9127);
 load();
 </script></html>
