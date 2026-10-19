@@ -10461,7 +10461,7 @@ const $=x=>document.getElementById('ob59-'+x);let state=null,review=null,pet=nul
 const labelDate=x=>new Intl.DateTimeFormat('zh-TW',{timeZone:'Asia/Taipei',dateStyle:'short',timeStyle:'short',hour12:false}).format(new Date(x));
 function message(x){$('message').textContent=x;$('weekly-feedback').textContent=x;}
 function button(text,fn){const b=document.createElement('button');b.type='button';b.textContent=text;b.onclick=fn;return b;}
-async function rpc(action,data={}){const expected=activeScope;if(!allowed()||!expected||expected!==scope())throw Error('登入狀態已改變，請重新開啟線上預約。');const {data:d,error}=await db.rpc('ob_staff',{p_action:action,p_data:data});if(error){if(error.code==='PGRST202'||/Could not find the function|does not exist/.test(error.message))throw Error('原院尚未安裝線上預約資料介面。請先完成套件內的後端設定；現有看診功能可照常使用。');throw Error(error.message);}if(expected!==activeScope||expected!==scope())throw Error('登入狀態已改變，請重新開啟線上預約。');return d;}
+async function rpc(action,data={}){const expected=activeScope;if(!allowed()||!expected||expected!==scope())throw Error('登入狀態已改變，請重新開啟線上預約。');const {data:d,error}=await (action==='calendar'?db.rpc('ob_calendar_v92_2',{p_start:data.start}):db.rpc('ob_staff',{p_action:action,p_data:data}));if(error){if(error.code==='PGRST202'||/Could not find the function|does not exist/.test(error.message))throw Error(action==='calendar'?'請先執行 booking_early_checkin_v92_2.sql，再重新讀取預約日曆。':'原院尚未安裝線上預約資料介面。請先完成套件內的後端設定；現有看診功能可照常使用。');throw Error(error.message);}if(expected!==activeScope||expected!==scope())throw Error('登入狀態已改變，請重新開啟線上預約。');return d;}
 async function action(fn){if(busy)return;busy=true;panel.querySelectorAll('button').forEach(b=>b.disabled=true);try{await fn();}catch(e){message(e.message);}finally{busy=false;panel.querySelectorAll('button').forEach(b=>b.disabled=false);$('approve').disabled=!pet;}}
 function closeReview(){searchGeneration++;review=null;pet=null;$('review').hidden=true;$('pet-results').replaceChildren();$('selected-pet').textContent='';$('approve').disabled=true;}
 async function load(){const next=await rpc('list');if(next.config?.tenant_id&&next.config.tenant_id!==CURRENT_TENANT_ID)throw Error('院所資料不符，停止顯示。');state=next;showBookingNoticeV62(next.pending_count);$('app').hidden=false;$('settings').hidden=!state.admin;closeReview();
@@ -10537,13 +10537,13 @@ async function restoreSlotV9126(slot){
  const expected=activeScope;
  if(!state.admin||!allowed()||!expected||expected!==scope())throw Error('請管理者重新開啟線上預約管理。');
  if(Number(slot.used)>=1)throw Error('此時段已有預約或待審核申請，請先核對並處理原預約。');
- if(!confirm('恢復 '+labelDate(slot.starts_at)+' 接受新預約申請？其他時段與原預約不變。'))return;
+ if(!confirm('恢復 '+labelDate(slot.starts_at)+' 接受新預約申請？已提早報到者的原預約、候診與病歷均保留。系統仍會核對其他預約及待審核申請。'))return;
  const {data,error}=await db.rpc('ob_restore_slot_v91_26',{p_slot_id:slot.id});
  if(expected!==activeScope||expected!==scope())throw Error('登入已變更，請重新開啟核對恢復結果。');
  if(error)throw Error(error.code==='PGRST202'?'尚未安裝恢復時段功能，請先執行 booking_restore_slot_v91_26.sql。':error.message);
  if(!data?.ok||data.slot_id!==slot.id||data.enabled!==true)throw Error('尚未確認時段已恢復，請重新讀取核對。');
  try{await load();}catch(e){message('此時段已恢復，畫面更新未完成，請按重新讀取核對。');return;}
- message('此時段已恢復接受新申請，每格限1位。');
+ message('此時段已恢復接受新申請，每格限1位；原預約與已報到紀錄保留。');
 }
 // v92_1：燈號依是否額滿判斷；操作按鈕不再用綠色表示關閉。
 function bookingSlotStatusV921(slot){
@@ -10552,6 +10552,10 @@ function bookingSlotStatusV921(slot){
  if(!slot.enabled)return {kind:'closed',label:'● 已停止新申請'};
  if(valid)return {kind:'open',label:'● 可接受新申請'};
  return {kind:'closed',label:'● 名額待核對'};
+}
+function earlyCheckinV922(appointment,slotStart){
+ const checked=Date.parse(appointment.checked_in_at),start=Date.parse(slotStart);
+ return ['候診中','診間看診中','已完成'].includes(appointment.status)&&Number.isFinite(checked)&&Number.isFinite(start)&&checked<start&&checked<=Date.now();
 }
 function renderCalendarDaysV60(){if(!calendarV60)return;$('calendar-date').value=selectedDayV60;
  for(const b of $('calendar-grid').children)b.classList.toggle('selected',b.dataset.day===selectedDayV60);
@@ -10566,13 +10570,13 @@ function renderCalendarDaysV60(){if(!calendarV60)return;$('calendar-date').value
   const row=document.createElement('div');row.className='slot-v60';const left=document.createElement('div');left.className='time-v60';left.textContent=timeV60(dt);
   const info=document.createElement('div');info.className='events-v60';
   if(s){const status=bookingSlotStatusV921(s),p=document.createElement('p');p.className='booking-slot-status-v921 booking-slot-'+status.kind+'-v921';p.textContent=status.label+'｜已占 '+s.used+'／名額 '+s.capacity+(Number(s.used)>Number(s.capacity)?'（超過目前名額，請安排）':'');info.append(p);}
-  const lo=new Date(dt).getTime(),hi=lo+(s?1800000:1);
+  const lo=new Date(dt).getTime(),hi=lo+(s?1800000:1),earlyAppointments=s?apps.filter(a=>new Date(a.starts_at).getTime()>=lo&&new Date(a.starts_at).getTime()<hi&&earlyCheckinV922(a,s.starts_at)):[];
   for(const r of reqs.filter(x=>new Date(x.starts_at).getTime()>=lo&&new Date(x.starts_at).getTime()<hi&&x.status==='pending')){const p=document.createElement('p');p.className='pending-v60';p.textContent='待審核｜'+r.pet_name+'｜聯絡人 '+r.name;info.append(p,button('核對並審核',()=>beginReviewV60(r)));}
-  for(const a of apps.filter(x=>new Date(x.starts_at).getTime()>=lo&&new Date(x.starts_at).getTime()<hi)){if(covered.has(a.id))continue;covered.add(a.id);const p=document.createElement('p');p.className='confirmed-v60';p.textContent=timeV60(a.starts_at)+'｜'+(a.pet_name||'未指定寵物')+'｜'+(a.owner_name||'未指定飼主')+'｜'+a.status;info.append(p);}
+  for(const a of apps.filter(x=>new Date(x.starts_at).getTime()>=lo&&new Date(x.starts_at).getTime()<hi)){if(covered.has(a.id))continue;covered.add(a.id);const p=document.createElement('p');p.className='confirmed-v60';p.textContent=timeV60(a.starts_at)+'｜'+(a.pet_name||'未指定寵物')+'｜'+(a.owner_name||'未指定飼主')+'｜'+a.status+(earlyAppointments.some(x=>x.id===a.id)?'（已提早報到，不占此時段名額）':'');info.append(p);}
   if(s&&state.admin&&s.enabled){const closeButton=button('關閉此時段',()=>action(async()=>{await rpc('close_slot',{id:s.id});await load();message('此時段停止新申請；原本申請與預約保留。');}));closeButton.classList.add('booking-close-v921');info.append(closeButton);}
   if(s&&state.admin&&!s.enabled){
    if(Number(s.used)>=1){const note=document.createElement('small');note.textContent='已有預約／待審核申請，請先處理原預約後再恢復。';info.append(note);}
-   else {const restoreButton=button('恢復此時段',()=>action(()=>restoreSlotV9126(s)));restoreButton.classList.add('booking-restore-v9128');info.append(restoreButton);}
+   else {const restoreButton=button(earlyAppointments.length?'重新開放此時段':'恢復此時段',()=>action(()=>restoreSlotV9126(s)));restoreButton.classList.add('booking-restore-v9128');info.append(restoreButton);}
   }
   row.append(left,info);$('day-info').append(row);
  }
@@ -15954,14 +15958,14 @@ function pharmacyDateV9133(value){return new Date(value).toLocaleString('zh-TW',
 async function pharmacyLoadV9133(){
  const scope=pharmacyScopeV9133(),revision=++pharmacyV9133.request;
  const data=await pharmacyRpcV9133('list',{query:document.getElementById('pharmacySearchV9133').value.trim(),filter:document.getElementById('pharmacyFilterV9133').value,offset:pharmacyV9133.offset});if(scope!==pharmacyScopeV9133()||revision!==pharmacyV9133.request)return;
- pharmacyV9133.scope=scope;pharmacyV9133.data=data;pharmacyRenderV9133();pharmacyMessageV9133('已同步配藥室。開啟此頁時每15秒更新；每次操作仍由伺服器核對。');
+ pharmacyV9133.scope=scope;pharmacyV9133.data=data;pharmacyRenderV9133();pharmacyMessageV9133(document.getElementById('pharmacyFilterV9133').value==='active'&&data.jobs.some(j=>j.state==='ready')?'請先執行 pharmacy_queue_v92_3.sql，更新目前待辦的筆數與分頁範圍。已配好的單據暫不顯示於此頁；櫃台單據保留。':'已同步配藥室。目前待辦只列待配藥、配藥中與退回；已配好送櫃台的單據請切換篩選查詢。每15秒更新。');
 }
 function pharmacyRenderV9133(){
  const state=pharmacyV9133.data;if(!state||pharmacyV9133.scope!==pharmacyScopeV9133())return;
  const query=document.getElementById('pharmacySearchV9133').value.trim().toLowerCase(),filter=document.getElementById('pharmacyFilterV9133').value;
  const box=document.getElementById('pharmacyQueueV9133');box.replaceChildren();
- const labels={waiting:'待配藥',preparing:'配藥中',returned:'退回醫師確認',ready:'配藥完成／待櫃台',handed:'已交藥',cancelled:'已撤回'};
- const jobs=state.jobs.filter(j=>(filter==='active'?!['handed','cancelled'].includes(j.state):filter==='all'||j.state===filter)&&(!query||[j.bill.ownerName,j.bill.billingPetName,j.doctor_name,j.prepared_name].join(' ').toLowerCase().includes(query)));
+ const labels={waiting:'待配藥',preparing:'配藥中',returned:'退回醫師確認',ready:'配藥完成／已送櫃台',handed:'已交藥',cancelled:'已撤回'};
+ const jobs=state.jobs.filter(j=>(filter==='active'?['waiting','preparing','returned'].includes(j.state):filter==='all'||j.state===filter)&&(!query||[j.bill.ownerName,j.bill.billingPetName,j.doctor_name,j.prepared_name].join(' ').toLowerCase().includes(query)));
  document.getElementById('pharmacyCountV9133').textContent='待配藥 '+(state.counts?.waiting??0)+'｜配藥中 '+(state.counts?.preparing??0)+'｜退回 '+(state.counts?.returned??0)+'｜符合 '+(state.total??jobs.length)+' 筆，每頁100筆，目前第 '+(Math.floor(pharmacyV9133.offset/100)+1)+' 頁';
  for(const j of jobs){
   const card=pharmacyNodeV9133('section');card.className='card pharmacy-job-v9133';card.dataset.state=j.state;
@@ -16063,7 +16067,7 @@ async function pharmacyStaffV9133(){
  const style=pharmacyNodeV9133('style');style.textContent='.pharmacy-actions-v9133{display:flex;gap:10px;flex-wrap:wrap;margin:12px 0;align-items:center}.pharmacy-actions-v9133 input[type=checkbox],#pharmacyStaffV9133 input{width:auto}.pharmacy-job-v9133[data-state=returned]{border:2px solid #b91c1c}.pharmacy-job-v9133[data-state=preparing]{border:2px solid #c2410c}#pharmacySendBodyV9133 label,#pharmacyStaffV9133 label{display:block;margin:10px 0}#pharmacySendBodyV9133 input{max-width:180px}#medicalPrescriptionActionsV909 #pharmacySendV9133{background:#c2410c!important;color:white!important;border-color:#9a3412!important}';document.head.append(style);
  const nav=pharmacyNodeV9133('li','💊 配藥室');nav.id='nav-pharmacy';nav.onclick=()=>switchTab('pharmacy');document.getElementById('nav-medical').after(nav);
  const tab=pharmacyNodeV9133('div');tab.id='pharmacy';tab.className='tab-content';
- tab.innerHTML='<h1>配藥室</h1><p>醫師送單 → 配藥人員接單與核對 → 配藥完成送櫃台 → 收費、交藥。不同寵物分別配藥；尚未完成配藥不能收款。</p><div class="card"><div class="pharmacy-actions-v9133"><input type="search" id="pharmacySearchV9133" placeholder="飼主、寵物或醫師，Enter搜尋"><select id="pharmacyFilterV9133"><option value="active">目前待辦</option><option value="waiting">待配藥</option><option value="preparing">配藥中</option><option value="returned">退回醫師</option><option value="ready">配藥完成</option><option value="all">待辦及最近一天已完成／撤回</option></select></div><b id="pharmacyCountV9133"></b><p id="pharmacyMessageV9133" role="status" aria-live="polite"></p></div><details id="pharmacyAdminV9133" class="card" hidden><summary>管理者：配藥人員權限與紀錄匯出</summary><div id="pharmacyStaffV9133"></div></details><div id="pharmacyQueueV9133"></div>';
+ tab.innerHTML='<h1>配藥室</h1><p>醫師送單 → 配藥人員接單與核對 → 配藥完成送櫃台 → 收費、交藥。不同寵物分別配藥；尚未完成配藥不能收款。</p><div class="card"><div class="pharmacy-actions-v9133"><input type="search" id="pharmacySearchV9133" placeholder="飼主、寵物或醫師，Enter搜尋"><select id="pharmacyFilterV9133"><option value="active">目前待辦（待配藥／配藥中／退回）</option><option value="waiting">待配藥</option><option value="preparing">配藥中</option><option value="returned">退回醫師</option><option value="ready">已配好／已送櫃台（含未付款）</option><option value="all">全部待辦與已送櫃台＋最近一天交藥／撤回</option></select></div><b id="pharmacyCountV9133"></b><p id="pharmacyMessageV9133" role="status" aria-live="polite"></p></div><details id="pharmacyAdminV9133" class="card" hidden><summary>管理者：配藥人員權限與紀錄匯出</summary><div id="pharmacyStaffV9133"></div></details><div id="pharmacyQueueV9133"></div>';
  document.getElementById('medical').parentElement.append(tab);
  const toolbar=tab.querySelector('.pharmacy-actions-v9133');toolbar.append(pharmacyButtonV9133('搜尋／更新',async()=>{pharmacyV9133.offset=0;await pharmacyLoadV9133();}),pharmacyButtonV9133('上一頁',async()=>{if(pharmacyV9133.offset===0)return;pharmacyV9133.offset=Math.max(0,pharmacyV9133.offset-100);await pharmacyLoadV9133();}),pharmacyButtonV9133('下一頁',async()=>{if(pharmacyV9133.offset+100>=(pharmacyV9133.data?.total||0))return;pharmacyV9133.offset+=100;await pharmacyLoadV9133();}),pharmacyButtonV9133('核對上次送單（不重複建立）',pharmacyRecoverV9133));
  const admin=document.getElementById('pharmacyAdminV9133');admin.append(pharmacyButtonV9133('讀取／指派配藥人員',pharmacyStaffV9133),pharmacyButtonV9133('匯出配藥室紀錄',async()=>{const d=await pharmacyRpcV9133('export'),url=URL.createObjectURL(new Blob([JSON.stringify(d,null,2)],{type:'application/json'})),a=pharmacyNodeV9133('a');a.href=url;a.download='genblue_配藥室_'+new Date().toISOString().slice(0,10)+'.json';a.click();setTimeout(()=>URL.revokeObjectURL(url),30000);}));
@@ -16167,7 +16171,7 @@ async function pharmacyStaffV9133(){
  const originalSwitch=switchTab;switchTab=function(tab,...args){if(tab!=='online_booking'){root.open=false;unload()}const result=originalSwitch.call(this,tab,...args);refresh();return result;};
  const originalLogout=logoutSupabase;logoutSupabase=function(...args){root.open=false;unload();root.hidden=true;el('input').value='';return originalLogout.apply(this,args);};
  refresh();setInterval(refresh,1000);
- const version=document.getElementById('genblueVersionV84');if(version)version.textContent=' · v92_1';
+ const version=document.getElementById('genblueVersionV84');if(version)version.textContent=' · v92_3';
 })();
 
 </script>
