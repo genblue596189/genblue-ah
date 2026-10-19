@@ -2,7 +2,7 @@
 <meta name="genblue-version" content="v85">
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>吉布動物醫院管理系統 genblue設計版權所有 · v92</title>
+    <title>吉布動物醫院管理系統 genblue設計版權所有 · v85_6</title>
     <!-- 引入 Supabase JS SDK CDN -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
@@ -619,6 +619,28 @@ body.role-no-appointment #nav-online_booking{display:none!important}
 @media(max-width:900px){#appointments .journal-welcome{grid-template-columns:minmax(0,1fr) 240px}.journal-welcome-right-v855 img{height:150px}}
 @media(max-width:600px){#appointments .journal-welcome{grid-template-columns:minmax(0,1fr)}.journal-welcome-right-v855{display:flex;align-items:center;gap:14px}.journal-welcome-right-v855 #sb-home{flex:1}.journal-welcome-right-v855 img{width:110px;height:100px;flex:0 0 110px}}
 }
+</style>
+<style id="pharmacyModalV9137">
+/* v91.37：送配藥室確認視窗使用獨立實色面板，避免透明卡片主題透出底層文字。 */
+@media screen {
+#pharmacySendModalV9133{inset:0!important;width:100%!important;height:100%!important;box-sizing:border-box!important;padding:20px!important;background:rgba(15,23,42,.68)!important;z-index:5000!important;align-items:center!important;justify-content:center!important;isolation:isolate}
+#pharmacySendModalV9133>.pharmacy-confirm-panel-v9137{display:flex!important;flex-direction:column!important;width:min(960px,100%)!important;max-width:100%!important;max-height:calc(100dvh - 40px)!important;box-sizing:border-box!important;padding:0!important;margin:0!important;overflow:hidden!important;background:#fff!important;background-image:none!important;color:#111827!important;opacity:1!important;border:1px solid #cbd5e1!important;border-radius:14px!important;box-shadow:0 24px 70px rgba(0,0,0,.4)!important;font-family:Arial,'Microsoft JhengHei',sans-serif!important;font-size:16px!important;text-align:left!important}
+#pharmacySendModalV9133 h2{flex:none;margin:0!important;padding:20px 24px!important;background:#f1f5f9!important;color:#0f172a!important;border-bottom:1px solid #cbd5e1!important;font-family:inherit!important;font-size:22px!important;font-weight:700!important;line-height:1.5!important}
+#pharmacySendBodyV9133{min-height:0!important;overflow:auto!important;overscroll-behavior:contain;padding:20px 24px!important;line-height:1.75!important;color:#111827!important}
+#pharmacySendBodyV9133 p,#pharmacySendBodyV9133 li,#pharmacySendBodyV9133 span,#pharmacySendBodyV9133 b,#pharmacySendBodyV9133 strong{color:#111827!important;font-size:16px!important;line-height:1.75!important;white-space:normal!important;overflow-wrap:anywhere}
+#pharmacySendBodyV9133 h4{margin:14px 0 8px!important;padding:10px 12px!important;background:#e8eef7!important;color:#172554!important;font-size:17px!important;font-weight:700!important;border-left:4px solid #2563eb!important;border-radius:4px!important}
+#pharmacySendBodyV9133 ul{padding-left:24px!important;margin:10px 0 20px!important}#pharmacySendBodyV9133 li{padding:6px 0!important}
+#pharmacySendBodyV9133>label{display:grid!important;grid-template-columns:minmax(0,1fr) 180px!important;gap:12px!important;align-items:center!important;padding:14px 0!important;margin:0!important;border-top:1px solid #e2e8f0!important;color:#111827!important;font-size:16px!important;font-weight:700!important}
+#pharmacySendBodyV9133 input{width:100%!important;max-width:none!important;box-sizing:border-box!important;min-height:46px!important;margin:0!important;padding:10px 12px!important;background:#fff!important;color:#111827!important;border:2px solid #94a3b8!important;border-radius:7px!important;font-size:18px!important;opacity:1!important}
+#pharmacySendBodyV9133 input:focus{outline:3px solid #bfdbfe!important;border-color:#2563eb!important}
+#pharmacySendModalV9133 .pharmacy-confirm-actions-v9137{display:flex!important;flex:none;justify-content:flex-end;gap:12px!important;flex-wrap:wrap;padding:16px 24px!important;border-top:1px solid #cbd5e1!important;background:#f8fafc!important}
+#pharmacySendModalV9133 .pharmacy-confirm-actions-v9137 button{min-height:48px!important;margin:0!important;padding:12px 20px!important;border-radius:8px!important;font-size:16px!important;font-weight:700!important;line-height:1.4!important;box-shadow:none!important;opacity:1}
+#pharmacySendModalV9133 .pharmacy-confirm-actions-v9137 .pharmacy-confirm-back-v9137{background:#fff!important;color:#334155!important;border:2px solid #94a3b8!important}
+#pharmacySendModalV9133 .pharmacy-confirm-actions-v9137 .btn-success{background:#166534!important;color:#fff!important;border:2px solid #14532d!important}
+#pharmacySendModalV9133 button:disabled{opacity:.5!important;cursor:wait!important}
+@media(max-width:600px){#pharmacySendModalV9133{padding:10px!important}#pharmacySendModalV9133>.pharmacy-confirm-panel-v9137{max-height:calc(100dvh - 20px)!important}#pharmacySendModalV9133 h2,#pharmacySendBodyV9133,#pharmacySendModalV9133 .pharmacy-confirm-actions-v9137{padding:14px 16px!important}#pharmacySendBodyV9133>label{grid-template-columns:1fr!important;gap:6px!important}#pharmacySendModalV9133 .pharmacy-confirm-actions-v9137 button{flex:1 1 100%!important}}
+}
+
 </style>
 </head>
 <body>
@@ -16029,7 +16051,12 @@ async function pharmacyStaffV9133(){
  document.getElementById('pharmacySearchV9133').onkeydown=e=>{if(e.key==='Enter'&&!e.isComposing&&e.keyCode!==229){e.preventDefault();pharmacyV9133.offset=0;void pharmacyActionV9133(pharmacyLoadV9133);}};
  document.getElementById('pharmacyFilterV9133').onchange=()=>{pharmacyV9133.offset=0;void pharmacyActionV9133(pharmacyLoadV9133);};
  const modal=pharmacyNodeV9133('div');modal.id='pharmacySendModalV9133';modal.className='modal-overlay';modal.style.display='none';modal.setAttribute('role','dialog');modal.setAttribute('aria-modal','true');modal.setAttribute('aria-label','確認送配藥室處方與費用');
- const content=pharmacyNodeV9133('div');content.className='card';content.style.cssText='width:min(900px,94vw);max-height:90vh;overflow:auto;padding:24px';content.append(pharmacyNodeV9133('h2','確認處方與費用，再送配藥室'));const body=pharmacyNodeV9133('div');body.id='pharmacySendBodyV9133';content.append(body,pharmacyButtonV9133('確認傳送至配藥室',pharmacySubmitV9133,'success'));const close=pharmacyNodeV9133('button','返回門診繼續修改');close.type='button';close.onclick=pharmacyCloseSendV9133;content.append(close);modal.append(content);document.body.append(modal);
+ const content=pharmacyNodeV9133('div');content.className='modal-content pharmacy-confirm-panel-v9137';
+ const title=pharmacyNodeV9133('h2','確認處方與費用，再送配藥室');title.id='pharmacyConfirmTitleV9137';modal.setAttribute('aria-labelledby',title.id);
+ const body=pharmacyNodeV9133('div');body.id='pharmacySendBodyV9133';
+ const actions=pharmacyNodeV9133('div');actions.className='pharmacy-confirm-actions-v9137';
+ const close=pharmacyNodeV9133('button','返回門診繼續修改');close.type='button';close.className='pharmacy-confirm-back-v9137';close.onclick=pharmacyCloseSendV9133;
+ actions.append(close,pharmacyButtonV9133('確認傳送至配藥室',pharmacySubmitV9133,'success'));content.append(title,body,actions);modal.append(content);document.body.append(modal);
  const send=pharmacyNodeV9133('button','💊 傳送至配藥室');send.id='pharmacySendV9133';send.type='button';send.onclick=pharmacyOpenSendV9133;document.getElementById('medicalPrescriptionActionsV909').append(send);
  const beforeSwitch=switchTab;switchTab=function(tab,...args){const result=beforeSwitch.call(this,tab,...args);if(tab==='pharmacy')void pharmacyActionV9133(pharmacyLoadV9133);return result;};
  // Existing cashier list receives only pharmacy-completed bills. Non-pharmacy bills are unchanged.
@@ -16121,7 +16148,7 @@ async function pharmacyStaffV9133(){
  const originalSwitch=switchTab;switchTab=function(tab,...args){if(tab!=='online_booking'){root.open=false;unload()}const result=originalSwitch.call(this,tab,...args);refresh();return result;};
  const originalLogout=logoutSupabase;logoutSupabase=function(...args){root.open=false;unload();root.hidden=true;el('input').value='';return originalLogout.apply(this,args);};
  refresh();setInterval(refresh,1000);
- const version=document.getElementById('genblueVersionV84');if(version)version.textContent=' · v91.36';
+ const version=document.getElementById('genblueVersionV84');if(version)version.textContent=' · v91.37';
 })();
 
 </script>
