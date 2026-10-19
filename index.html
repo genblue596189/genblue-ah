@@ -642,6 +642,17 @@ body.role-no-appointment #nav-online_booking{display:none!important}
 }
 
 </style>
+<style id="bookingStatusV921">
+#online_booking .booking-slot-status-v921{display:inline-block;padding:8px 12px;border-radius:7px;font-weight:700;line-height:1.6;border:1px solid transparent}
+#online_booking .booking-slot-full-v921{color:#b91c1c!important;background:#fef2f2;border-color:#fecaca}
+#online_booking .booking-slot-open-v921{color:#166534!important}
+#online_booking .booking-slot-status-v921.booking-slot-open-v921{background:#f0fdf4;border-color:#bbf7d0}
+#online_booking .booking-slot-closed-v921{color:#475569!important}
+#online_booking .booking-slot-status-v921.booking-slot-closed-v921{background:#f1f5f9;border-color:#cbd5e1}
+#online_booking button.booking-close-v921{background:#b91c1c!important;color:#fff!important;border:1px solid #991b1b!important}
+#online_booking button.booking-close-v921:hover:not(:disabled){background:#991b1b!important}
+#online_booking button.booking-close-v921:focus-visible{outline:3px solid #fca5a5;outline-offset:3px}
+</style>
 </head>
 <body>
     <!-- Supabase 登入畫面 -->
@@ -10456,7 +10467,7 @@ function closeReview(){searchGeneration++;review=null;pet=null;$('review').hidde
 async function load(){const next=await rpc('list');if(next.config?.tenant_id&&next.config.tenant_id!==CURRENT_TENANT_ID)throw Error('院所資料不符，停止顯示。');state=next;showBookingNoticeV62(next.pending_count);$('app').hidden=false;$('settings').hidden=!state.admin;closeReview();
  if(state.config){$('clinic-name').value=state.config.name;$('slug').value=state.config.slug;$('enabled').checked=state.config.enabled;$('notice').value=state.config.notice;}
  $('public-link').href='https://genblue596189.github.io/genblue-ah/booking.html?clinic='+encodeURIComponent(state.config?.slug||'genblue-ah');
- $('slots').replaceChildren();for(const s of state.slots){const p=document.createElement('p');p.textContent=labelDate(s.starts_at)+'｜名額 '+s.capacity+'｜'+(s.enabled?'開放':'關閉');if(state.admin&&s.enabled)p.append(button('關閉時段',()=>action(async()=>{await rpc('close_slot',{id:s.id});await load();message('時段已關閉；已送出的申請保留，請個別處理。');})));$('slots').append(p);}
+ $('slots').replaceChildren();for(const s of state.slots){const p=document.createElement('p');p.textContent=labelDate(s.starts_at)+'｜名額 '+s.capacity+'｜'+(s.enabled?'開放':'關閉');if(state.admin&&s.enabled){const closeButton=button('關閉時段',()=>action(async()=>{await rpc('close_slot',{id:s.id});await load();message('時段已關閉；已送出的申請保留，請個別處理。');}));closeButton.classList.add('booking-close-v921');p.append(closeButton);}$('slots').append(p);}
  $('requests').replaceChildren();$('history').replaceChildren();const pending=state.requests.filter(r=>r.status==='pending');$('pending-count').textContent='（本頁 '+pending.length+'／共 '+state.pending_count+'）';if(!pending.length)$('requests').textContent='目前沒有待確認申請。';
  renderScheduleV60();await renderCalendarV60();
  for(const r of state.requests){const box=document.createElement('div');box.className='card request';for(const text of [labelDate(r.starts_at)+'｜'+r.name+'｜'+r.phone,'寵物：'+r.pet_name+'（'+r.species+'）','原登記資訊：'+(r.registered_hint||'未填'),'原因：'+(r.reason||'未填'),'申請編號：'+r.id]){const p=document.createElement('p');p.textContent=text;box.append(p);}
@@ -10517,7 +10528,7 @@ async function renderCalendarV60(){calendarV60=await rpc('calendar',{start:weekV
   const title=document.createElement('strong');title.textContent=day.slice(5)+' '+['日','一','二','三','四','五','六'][new Date(day+'T12:00Z').getUTCDay()];
   const p=document.createElement('span');p.className='pending-v60';p.textContent='待審核 '+pending;
   const c=document.createElement('span');c.className='confirmed-v60';c.textContent='院內預約 '+apps;
-  const h=document.createElement('span');h.textContent=state.closed_days?.includes(day)?'整天休診':calendarV60.slots.some(s=>dayV60(s.starts_at)===day&&s.enabled)?'有開放時段':'無開放時段';
+  const h=document.createElement('span'),hasAvailable=calendarV60.slots.some(s=>dayV60(s.starts_at)===day&&bookingSlotStatusV921(s).kind==='open');h.textContent=state.closed_days?.includes(day)?'整天休診':hasAvailable?'有可預約時段':'目前無可預約時段';h.className=hasAvailable&&!state.closed_days?.includes(day)?'booking-slot-open-v921':'booking-slot-closed-v921';
   b.append(title,p,c,h);$('calendar-grid').append(b);
  }renderCalendarDaysV60();
 }
@@ -10534,6 +10545,14 @@ async function restoreSlotV9126(slot){
  try{await load();}catch(e){message('此時段已恢復，畫面更新未完成，請按重新讀取核對。');return;}
  message('此時段已恢復接受新申請，每格限1位。');
 }
+// v92_1：燈號依是否額滿判斷；操作按鈕不再用綠色表示關閉。
+function bookingSlotStatusV921(slot){
+ const used=Number(slot.used),capacity=Number(slot.capacity),valid=slot.used!=null&&slot.capacity!=null&&Number.isFinite(used)&&used>=0&&Number.isFinite(capacity)&&capacity>0;
+ if(valid&&used>=capacity)return {kind:'full',label:'● 已額滿，停止新申請'};
+ if(!slot.enabled)return {kind:'closed',label:'● 已停止新申請'};
+ if(valid)return {kind:'open',label:'● 可接受新申請'};
+ return {kind:'closed',label:'● 名額待核對'};
+}
 function renderCalendarDaysV60(){if(!calendarV60)return;$('calendar-date').value=selectedDayV60;
  for(const b of $('calendar-grid').children)b.classList.toggle('selected',b.dataset.day===selectedDayV60);
  $('day-title').textContent=selectedDayV60+' 的預約與時段';$('day-controls').hidden=!state.admin;$('day-info').replaceChildren();
@@ -10546,11 +10565,11 @@ function renderCalendarDaysV60(){if(!calendarV60)return;$('calendar-date').value
   if(!s&&slots.some(x=>new Date(dt)>=new Date(x.starts_at)&&new Date(dt)<new Date(new Date(x.starts_at).getTime()+1800000)))continue;
   const row=document.createElement('div');row.className='slot-v60';const left=document.createElement('div');left.className='time-v60';left.textContent=timeV60(dt);
   const info=document.createElement('div');info.className='events-v60';
-  if(s){const p=document.createElement('p');p.textContent=(!s.enabled?'已停止新申請':s.used>=s.capacity?'名額已滿':'可接受新申請')+'｜已占 '+s.used+'／名額 '+s.capacity+(s.used>s.capacity?'（超過目前名額，請安排）':'');info.append(p);}
+  if(s){const status=bookingSlotStatusV921(s),p=document.createElement('p');p.className='booking-slot-status-v921 booking-slot-'+status.kind+'-v921';p.textContent=status.label+'｜已占 '+s.used+'／名額 '+s.capacity+(Number(s.used)>Number(s.capacity)?'（超過目前名額，請安排）':'');info.append(p);}
   const lo=new Date(dt).getTime(),hi=lo+(s?1800000:1);
   for(const r of reqs.filter(x=>new Date(x.starts_at).getTime()>=lo&&new Date(x.starts_at).getTime()<hi&&x.status==='pending')){const p=document.createElement('p');p.className='pending-v60';p.textContent='待審核｜'+r.pet_name+'｜聯絡人 '+r.name;info.append(p,button('核對並審核',()=>beginReviewV60(r)));}
   for(const a of apps.filter(x=>new Date(x.starts_at).getTime()>=lo&&new Date(x.starts_at).getTime()<hi)){if(covered.has(a.id))continue;covered.add(a.id);const p=document.createElement('p');p.className='confirmed-v60';p.textContent=timeV60(a.starts_at)+'｜'+(a.pet_name||'未指定寵物')+'｜'+(a.owner_name||'未指定飼主')+'｜'+a.status;info.append(p);}
-  if(s&&state.admin&&s.enabled)info.append(button('關閉此時段',()=>action(async()=>{await rpc('close_slot',{id:s.id});await load();message('此時段停止新申請；原本申請與預約保留。');})));
+  if(s&&state.admin&&s.enabled){const closeButton=button('關閉此時段',()=>action(async()=>{await rpc('close_slot',{id:s.id});await load();message('此時段停止新申請；原本申請與預約保留。');}));closeButton.classList.add('booking-close-v921');info.append(closeButton);}
   if(s&&state.admin&&!s.enabled){
    if(Number(s.used)>=1){const note=document.createElement('small');note.textContent='已有預約／待審核申請，請先處理原預約後再恢復。';info.append(note);}
    else {const restoreButton=button('恢復此時段',()=>action(()=>restoreSlotV9126(s)));restoreButton.classList.add('booking-restore-v9128');info.append(restoreButton);}
@@ -16148,7 +16167,7 @@ async function pharmacyStaffV9133(){
  const originalSwitch=switchTab;switchTab=function(tab,...args){if(tab!=='online_booking'){root.open=false;unload()}const result=originalSwitch.call(this,tab,...args);refresh();return result;};
  const originalLogout=logoutSupabase;logoutSupabase=function(...args){root.open=false;unload();root.hidden=true;el('input').value='';return originalLogout.apply(this,args);};
  refresh();setInterval(refresh,1000);
- const version=document.getElementById('genblueVersionV84');if(version)version.textContent=' · v91.37';
+ const version=document.getElementById('genblueVersionV84');if(version)version.textContent=' · v92_1';
 })();
 
 </script>
