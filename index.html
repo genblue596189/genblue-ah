@@ -2,7 +2,7 @@
 <meta name="genblue-version" content="v85">
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>吉布動物醫院管理系統 genblue設計版權所有 · v92</title>
+    <title>吉布動物醫院管理系統 genblue設計版權所有 · v85_6</title>
     <!-- 引入 Supabase JS SDK CDN -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
@@ -6088,7 +6088,7 @@ async function loadOwnersAndPetsIntegrated() {
         }
 
         // 一鍵資料備份 v1：完整原始 JSON 以文字保存，避免數值精度改變。
-        const CLINIC_BACKUP_TABLES = ["appointments", "audit_logs", "breed_images", "breeds", "categories", "clinic_settings", "clinic_trials", "controlled_drug_counts", "diagnostic_devices", "diagnostic_import_jobs", "diagnostic_results", "imaging_assets", "imaging_share_tokens", "imaging_shares_v76", "imaging_studies", "inpatients", "inventory_movements", "invoice_items", "invoices", "item_categories", "items", "lab_reports", "lab_tests", "legacy_medical_histories", "medical_records", "medicines", "owner_code_counters", "owners", "pets", "rapid_test_records", "rapid_types", "regulated_drug_transactions", "regulated_lots", "regulatory_report_batch_transactions", "regulatory_report_batches", "report_export_profiles", "user_profiles", "vaccination_records", "vaccine_types", "pos_audit_v77", "pos_movements_v77", "pos_pending_v77", "pos_requests_v77", "pos_shifts_v77"];
+        const CLINIC_BACKUP_TABLES = ["appointments", "audit_logs", "breed_images", "breeds", "categories", "clinic_settings", "clinic_trials", "controlled_drug_counts", "diagnostic_devices", "diagnostic_import_jobs", "diagnostic_results", "imaging_assets", "imaging_share_tokens", "imaging_shares_v76", "imaging_studies", "inpatients", "inventory_movements", "invoice_items", "invoices", "item_categories", "items", "lab_reports", "lab_tests", "legacy_medical_histories", "medical_records", "medicines", "owner_code_counters", "owners", "pets", "rapid_test_records", "rapid_types", "regulated_drug_transactions", "regulated_lots", "regulatory_report_batch_transactions", "regulatory_report_batches", "report_export_profiles", "user_profiles", "vaccination_records", "vaccine_types", "pos_audit_v77", "pos_movements_v77", "pos_pending_v77", "pos_requests_v77", "pos_shifts_v77", "pharmacy_jobs_v9133"];
         const CLINIC_BACKUP_POS_TABLES_V843 = ["pos_audit_v77", "pos_movements_v77", "pos_pending_v77", "pos_requests_v77", "pos_shifts_v77"];
         let clinicBackupBusy = false;
         let clinicBackupController = null;
@@ -6100,7 +6100,7 @@ async function loadOwnersAndPetsIntegrated() {
             // v84_4: old archives may omit the whole POS group; partial groups are invalid.
             const posTableCount=CLINIC_BACKUP_POS_TABLES_V843.filter(name=>Object.prototype.hasOwnProperty.call(snapshot.tables||{},name)).length;
             if(posTableCount!==0&&posTableCount!==CLINIC_BACKUP_POS_TABLES_V843.length)throw new Error('待付款與交班備份資料表不完整。');
-            const expectedTables=CLINIC_BACKUP_TABLES.filter(name=>!['breed_images','imaging_shares_v76',...CLINIC_BACKUP_POS_TABLES_V843].includes(name)||Object.prototype.hasOwnProperty.call(snapshot.tables||{},name));
+            const expectedTables=CLINIC_BACKUP_TABLES.filter(name=>!['breed_images','imaging_shares_v76','pharmacy_jobs_v9133',...CLINIC_BACKUP_POS_TABLES_V843].includes(name)||Object.prototype.hasOwnProperty.call(snapshot.tables||{},name));
             if (!snapshot.tables || snapshot.table_count !== expectedTables.length+(snapshot.format_version>=2?3:0)+(snapshot.format_version===3?5:0) ||
                 Object.keys(snapshot.tables).sort().join('|') !== [...expectedTables].sort().join('|')) throw new Error('資料表範圍不完整或版本不同。');
             if(snapshot.format_version===3)validateStorageBackupV62(snapshot);else if (snapshot.attachments?.mode !== 'verified_none_v1' || snapshot.attachments.patient_file_references !== 0 || snapshot.attachments.non_html_storage_objects !== 0) throw new Error('此備份含尚未支援的附件範圍。');
@@ -6159,7 +6159,7 @@ async function loadOwnersAndPetsIntegrated() {
             const body = document.getElementById('clinicBackupSummaryBody');
             body.replaceChildren();
             const keyTables = [['飼主','owners'],['寵物','pets'],['舊系統病歷','legacy_medical_histories'],['新系統病歷','medical_records'],['收費單','invoices'],['收費明細','invoice_items'],['藥品','medicines'],['商品','items'],['編號計數器','owner_code_counters']];
-            for(const [label,name] of [['待付款帳單','pos_pending_v77'],['開班與下班紀錄','pos_shifts_v77'],['現金與收款異動','pos_movements_v77'],['收款重試紀錄','pos_requests_v77'],['櫃台操作紀錄','pos_audit_v77']])if(snapshot.tables[name])keyTables.push([label,name]);
+            for(const [label,name] of [['配藥室紀錄','pharmacy_jobs_v9133'],['待付款帳單','pos_pending_v77'],['開班與下班紀錄','pos_shifts_v77'],['現金與收款異動','pos_movements_v77'],['收款重試紀錄','pos_requests_v77'],['櫃台操作紀錄','pos_audit_v77']])if(snapshot.tables[name])keyTables.push([label,name]);
             for (const [label,name] of keyTables) {
                 const row = document.createElement('tr');
                 for (const value of [label, snapshot.tables[name].row_count.toLocaleString()]) {
@@ -10713,7 +10713,7 @@ function backupManifestKeyV851(m){
  return JSON.stringify({tenant_id:m.tenant_id,format:m.format,format_version:m.format_version,table_count:m.table_count,total_rows:m.total_rows,groups,attachments:m.attachments});
 }
 async function backupReadPagedV851(tenant,signal,ensure,progress){
- const readManifest=async()=>{const {data,error}=await _supabase.rpc('genblue_backup_manifest_v851',{p_expected_tenant:tenant}).abortSignal(signal);ensure();if(error)throw Error(error.message+'；請確認已執行 v85_1 備份 SQL');if(typeof data!=='string')throw Error('備份清單格式不符');const m=JSON.parse(data);if(m.tenant_id!==tenant||m.format_version!==3)throw Error('備份院所或版本不符');return m;};
+ const readManifest=async()=>{const {data,error}=await _supabase.rpc('genblue_backup_manifest_v851',{p_expected_tenant:tenant}).abortSignal(signal);ensure();if(error)throw Error(error.message+'；請確認已執行 backup_pharmacy_v91_34.sql 備份更新');if(typeof data!=='string')throw Error('備份清單格式不符');const m=JSON.parse(data);if(m.tenant_id!==tenant||m.format_version!==3)throw Error('備份院所或版本不符');if(!Object.prototype.hasOwnProperty.call(m.tables||{},'pharmacy_jobs_v9133'))throw Error('備份範圍尚未包含配藥室，請先執行 backup_pharmacy_v91_34.sql，再重新備份');return m;};
  progress('正在讀取備份範圍與資料筆數…');const manifest=await readManifest(),initialKey=backupManifestKeyV851(manifest),rawGroups={},sections=[['tables','public'],['private_tables','private'],['booking_tables','booking']];let done=0;
  for(const [group,schema] of sections){if(!manifest[group]||typeof manifest[group]!=='object')throw Error('備份缺少 '+group);rawGroups[group]={};for(const [name,table]of Object.entries(manifest[group])){
   if(!Number.isSafeInteger(table.row_count)||table.row_count<0||!/^[a-f0-9]{32}$/.test(table.signature)||!Array.isArray(table.rows)||table.rows.length)throw Error('備份清單資料不完整：'+name);
@@ -16039,7 +16039,7 @@ async function pharmacyStaffV9133(){
  setInterval(()=>{if(!document.hidden&&document.getElementById('pharmacy').classList.contains('active')&&!pharmacyV9133.busy)void pharmacyLoadV9133().catch(e=>pharmacyMessageV9133('配藥室暫未同步：'+e.message+'；請按更新，勿重複送單。'));},15000);
  const pollCounts=()=>{if(!pharmacyScopeV9133()||document.hidden)return;void pharmacyRpcV9133('counts').then(d=>{nav.textContent='💊 配藥室'+((d.waiting||d.returned)?'（待配 '+(d.waiting||0)+'／退回 '+(d.returned||0)+'）':'');nav.style.color=d.returned?'#b91c1c':'';}).catch(()=>{});};
  setInterval(pollCounts,30000);setTimeout(pollCounts,2000);
- document.getElementById('genblueVersionV84').textContent=' · v91.33';
+ document.getElementById('genblueVersionV84').textContent=' · v91.34';
 })();
 
 </script></body></html>
