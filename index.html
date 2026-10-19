@@ -2,7 +2,7 @@
 <meta name="genblue-version" content="v85">
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>吉布動物醫院管理系統 genblue設計版權所有 · v85_6</title>
+    <title>吉布動物醫院管理系統 genblue設計版權所有 · v92</title>
     <!-- 引入 Supabase JS SDK CDN -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
@@ -16069,6 +16069,59 @@ async function pharmacyStaffV9133(){
  ['status','connect','disconnect'].forEach(k=>el(k).onclick=()=>action(k));
  el('copy').onclick=async()=>{try{await navigator.clipboard.writeText(el('code').value);message('已複製設定程式。')}catch(e){el('code').focus();el('code').select();message('請按 Ctrl+C 複製已選取的設定。')}};
  const version=document.getElementById('genblueVersionV84');if(version)version.textContent=' · v91.35';
+})();
+
+</script>
+
+<script>
+// v91.36：Google 官方日曆內嵌；每位使用者、院所及專案分別保存本機顯示設定。
+(function(){
+ const panel=document.getElementById('online_booking');if(!panel)return;
+ const root=document.createElement('details');root.id='googleCalendarEmbedV9136';root.className='card';root.hidden=true;
+ root.innerHTML='<summary style="font-size:1.1rem;font-weight:700;color:#1d4ed8;cursor:pointer">📅 Google 日曆（系統內查看）</summary><p>直接在這裡查看已同步的 Google 日曆。請使用有權限的醫院 Google 帳號登入瀏覽器，日曆維持私人共用即可。</p><details data-gce="settings"><summary>設定要顯示的 Google 日曆</summary><p>首次設定：Google 日曆 → 設定 → 選擇「醫院名稱｜已確認預約」→ 整合日曆 → 複製「日曆 ID」，貼到下方。也可貼上 Google 官方內嵌網址。</p><form data-gce="form"><label>日曆 ID 或內嵌網址<input data-gce="input" type="text" autocomplete="off" spellcheck="false" placeholder="……@group.calendar.google.com" required style="width:100%;max-width:700px"></label><div><button type="submit" style="background:#2563eb">儲存並顯示日曆</button><button type="button" data-gce="clear" style="background:#b91c1c">清除本機顯示設定</button></div></form><p>此設定保存於目前瀏覽器，依院所與登入帳號分開；其他電腦首次使用需再設定。不影響既有 Google 同步排程。</p></details><div data-gce="tools" hidden style="display:flex;gap:8px;align-items:center;flex-wrap:wrap"><label>顯示方式 <select data-gce="mode" aria-label="Google 日曆顯示方式"><option value="WEEK">週</option><option value="MONTH">月</option><option value="AGENDA">預約清單</option></select></label><button type="button" data-gce="reload">重新載入日曆</button><button type="button" data-gce="collapse">收合日曆</button></div><p data-gce="message" role="status" aria-live="polite"></p><div data-gce="frame" style="overflow:auto;max-width:100%"></div><p data-gce="help" hidden style="color:#64748b">若 Google 畫面顯示無權限、登入要求或空白，請確認瀏覽器登入的 Google 帳號有此日曆權限；瀏覽器的第三方 Cookie 限制也可能影響私人日曆顯示。預約改期與取消仍請在院務系統操作。</p>';
+ const heading=panel.querySelector('h1,h2');if(heading)heading.after(root);else panel.prepend(root);
+ const el=n=>root.querySelector('[data-gce="'+n+'"]');let seen='',calendarId='',mode='WEEK',loading=false;
+ const allowed=()=>!!CURRENT_USER?.id&&!!CURRENT_TENANT_ID&&(CURRENT_PROFILE?.role==='admin'||(CURRENT_PROFILE?.permission_appointment??['staff','doctor'].includes(CURRENT_PROFILE?.role)));
+ const scope=()=>allowed()?JSON.stringify([String(_supabase.supabaseUrl||''),String(CURRENT_TENANT_ID),CURRENT_USER.id]):'';
+ const key=()=> 'genblue-google-embed-v9136:'+scope();
+ function parseCalendarId(text){
+  let id=String(text||'').trim();
+  if(/^https?:/i.test(id)){
+   let url;try{url=new URL(id)}catch(e){throw Error('日曆網址格式不正確')}
+   if(url.protocol!=='https:'||url.hostname!=='calendar.google.com'||url.port||url.username||url.password||url.pathname!=='/calendar/embed'||url.searchParams.getAll('src').length!==1)throw Error('請貼上 Google 的日曆 ID，或只含一個日曆的官方內嵌網址');
+   id=url.searchParams.get('src')||'';
+  }
+  if(id.length>320||!/^[a-zA-Z0-9._%+\-#]+@[a-zA-Z0-9.\-]+$/.test(id))throw Error('請貼上「日曆 ID」（通常以 @group.calendar.google.com 結尾），不是私人 iCal 網址或連線金鑰');
+  return id;
+ }
+ function unload(){el('frame').replaceChildren();el('help').hidden=true;}
+ function remember(){try{localStorage.setItem(key(),JSON.stringify({version:1,id:calendarId,mode:mode}));return true}catch(e){return false}}
+ function render(force=false){
+  if(!root.open||!allowed()||seen!==scope()||!panel.classList.contains('active')){unload();return;}
+  el('tools').hidden=!calendarId;
+  if(!calendarId){unload();el('settings').open=true;el('message').textContent='請先設定醫院專用日曆 ID。';return;}
+  const url=new URL('https://calendar.google.com/calendar/embed');
+  for(const [k,v]of Object.entries({src:calendarId,ctz:'Asia/Taipei',mode:mode,hl:'zh_TW',showPrint:'0',showCalendars:'0',showTz:'0'}))url.searchParams.set(k,v);
+  let frame=el('frame').querySelector('iframe');if(!frame){frame=document.createElement('iframe');frame.title='醫院 Google 日曆';frame.style.cssText='border:0;width:100%;min-width:500px;height:720px';frame.setAttribute('referrerpolicy','no-referrer');el('frame').append(frame);}
+  if(force||frame.getAttribute('src')!==url.href)frame.setAttribute('src',url.href);
+  el('help').hidden=false;el('message').textContent='以下為 Google 日曆畫面，內容與登入狀態由 Google 顯示。';
+ }
+ function refresh(){
+  const s=scope();if(s!==seen){seen=s;loading=true;unload();root.open=false;calendarId='';mode='WEEK';el('input').value='';el('message').textContent='';el('tools').hidden=true;el('settings').open=false;
+   if(s){try{const c=JSON.parse(localStorage.getItem(key())||'null');if(c?.version===1){calendarId=parseCalendarId(c.id);mode=['WEEK','MONTH','AGENDA'].includes(c.mode)?c.mode:'WEEK';el('input').value=calendarId}}catch(e){el('message').textContent='尚未取得本機日曆設定，請展開設定重新輸入。';}}
+   el('mode').value=mode;loading=false;
+  }root.hidden=!s;
+ }
+ root.addEventListener('toggle',e=>{if(e.target!==root||loading)return;render();});
+ el('form').onsubmit=e=>{e.preventDefault();if(!allowed()||scope()!==seen)return;try{const next=parseCalendarId(el('input').value);calendarId=next;el('input').value=next;const saved=remember();el('settings').open=false;render();if(!saved)el('message').textContent='日曆已載入；瀏覽器無法保存設定，本次關閉後需重新輸入。'}catch(err){el('message').textContent=err.message;}};
+ el('mode').onchange=()=>{if(!allowed()||scope()!==seen)return;mode=['WEEK','MONTH','AGENDA'].includes(el('mode').value)?el('mode').value:'WEEK';const saved=remember();render();if(!saved)el('message').textContent='已切換畫面；瀏覽器無法保存本機設定。';};
+ el('reload').onclick=()=>render(true);
+ el('collapse').onclick=()=>{root.open=false;unload();};
+ el('clear').onclick=()=>{if(!allowed()||scope()!==seen)return;let removed=true;try{localStorage.removeItem(key())}catch(e){removed=false}calendarId='';el('input').value='';unload();el('tools').hidden=true;el('settings').open=true;el('message').textContent=removed?'本機顯示設定已清除，Google 預約同步與原日曆保留。':'本次顯示已清除，但瀏覽器未允許刪除保存設定。';};
+ const originalSwitch=switchTab;switchTab=function(tab,...args){if(tab!=='online_booking'){root.open=false;unload()}const result=originalSwitch.call(this,tab,...args);refresh();return result;};
+ const originalLogout=logoutSupabase;logoutSupabase=function(...args){root.open=false;unload();root.hidden=true;el('input').value='';return originalLogout.apply(this,args);};
+ refresh();setInterval(refresh,1000);
+ const version=document.getElementById('genblueVersionV84');if(version)version.textContent=' · v91.36';
 })();
 
 </script>
