@@ -16194,7 +16194,7 @@ async function pharmacyStaffV9133(){
  const originalSwitch=switchTab;switchTab=function(tab,...args){if(tab!=='online_booking'){root.open=false;unload()}const result=originalSwitch.call(this,tab,...args);refresh();return result;};
  const originalLogout=logoutSupabase;logoutSupabase=function(...args){root.open=false;unload();root.hidden=true;el('input').value='';return originalLogout.apply(this,args);};
  refresh();setInterval(refresh,1000);
- const version=document.getElementById('genblueVersionV84');if(version)version.textContent=' · v93_3';
+ const version=document.getElementById('genblueVersionV84');if(version)version.textContent=' · v93_4';
 })();
 
 </script>
@@ -16239,7 +16239,7 @@ function nightApplyDraftV93(d,plan){
  const oldSwitch=switchTab;switchTab=function(id,...args){const r=oldSwitch.call(this,id,...args);if(id==='invoices'){const appt=billingId(),scope=nightScopeV93();banner.hidden=true;if(appt){banner.hidden=false;banner.textContent='正在核對本次掛號計價…';void nightVisitV93(appt).then(()=>{if(scope===nightScopeV93()&&appt===billingId())calculateInvoiceTotal();}).catch(e=>{if(scope===nightScopeV93())banner.textContent=e.message+'；請先完成計價核對再收費。';});}}if(id==='posShiftTabV77'){const scope=nightScopeV93(),request=++modeRequest;void nightRpcV93('status').then(r=>{if(scope===nightScopeV93()&&request===modeRequest&&r.emergency)msg.textContent='目前為夜間急診：掛號500元，檢查、藥費×1.5。急診結束後依原流程清點下班。';}).catch(()=>{});}return r;};
  let opening=false;const oldOpen=pharmacyOpenSendV9133;pharmacyOpenSendV9133=async function(){if(opening)return;opening=true;const scope=nightScopeV93(),id=currentAppointmentId;try{const p=await nightVisitV93(id);if(scope!==nightScopeV93()||id!==currentAppointmentId)throw Error('目前就診已變更');await oldOpen.apply(this,arguments);const d=pharmacyV9133.dialog;if(d?.appointment!==id)return;d.nightV93=p;if(p?.emergency){d.exam.value='500';d.exam.readOnly=true;d.exam.parentElement.prepend(document.createTextNode('夜間急診固定掛號費500元；'));const box=document.getElementById('pharmacySendBodyV9133'),note=document.createElement('p');note.style.color='#b91c1c';note.textContent='藥費請填平日原價，送單時自動×1.5；檢查費亦×1.5。掛號費固定500元，不加乘。';box.append(note);for(const input of d.prices){const label=document.createElement('small');input.after(label);const update=()=>{label.textContent=input.value!==''&&Number.isFinite(Number(input.value))&&Number(input.value)>=0?' 急診實收：'+nightAmountV93(Number(input.value)):'';};input.addEventListener('input',update);update();}for(const s of d.service)if(['lab','rapid'].includes(s.kind)){const line=document.createElement('p');line.textContent=s.name+'：'+s.amount+' ×1.5＝'+nightAmountV93(Number(s.amount));box.append(line);}}}catch(e){alert(e.message);}finally{opening=false;}};document.getElementById('pharmacySendV9133').onclick=pharmacyOpenSendV9133;
  const oldLogout=logoutSupabase;logoutSupabase=function(){nightVisitsV93.clear();banner.hidden=true;return oldLogout.apply(this,arguments);};
- document.getElementById('genblueVersionV84').textContent=' · v93_3';
+ document.getElementById('genblueVersionV84').textContent=' · v93_4';
 })();
 
 </script>
@@ -16309,8 +16309,15 @@ function periodDocumentV932(d,receipt=false){
  el('periodPrintDetailV932').onclick=()=>print(false);el('periodPrintReceiptV932').onclick=()=>print(true);
  const previousProfile=loadCurrentUserProfile;loadCurrentUserProfile=async function(){const r=await previousProfile.apply(this,arguments);access();return r;};
  const previousLogout=logoutSupabase;logoutSupabase=function(){reset();panel.open=false;panel.hidden=home.hidden=true;return previousLogout.apply(this,arguments);};
- access();buttons();el('genblueVersionV84').textContent=' · v93_3';
+ access();buttons();el('genblueVersionV84').textContent=' · v93_4';
 })();
 
 </script>
+<style id="bookingActionColorsV934">
+#online_booking button.booking-close-v921{background:#b91c1c!important;color:#fff!important;border:2px solid #991b1b!important;}
+#online_booking button.booking-close-v921:hover:not(:disabled){background:#991b1b!important;}
+#online_booking button.booking-restore-v9128{background:#ffb347!important;color:#542600!important;border:2px solid #b85c00!important;font-weight:700;}
+#online_booking button.booking-restore-v9128:hover:not(:disabled){background:#ffa126!important;color:#542600!important;}
+#online_booking button.booking-close-v921:focus-visible,#online_booking button.booking-restore-v9128:focus-visible{outline:3px solid #2563eb!important;outline-offset:3px;}
+</style>
 </body></html>
